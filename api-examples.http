@@ -1,0 +1,109 @@
+### Variables
+@baseUrl = http://localhost:3000
+@orderId = replace-with-actual-order-id
+@customerId = customer-123
+
+### Health Check
+GET {{baseUrl}}/
+
+### Create Order
+POST {{baseUrl}}/orders
+Content-Type: application/json
+Idempotency-Key: 550e8400-e29b-41d4-a716-446655440000
+
+{
+  "customerId": "{{customerId}}",
+  "items": [
+    {
+      "productId": "product-abc123",
+      "quantity": 2,
+      "price": 99.99
+    },
+    {
+      "productId": "product-def456",
+      "quantity": 1,
+      "price": 149.99
+    }
+  ]
+}
+
+### Create Order - Test Idempotency (same key should return same order)
+POST {{baseUrl}}/orders
+Content-Type: application/json
+Idempotency-Key: 550e8400-e29b-41d4-a716-446655440000
+
+{
+  "customerId": "{{customerId}}",
+  "items": [
+    {
+      "productId": "product-abc123",
+      "quantity": 2,
+      "price": 99.99
+    },
+    {
+      "productId": "product-def456",
+      "quantity": 1,
+      "price": 149.99
+    }
+  ]
+}
+
+### Create Order - Without Idempotency Key (should fail)
+POST {{baseUrl}}/orders
+Content-Type: application/json
+
+{
+  "customerId": "{{customerId}}",
+  "items": [
+    {
+      "productId": "product-xyz789",
+      "quantity": 1,
+      "price": 199.99
+    }
+  ]
+}
+
+### Get All Orders (with pagination)
+GET {{baseUrl}}/orders?page=1&limit=10
+
+### Get All Orders (with filters)
+GET {{baseUrl}}/orders?customerId={{customerId}}&status=PENDING&page=1&limit=5
+
+### Get Order by ID
+GET {{baseUrl}}/orders/{{orderId}}
+
+### Get Orders by Customer ID
+GET {{baseUrl}}/orders/customer/{{customerId}}
+
+### Update Order Status
+PATCH {{baseUrl}}/orders/{{orderId}}/status
+Content-Type: application/json
+
+{
+  "status": "CONFIRMED"
+}
+
+### Update Complete Order
+PATCH {{baseUrl}}/orders/{{orderId}}
+Content-Type: application/json
+
+{
+  "customerId": "{{customerId}}",
+  "status": "PROCESSING",
+  "items": [
+    {
+      "productId": "product-abc123",
+      "quantity": 3,
+      "price": 99.99
+    }
+  ]
+}
+
+### Delete Order
+DELETE {{baseUrl}}/orders/{{orderId}}
+
+### Test Error - Invalid UUID
+GET {{baseUrl}}/orders/invalid-uuid
+
+### Test Error - Order Not Found
+GET {{baseUrl}}/orders/123e4567-e89b-12d3-a456-426614174000

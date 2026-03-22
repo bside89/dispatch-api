@@ -1,0 +1,272 @@
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+  Query,
+  Headers,
+  ParseUUIDPipe,
+  HttpCode,
+  HttpStatus,
+  BadRequestException,
+  Logger,
+} from '@nestjs/common';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiParam,
+  ApiQuery,
+  ApiBody,
+  ApiHeader,
+  ApiBadRequestResponse,
+  ApiNotFoundResponse,
+  ApiCreatedResponse,
+  ApiOkResponse,
+} from '@nestjs/swagger';
+import { OrderService } from './order.service';
+import { CreateOrderDto } from './dto/create-order.dto';
+import { UpdateOrderDto } from './dto/update-order.dto';
+import { OrderQueryDto } from './dto/order-query.dto';
+import { OrderResponseDto } from './dto/order-response.dto';
+import { Order } from './entities/order.entity';
+import { OrderStatus } from './enums/order-status.enum';
+
+@ApiTags('orders')
+@Controller('orders')
+export class OrderController {
+  private readonly logger = new Logger(OrderController.name);
+
+  constructor(private readonly orderService: OrderService) {}
+
+  @Post()
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({
+    summary: 'Create a new order',
+    description:
+      'Creates a new order with items and adds it to the processing queue. Requires Idempotency-Key header to prevent duplicate orders.',
+  })
+  @ApiHeader({
+    name: 'idempotency-key',
+    description:
+      'Unique key to ensure idempotent requests. Use UUID or any unique string.',
+    required: true,
+    example: '550e8400-e29b-41d4-a716-446655440000',
+  })
+  @ApiCreatedResponse({
+    description: 'Order successfully created',
+    type: Order,
+  })
+  @ApiBadRequestResponse({
+    description: 'Invalid input data or missing Idempotency-Key header',
+  })
+  @ApiBody({
+    type: CreateOrderDto,
+    description: 'Order creation data',
+  })
+  async create(
+    @Body() createOrderDto: CreateOrderDto,
+    @Headers('idempotency-key') idempotencyKey?: string,
+  ): Promise<Order> {
+    if (idempotencyKey) {
+      this.logger.log(
+        `POST /orders - Creating order for customer: ${createOrderDto.customerId} with idempotency key: ${idempotencyKey}`,
+      );
+    } else {
+      this.logger.log(
+        `POST /orders - Creating order for customer: ${createOrderDto.customerId}`,
+      );
+    }
+
+    return this.orderService.create(createOrderDto, idempotencyKey);
+  }
+
+  @Get()
+  @ApiOperation({
+    summary: 'Get all orders',
+    description: 'Retrieve a paginated list of orders with optional filtering',
+  })
+  @ApiOkResponse({
+    description: 'Orders successfully retrieved',
+    type: OrderResponseDto,
+  })
+  @ApiQuery({
+    name: 'customerId',
+    required: false,
+    description: 'Filter orders by customer ID',
+  })
+  @ApiQuery({
+    name: 'status',
+    required: false,
+    enum: OrderStatus,
+    description: 'Filter orders by status',
+  })
+  @ApiQuery({
+    name: 'startDate',
+    required: false,
+    description: 'Filter orders from this date (ISO string)',
+  })
+  @ApiQuery({
+    name: 'endDate',
+    required: false,
+    description: 'Filter orders until this date (ISO string)',
+  })
+  @ApiQuery({
+    name: 'page',
+    required: false,
+    description: 'Page number (default: 1)',
+  })
+  @ApiQuery({
+    name: 'limit',
+    required: false,
+    description: 'Items per page (default: 10)',
+  })
+  async findAll(@Query() queryDto: OrderQueryDto): Promise<OrderResponseDto> {
+    this.logger.log(
+      `GET /orders - Fetching orders with filters: ${JSON.stringify(queryDto)}`,
+    );
+    return this.orderService.findAll(queryDto);
+  }
+
+  @Get('customer/:customerId')
+  @ApiOperation({
+    summary: 'Get orders by customer ID',
+    description: 'Retrieve all orders for a specific customer',
+  })
+  @ApiParam({
+    name: 'customerId',
+    description: 'Customer unique identifier',
+  })
+  @ApiOkResponse({
+    description: 'Customer orders successfully retrieved',
+    type: [Order],
+  })
+  async findByCustomerId(
+    @Param('customerId') customerId: string,
+  ): Promise<Order[]> {
+    this.logger.log(
+      `GET /orders/customer/${customerId} - Fetching orders for customer`,
+    );
+    return this.orderService.findByCustomerId(customerId);
+  }
+
+  @Get(':id')
+  @ApiOperation({
+    summary: 'Get order by ID',
+    description: 'Retrieve a specific order by its unique identifier',
+  })
+  @ApiParam({
+    name: 'id',
+    description: 'Order unique identifier (UUID)',
+  })
+  @ApiOkResponse({
+    description: 'Order successfully retrieved',
+    type: Order,
+  })
+  @ApiNotFoundResponse({
+    description: 'Order not found',
+  })
+  async findOne(@Param('id', ParseUUIDPipe) id: string): Promise<Order> {
+    this.logger.log(`GET /orders/${id} - Fetching order`);
+    return this.orderService.findOne(id);
+  }
+
+  @Patch(':id')
+  @ApiOperation({
+    summary: 'Update an order',
+    description: 'Update order details including status and items',
+  })
+  @ApiParam({
+    name: 'id',
+    description: 'Order unique identifier (UUID)',
+  })
+  @ApiOkResponse({
+    description: 'Order successfully updated',
+    type: Order,
+  })
+  @ApiNotFoundResponse({
+    description: 'Order not found',
+  })
+  @ApiBadRequestResponse({
+    description: 'Invalid input data',
+  })
+  @ApiBody({
+    type: UpdateOrderDto,
+    description: 'Order update data',
+  })
+  async update(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() updateOrderDto: UpdateOrderDto,
+  ): Promise<Order> {
+    this.logger.log(`PATCH /orders/${id} - Updating order`);
+    return this.orderService.update(id, updateOrderDto);
+  }
+
+  @Patch(':id/status')
+  @ApiOperation({
+    summary: 'Update order status',
+    description: 'Update only the order status',
+  })
+  @ApiParam({
+    name: 'id',
+    description: 'Order unique identifier (UUID)',
+  })
+  @ApiOkResponse({
+    description: 'Order status successfully updated',
+    type: Order,
+  })
+  @ApiNotFoundResponse({
+    description: 'Order not found',
+  })
+  @ApiBadRequestResponse({
+    description: 'Invalid status value',
+  })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        status: {
+          type: 'string',
+          enum: Object.values(OrderStatus),
+          example: OrderStatus.CONFIRMED,
+        },
+      },
+      required: ['status'],
+    },
+    description: 'New order status',
+  })
+  async updateStatus(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body('status') status: OrderStatus,
+  ): Promise<Order> {
+    this.logger.log(
+      `PATCH /orders/${id}/status - Updating status to: ${status}`,
+    );
+    return this.orderService.updateStatus(id, status);
+  }
+
+  @Delete(':id')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Delete an order',
+    description: 'Delete an order and all its items',
+  })
+  @ApiParam({
+    name: 'id',
+    description: 'Order unique identifier (UUID)',
+  })
+  @ApiOkResponse({
+    description: 'Order successfully deleted',
+    type: Order,
+  })
+  @ApiNotFoundResponse({
+    description: 'Order not found',
+  })
+  async remove(@Param('id', ParseUUIDPipe) id: string): Promise<Order> {
+    this.logger.log(`DELETE /orders/${id} - Deleting order`);
+    return this.orderService.remove(id);
+  }
+}
