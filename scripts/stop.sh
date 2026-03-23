@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Event-Driven Order Processing API - Stop Script
+# Order Flow - Stop Script
 
 echo "🛑 Stopping all services..."
 

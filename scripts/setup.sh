@@ -1,8 +1,8 @@
 #!/bin/bash
 
-# Event-Driven Order Processing API - Setup Script
+# Order Flow - Setup Script
 
-echo "🚀 Setting up Event-Driven Order Processing API..."
+echo "🚀 Setting up Order Flow..."
 
 # Check if Docker is running
 if ! docker info > /dev/null 2>&1; then

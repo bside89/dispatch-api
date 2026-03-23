@@ -26,9 +26,7 @@ async function bootstrap() {
 
   // Swagger configuration
   const config = new DocumentBuilder()
-    .setTitle(
-      configService.get('API_TITLE') || 'Event-Driven Order Processing API',
-    )
+    .setTitle(configService.get('API_TITLE') || 'Order Flow')
     .setDescription(
       configService.get('API_DESCRIPTION') ||
         'API for processing orders with PostgreSQL, Redis and BullMQ. Built with NestJS.',

@@ -1,8 +1,8 @@
 #!/bin/bash
 
-# Event-Driven Order Processing API - Quick Start
+# Order Flow - Quick Start
 
-echo "🚀 Event-Driven Order Processing API"
+echo "🚀 Order Flow"
 echo "====================================="
 echo ""
 

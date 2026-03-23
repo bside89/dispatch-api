@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Event-Driven Order Processing API - Debug Local Script
+# Order Flow - Debug Local Script
 
 echo "🐞 Setting up local debug environment..."
 

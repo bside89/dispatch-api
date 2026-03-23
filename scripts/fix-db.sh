@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Fix Database Script - Event-Driven Order Processing API
+# Fix Database Script - Order Flow
 
 echo "🔧 Fixing database connection issue..."
 

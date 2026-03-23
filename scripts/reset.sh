@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Event-Driven Order Processing API - Reset Script
+# Order Flow - Reset Script
 
 echo "🧽 Resetting development environment..."
 

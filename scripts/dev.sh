@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Event-Driven Order Processing API - Development Script
+# Order Flow - Development Script
 
 echo "🛠️ Starting development environment..."
 
