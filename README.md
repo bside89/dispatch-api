@@ -7,7 +7,8 @@
 - **Complete CRUD for Orders** with Order Items
 - **Automatic Swagger documentation**
 - **Redis caching** for performance optimization
-- **Asynchronous order processing** with Bull queues
+- **Asynchronous order processing** with BullMQ queues
+- **Queue monitoring** with BullBoard dashboard (protected with Basic Auth)
 - **Data validation** with class-validator
 - **Pagination** and advanced filtering
 - **Event-driven architecture** for status updates
@@ -19,7 +20,8 @@
 - **PostgreSQL** - Relational database
 - **TypeORM** - TypeScript ORM
 - **Redis** - In-memory cache
-- **Bull** - Redis-based queue system
+- **BullMQ** - Redis-based queue system for job processing
+- **BullBoard** - Queue monitoring dashboard
 - **Swagger/OpenAPI** - API documentation
 - **Docker** - Containerization
 
@@ -49,6 +51,7 @@
    ```bash
    cp .env.example .env
    # Edit the .env file as needed
+   # Important: Configure ADMIN_USERNAME and ADMIN_PASSWORD for queue dashboard security
    ```
 
 4. **Start infrastructure services:**
@@ -90,9 +93,19 @@ npm run debug:local
 
 ## 📚 API Documentation
 
-After starting the application, access the Swagger documentation at:
+After starting the application, access the documentation and monitoring tools at:
 
 - **Swagger UI**: http://localhost:3000/api/docs
+- **Queue Dashboard**: http://localhost:3000/admin/queues (requires authentication)
+
+### 🔐 Queue Dashboard Authentication
+
+The BullBoard dashboard is protected with Basic Authentication:
+
+- **Username**: `admin` (configurable via `ADMIN_USERNAME`)
+- **Password**: `admin123` (configurable via `ADMIN_PASSWORD`)
+
+⚠️ **Security Note**: Change these credentials in production by updating the environment variables.
 
 ## 🐳 Docker Services
 
@@ -174,15 +187,41 @@ curl -X POST http://localhost:3000/orders \
 
 ````
 
+## 📊 Queue Monitoring
+
+### BullBoard Dashboard
+
+Monitor your queue jobs in real-time:
+
+- **URL**: http://localhost:3000/admin/queues
+- **Features**:
+  - View active, completed, and failed jobs
+  - Retry failed jobs
+  - Real-time job statistics
+  - Queue performance metrics
+- **Protected**: Requires Basic Authentication (see API Documentation section)
+
+### Monitored Queues
+
+- **order-processing**: Handles all order-related background jobs
+  - `process-order`: Process new orders asynchronously
+  - `status-update`: Handle order status changes
+  - `cancel-order`: Process order cancellations
+
 ## ⚡ Event-Driven Features
 
 ### Workers/Processors
 
-The application uses Bull queues for asynchronous processing:
+The application uses BullMQ queues for asynchronous processing:
 
-1. **process-order** - Processes new orders
-2. **status-update** - Handles status changes
-3. **cancel-order** - Processes cancellations
+1. **process-order** - Validates and processes new orders
+2. **status-update** - Handles order status transitions and notifications
+3. **cancel-order** - Processes order cancellations and cleanup
+
+**Queue Configuration:**
+- **Retry Policy**: 3 attempts with 3-second backoff
+- **Job Cleanup**: Failed jobs removed after 24 hours
+- **Monitoring**: All jobs visible in BullBoard dashboard
 
 ### Order Status
 
@@ -194,12 +233,21 @@ The application uses Bull queues for asynchronous processing:
 - `CANCELLED` - Cancelled
 - `REFUNDED` - Refunded
 
-## 🎯 Cache Strategy
+## 🎯 Cache & Queue Strategy
 
+### Cache Strategy
 - Individual order cache by ID
 - Customer orders cache
 - Paginated lists cache
+- Idempotency key cache (24h TTL)
 - Configurable TTL (default: 5 minutes)
+
+### Queue Strategy
+- **BullMQ** for reliable job processing
+- **Redis** as the queue backend
+- **Retry policies** with exponential backoff
+- **Job prioritization** and delayed execution
+- **Real-time monitoring** via BullBoard dashboard
 
 ## 🧪 Tests
 
@@ -220,6 +268,10 @@ npm run test:cov
 # Setup and Development
 npm run setup         # First time: install deps + start containers
 npm run dev           # Start infrastructure + app in watch mode
+
+# Queue Dashboard Access
+# After starting the app, visit http://localhost:3000/admin/queues
+# Default credentials: admin / admin123 (configurable via .env)
 
 # Local Debug 🐞
 npm run debug         # Complete debug setup + asks if you want to start
@@ -261,26 +313,75 @@ npm run test:cov      # Coverage
 - Structured logs with context
 - Different log levels per environment
 - Performance monitoring with metrics
+- **Queue monitoring** via BullBoard dashboard at `/admin/queues`
+- **Job debugging**: View job payloads, execution times, and failure reasons
+- **Real-time updates**: Monitor queue performance in real-time
 
 ## 📁 Project Structure
 
 ```
 src/
-├── config/          # Configurations (DB, Redis, Bull)
+├── config/          # Configurations (DB, Redis, BullMQ)
+├── controllers/     # Admin controllers (queue dashboard auth)
+├── middleware/      # Custom middleware (Basic Auth)
 ├── modules/
+│   ├── cache/       # Redis cache module
+│   ├── common/      # Shared enums and utilities
 │   └── order/       # Orders module
 │       ├── dto/     # Data Transfer Objects
 │       ├── entities/ # TypeORM entities
-│       ├── enums/   # Enumerations
+│       ├── enums/   # Order status and job enums
+│       ├── factories/ # Job and strategy factories
+│       ├── interfaces/ # Job interfaces
+│       ├── strategies/ # Order processing strategies
 │       ├── order.controller.ts
 │       ├── order.service.ts
-│       ├── order.processor.ts
+│       ├── order.processor.ts  # BullMQ job processor
 │       └── order.module.ts
-├── app.module.ts    # Main module
+├── app.module.ts    # Main module (includes BullBoard setup)
 └── main.ts         # Entry point
 ```
 
-## 🚀 Deploy
+## � Environment Variables
+
+Create a `.env` file based on `.env.example` and configure the following variables:
+
+### Database
+
+```env
+DB_HOST=localhost
+DB_PORT=5432
+DB_USERNAME=postgres
+DB_PASSWORD=postgres
+DB_DATABASE=order_processing
+```
+
+### Redis
+
+```env
+REDIS_HOST=localhost
+REDIS_PORT=6379
+REDIS_PASSWORD=
+REDIS_URL=redis://localhost:6379
+```
+
+### Application
+
+```env
+APP_PORT=3000
+APP_ENV=development
+```
+
+### Admin Security
+
+```env
+ADMIN_USERNAME=admin
+ADMIN_PASSWORD=admin123
+```
+
+⚠️ **Security Warning**: Always use strong, unique credentials in production environments!
+
+## �🚀 Deploy
 
 1. **Build the application:**
 
