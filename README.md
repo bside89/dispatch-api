@@ -34,8 +34,8 @@
 1. **Clone the repository:**
 
    ```bash
-   git clone <repository-url>
-   cd orderflow
+   git clone https://github.com/bside89/order-flow-api.git
+   cd order-flow-api
    ```
 
 2. **Install dependencies:**

@@ -1,5 +1,5 @@
 {
-  "name": "event-driven-order-processing-api",
+  "name": "order-flow-api",
   "version": "1.0.0",
   "description": "Event-driven order processing API with NestJS, PostgreSQL, Redis and BullMQ",
   "author": "Bruno",
