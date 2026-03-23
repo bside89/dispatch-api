@@ -12,6 +12,8 @@ import { ExpressAdapter } from '@bull-board/express';
 import { BullMQAdapter } from '@bull-board/api/bullMQAdapter';
 import { JobQueue } from './modules/common/enums/job-queue.enum';
 import { AdminController } from './controllers/admin.controller';
+import { APP_GUARD } from '@nestjs/core';
+import { JwtAuthGuard } from './modules/auth/guards/jwt.guard';
 
 @Module({
   imports: [
@@ -53,5 +55,12 @@ import { AdminController } from './controllers/admin.controller';
     UserModule,
   ],
   controllers: [AdminController],
+  providers: [
+    // Global JWT Auth Guard
+    {
+      provide: APP_GUARD,
+      useClass: JwtAuthGuard,
+    },
+  ],
 })
 export class AppModule {}

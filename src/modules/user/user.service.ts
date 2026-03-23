@@ -65,7 +65,9 @@ export class UserService {
     const user = this.userRepository.create({
       name: createUserDto.name,
       email: createUserDto.email,
-      password: await this.authService.hashPassword(createUserDto.password),
+      password: await this.authService.hashPasswordOrToken(
+        createUserDto.password,
+      ),
     });
 
     const savedUser = await this.userRepository.save(user);
@@ -124,7 +126,7 @@ export class UserService {
     return result;
   }
 
-  async findOne(id: string): Promise<UserResponseDto> {
+  async findOne(id: string, retrieveToken = false): Promise<UserResponseDto> {
     this.logger.log(`Retrieving user with ID: ${id}`);
 
     const user = await this.userRepository.findOne({
@@ -137,6 +139,31 @@ export class UserService {
 
     this.logger.log(`User found: ${user.email}`);
     return this.mapToResponseDto(user);
+  }
+
+  async findOneComplete(id: string): Promise<User> {
+    this.logger.log(`Retrieving complete user with ID: ${id}`);
+
+    const user = await this.userRepository.findOne({
+      where: { id },
+      select: [
+        'id',
+        'name',
+        'email',
+        'password',
+        'role',
+        'refreshToken',
+        'createdAt',
+        'updatedAt',
+      ],
+    });
+
+    if (!user) {
+      throw new NotFoundException(`User with ID ${id} not found`);
+    }
+
+    this.logger.log(`Complete user found: ${user.email}`);
+    return user;
   }
 
   async findByEmail(email: string): Promise<UserResponseDto> {
@@ -217,7 +244,7 @@ export class UserService {
 
       // Verify current password
       if (
-        !(await this.authService.verifyPassword(
+        !(await this.authService.verifyPasswordOrToken(
           user.password,
           updateLoginDto.currentPassword,
         ))
@@ -226,7 +253,7 @@ export class UserService {
       }
 
       // Hash new password with argon2
-      user.password = await this.authService.hashPassword(
+      user.password = await this.authService.hashPasswordOrToken(
         updateLoginDto.newPassword,
       );
     }

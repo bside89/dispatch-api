@@ -27,6 +27,7 @@ import {
   ApiCreatedResponse,
   ApiOkResponse,
   ApiConflictResponse,
+  ApiSecurity,
 } from '@nestjs/swagger';
 import { UserService } from './user.service';
 import { CreateUserDto } from './dto/create-user.dto';
@@ -34,15 +35,18 @@ import { UpdateUserDto } from './dto/update-user.dto';
 import { UpdateLoginDto } from './dto/update-login.dto';
 import { UserQueryDto } from './dto/user-query.dto';
 import { UserResponseDto } from './dto/user-response.dto';
+import { Public } from '../auth/decorators/public.decorator';
 
 @Controller('users')
 @ApiTags('users')
+@ApiSecurity('bearer')
 export class UserController {
   private readonly logger = new Logger(UserController.name);
 
   constructor(private readonly userService: UserService) {}
 
   @Post()
+  @Public()
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({
     summary: 'Create a new user',

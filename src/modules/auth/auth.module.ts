@@ -1,3 +1,4 @@
+import { JwtRefreshStrategy } from './strategies/jwt-refresh.strategy';
 import { Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
 import { ConfigModule, ConfigService } from '@nestjs/config';
@@ -16,9 +17,6 @@ import { CacheModule } from '../cache/cache.module';
       imports: [ConfigModule],
       useFactory: async (configService: ConfigService) => ({
         secret: configService.get('JWT_SECRET'),
-        signOptions: {
-          expiresIn: configService.get('JWT_EXPIRES_IN') || '15m',
-        },
       }),
       inject: [ConfigService],
     }),
@@ -26,6 +24,6 @@ import { CacheModule } from '../cache/cache.module';
   ],
   exports: [AuthService],
   controllers: [AuthController],
-  providers: [AuthService, JwtStrategy, UserService],
+  providers: [AuthService, JwtStrategy, JwtRefreshStrategy, UserService],
 })
 export class AuthModule {}

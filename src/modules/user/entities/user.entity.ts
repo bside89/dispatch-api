@@ -41,6 +41,9 @@ export class User {
   @Column({ nullable: false, default: UserRole.USER })
   role: UserRole;
 
+  @Column({ nullable: true, select: false })
+  refreshToken?: string;
+
   @ApiProperty({
     description: 'User creation date',
     example: '2024-01-01T12:00:00Z',

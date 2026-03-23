@@ -26,6 +26,7 @@ import {
   ApiNotFoundResponse,
   ApiCreatedResponse,
   ApiOkResponse,
+  ApiSecurity,
 } from '@nestjs/swagger';
 import { OrderService } from './order.service';
 import { CreateOrderDto } from './dto/create-order.dto';
@@ -37,6 +38,7 @@ import { OrderStatus } from './enums/order-status.enum';
 
 @Controller('orders')
 @ApiTags('orders')
+@ApiSecurity('bearer')
 export class OrderController {
   private readonly logger = new Logger(OrderController.name);
 
