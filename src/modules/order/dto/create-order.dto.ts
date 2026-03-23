@@ -1,4 +1,11 @@
-import { IsString, IsArray, ValidateNested, IsNotEmpty, IsPositive, IsNumber } from 'class-validator';
+import {
+  IsString,
+  IsArray,
+  ValidateNested,
+  IsNotEmpty,
+  IsPositive,
+  IsNumber,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiProperty } from '@nestjs/swagger';
 
@@ -32,12 +39,12 @@ export class CreateOrderItemDto {
 
 export class CreateOrderDto {
   @ApiProperty({
-    description: 'Customer unique identifier',
-    example: 'customer-123',
+    description: 'User unique identifier',
+    example: '550e8400-e29b-41d4-a716-446655440001',
   })
   @IsString()
   @IsNotEmpty()
-  customerId: string;
+  userId: string;
 
   @ApiProperty({
     description: 'Order items',

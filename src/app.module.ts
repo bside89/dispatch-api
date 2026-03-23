@@ -5,6 +5,7 @@ import { BullModule } from '@nestjs/bullmq';
 import { typeOrmConfig } from './config/typeorm.config';
 import { bullmqConfig } from './config/bullmq.config';
 import { OrderModule } from './modules/order/order.module';
+import { UserModule } from './modules/user/user.module';
 import { CacheModule } from './modules/cache/cache.module';
 import { BullBoardModule } from '@bull-board/nestjs';
 import { ExpressAdapter } from '@bull-board/express';
@@ -49,6 +50,7 @@ import { AdminController } from './controllers/admin.controller';
 
     // Feature modules
     OrderModule,
+    UserModule,
   ],
   controllers: [AdminController],
 })

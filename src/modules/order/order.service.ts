@@ -37,31 +37,24 @@ export class OrderService {
 
   async create(
     createOrderDto: CreateOrderDto,
-    idempotencyKey?: string,
+    idempotencyKey: string,
   ): Promise<Order> {
-    // If idempotency key is provided, check for existing order
-    if (idempotencyKey) {
-      const idempotencyKeyFormatted = `${this.IDEMPOTENCY_PREFIX}:${idempotencyKey}`;
+    const idempotencyKeyFormatted = `${this.IDEMPOTENCY_PREFIX}:${idempotencyKey}`;
 
-      // Check if this idempotency key already exists
-      const existingOrder = await this.cacheService.get<Order>(
-        idempotencyKeyFormatted,
-      );
+    // Check if this idempotency key already exists
+    const existingOrder = await this.cacheService.get<Order>(
+      idempotencyKeyFormatted,
+    );
 
-      if (existingOrder) {
-        this.logger.log(
-          `Returning existing order for idempotency key: ${idempotencyKey}, Order ID: ${existingOrder.id}`,
-        );
-        return existingOrder;
-      }
-
+    if (existingOrder) {
       this.logger.log(
-        `Creating new order with idempotency key: ${idempotencyKey}`,
+        `Returning existing order for idempotency key: ${idempotencyKey}, Order ID: ${existingOrder.id}`,
       );
+      return existingOrder;
     }
 
     this.logger.log(
-      `Creating order for customer: ${createOrderDto.customerId}`,
+      `Creating new order with idempotency key: ${idempotencyKey}`,
     );
 
     // Calculate total
@@ -72,7 +65,7 @@ export class OrderService {
 
     // Create order entity
     const order = this.orderRepository.create({
-      customerId: createOrderDto.customerId,
+      userId: createOrderDto.userId,
       total,
       status: OrderStatus.PENDING,
     });
@@ -100,36 +93,30 @@ export class OrderService {
     // Add job to processing queue
     await this.orderQueue.add(OrderJob.ProcessOrder, {
       orderId: completeOrder.id,
-      customerId: completeOrder.customerId,
+      userId: completeOrder.userId,
       total: completeOrder.total,
     });
 
     // Clear related cache
-    await this.clearOrderCache(completeOrder.customerId);
+    await this.clearOrderCache(completeOrder.userId);
 
-    // If idempotency key was provided, cache the created order
-    if (idempotencyKey) {
-      const idempotencyKeyFormatted = `${this.IDEMPOTENCY_PREFIX}:${idempotencyKey}`;
+    // Cache the created order with idempotency key
+    await this.cacheService.set(
+      idempotencyKeyFormatted,
+      completeOrder,
+      this.IDEMPOTENCY_TTL,
+    );
 
-      await this.cacheService.set(
-        idempotencyKeyFormatted,
-        completeOrder,
-        this.IDEMPOTENCY_TTL,
-      );
-
-      this.logger.log(
-        `Order created and cached with idempotency key: ${idempotencyKey}, Order ID: ${completeOrder.id}`,
-      );
-    } else {
-      this.logger.log(`Order created with ID: ${completeOrder.id}`);
-    }
+    this.logger.log(
+      `Order created and cached with idempotency key: ${idempotencyKey}, Order ID: ${completeOrder.id}`,
+    );
 
     return completeOrder;
   }
 
   async findAll(queryDto: OrderQueryDto): Promise<OrderResponseDto> {
     const {
-      customerId,
+      userId,
       status,
       startDate,
       endDate,
@@ -152,8 +139,8 @@ export class OrderService {
       .orderBy('order.createdAt', 'DESC');
 
     // Apply filters
-    if (customerId) {
-      queryBuilder.andWhere('order.customerId = :customerId', { customerId });
+    if (userId) {
+      queryBuilder.andWhere('order.userId = :userId', { userId });
     }
 
     if (status) {
@@ -256,7 +243,7 @@ export class OrderService {
     }
 
     // Clear cache
-    await this.clearOrderCache(order.customerId, id);
+    await this.clearOrderCache(order.userId, id);
 
     this.logger.log(`Order updated: ${id}`);
 
@@ -270,29 +257,29 @@ export class OrderService {
     // Add cancellation job to queue
     await this.orderQueue.add(OrderJob.CancelOrder, {
       orderId: id,
-      customerId: order.customerId,
+      userId: order.userId,
     });
 
     await this.orderRepository.remove(order);
 
     // Clear cache
-    await this.clearOrderCache(order.customerId, id);
+    await this.clearOrderCache(order.userId, id);
 
     this.logger.log(`Order deleted: ${id}`);
     return order;
   }
 
-  async findByCustomerId(customerId: string): Promise<Order[]> {
-    const cacheKey = `${this.CACHE_PREFIX}:customer:${customerId}`;
+  async findByUserId(userId: string): Promise<Order[]> {
+    const cacheKey = `${this.CACHE_PREFIX}:user:${userId}`;
     const cachedOrders = await this.cacheService.get<Order[]>(cacheKey);
 
     if (cachedOrders) {
-      this.logger.log(`Returning cached orders for customer: ${customerId}`);
+      this.logger.log(`Returning cached orders for user: ${userId}`);
       return cachedOrders;
     }
 
     const orders = await this.orderRepository.find({
-      where: { customerId },
+      where: { userId },
       relations: ['items'],
       order: { createdAt: 'DESC' },
     });
@@ -300,9 +287,7 @@ export class OrderService {
     // Cache the orders
     await this.cacheService.set(cacheKey, orders, this.CACHE_TTL);
 
-    this.logger.log(
-      `Found ${orders.length} orders for customer: ${customerId}`,
-    );
+    this.logger.log(`Found ${orders.length} orders for user: ${userId}`);
     return orders;
   }
 
@@ -312,7 +297,7 @@ export class OrderService {
   }
 
   private async clearOrderCache(
-    customerId?: string,
+    userId?: string,
     orderId?: string,
   ): Promise<void> {
     const keysToDelete: string[] = [];
@@ -322,9 +307,9 @@ export class OrderService {
       keysToDelete.push(`${this.CACHE_PREFIX}:${orderId}`);
     }
 
-    // Clear customer orders if customer ID provided
-    if (customerId) {
-      keysToDelete.push(`${this.CACHE_PREFIX}:customer:${customerId}`);
+    // Clear user orders if user ID provided
+    if (userId) {
+      keysToDelete.push(`${this.CACHE_PREFIX}:user:${userId}`);
     }
 
     // Clear list cache (this is a simplified approach, in production you might want to be more selective)

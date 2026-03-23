@@ -71,15 +71,13 @@ export class OrderController {
     @Body() createOrderDto: CreateOrderDto,
     @Headers('idempotency-key') idempotencyKey?: string,
   ): Promise<Order> {
-    if (idempotencyKey) {
-      this.logger.log(
-        `POST /orders - Creating order for customer: ${createOrderDto.customerId} with idempotency key: ${idempotencyKey}`,
-      );
-    } else {
-      this.logger.log(
-        `POST /orders - Creating order for customer: ${createOrderDto.customerId}`,
-      );
+    if (!idempotencyKey) {
+      throw new BadRequestException('Idempotency-Key header is required');
     }
+
+    this.logger.log(
+      `POST /orders - Creating order for user: ${createOrderDto.userId} with idempotency key: ${idempotencyKey}`,
+    );
 
     return this.orderService.create(createOrderDto, idempotencyKey);
   }
@@ -94,9 +92,9 @@ export class OrderController {
     type: OrderResponseDto,
   })
   @ApiQuery({
-    name: 'customerId',
+    name: 'userId',
     required: false,
-    description: 'Filter orders by customer ID',
+    description: 'Filter orders by user ID',
   })
   @ApiQuery({
     name: 'status',
@@ -131,26 +129,22 @@ export class OrderController {
     return this.orderService.findAll(queryDto);
   }
 
-  @Get('customer/:customerId')
+  @Get('user/:userId')
   @ApiOperation({
-    summary: 'Get orders by customer ID',
-    description: 'Retrieve all orders for a specific customer',
+    summary: 'Get orders by user ID',
+    description: 'Retrieve all orders for a specific user',
   })
   @ApiParam({
-    name: 'customerId',
-    description: 'Customer unique identifier',
+    name: 'userId',
+    description: 'User unique identifier',
   })
   @ApiOkResponse({
-    description: 'Customer orders successfully retrieved',
+    description: 'User orders successfully retrieved',
     type: [Order],
   })
-  async findByCustomerId(
-    @Param('customerId') customerId: string,
-  ): Promise<Order[]> {
-    this.logger.log(
-      `GET /orders/customer/${customerId} - Fetching orders for customer`,
-    );
-    return this.orderService.findByCustomerId(customerId);
+  async findByUserId(@Param('userId') userId: string): Promise<Order[]> {
+    this.logger.log(`GET /orders/user/${userId} - Fetching orders for user`);
+    return this.orderService.findByUserId(userId);
   }
 
   @Get(':id')

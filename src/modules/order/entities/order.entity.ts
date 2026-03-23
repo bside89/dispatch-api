@@ -5,9 +5,12 @@ import {
   CreateDateColumn,
   UpdateDateColumn,
   OneToMany,
+  ManyToOne,
+  JoinColumn,
 } from 'typeorm';
 import { OrderStatus } from '../enums/order-status.enum';
 import { OrderItem } from './order-item.entity';
+import { User } from '../../user/entities/user.entity';
 import { ApiProperty } from '@nestjs/swagger';
 
 @Entity('orders')
@@ -20,11 +23,15 @@ export class Order {
   id: string;
 
   @ApiProperty({
-    description: 'Customer unique identifier',
-    example: 'customer-123',
+    description: 'User ID who placed the order',
+    example: '550e8400-e29b-41d4-a716-446655440001',
   })
   @Column()
-  customerId: string;
+  userId: string;
+
+  @ManyToOne(() => User, (user) => user.orders)
+  @JoinColumn({ name: 'userId' })
+  user: User;
 
   @ApiProperty({
     description: 'Order status',

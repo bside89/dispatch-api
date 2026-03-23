@@ -1,4 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { BadRequestException } from '@nestjs/common';
 import { OrderController } from './order.controller';
 import { OrderService } from './order.service';
 import { CreateOrderDto } from './dto/create-order.dto';
@@ -22,7 +23,7 @@ describe('OrderController', () => {
             update: jest.fn(),
             updateStatus: jest.fn(),
             remove: jest.fn(),
-            findByCustomerId: jest.fn(),
+            findByUserId: jest.fn(),
           },
         },
       ],
@@ -37,70 +38,49 @@ describe('OrderController', () => {
   });
 
   describe('create', () => {
-    it('should create an order without idempotency key', async () => {
-      const createOrderDto: CreateOrderDto = {
-        customerId: 'customer-123',
-        items: [
-          {
-            productId: 'product-456',
-            quantity: 2,
-            price: 99.99,
-          },
-        ],
-      };
+    const createOrderDto: CreateOrderDto = {
+      userId: 'customer-123',
+      items: [
+        {
+          productId: 'product-456',
+          quantity: 2,
+          price: 99.99,
+        },
+      ],
+    };
+    const idempotencyKey = 'test-idempotency-key';
 
-      const mockOrder = {
-        id: 'order-uuid',
-        customerId: 'customer-123',
-        status: OrderStatus.PENDING,
-        total: 199.98,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        items: [],
-      };
-
-      jest.spyOn(service, 'create').mockResolvedValue(mockOrder as any);
-
-      const result = await controller.create(createOrderDto);
-
-      expect(result).toEqual(mockOrder);
-      expect(service.create).toHaveBeenCalledWith(createOrderDto, undefined);
-    });
+    const mockOrder = {
+      id: 'order-uuid',
+      userId: 'customer-123',
+      status: OrderStatus.PENDING,
+      total: 199.98,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      items: [],
+    };
 
     it('should create an order with idempotency key', async () => {
-      const createOrderDto: CreateOrderDto = {
-        customerId: 'customer-123',
-        items: [
-          {
-            productId: 'product-456',
-            quantity: 2,
-            price: 99.99,
-          },
-        ],
-      };
-
-      const idempotencyKey = 'test-idempotency-key';
-
-      const mockOrder = {
-        id: 'order-uuid',
-        customerId: 'customer-123',
-        status: OrderStatus.PENDING,
-        total: 199.98,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        items: [],
-      };
-
       jest.spyOn(service, 'create').mockResolvedValue(mockOrder as any);
 
-      // Simulate the controller method that would extract the header
-      const result = await service.create(createOrderDto, idempotencyKey);
+      const result = await controller.create(createOrderDto, idempotencyKey);
 
       expect(result).toEqual(mockOrder);
       expect(service.create).toHaveBeenCalledWith(
         createOrderDto,
         idempotencyKey,
       );
+    });
+
+    it('should throw BadRequestException when idempotency key is not provided', async () => {
+      await expect(controller.create(createOrderDto)).rejects.toThrow(
+        BadRequestException,
+      );
+      await expect(controller.create(createOrderDto)).rejects.toThrow(
+        'Idempotency-Key header is required',
+      );
+
+      expect(service.create).not.toHaveBeenCalled();
     });
   });
 
@@ -129,7 +109,7 @@ describe('OrderController', () => {
       const orderId = 'order-uuid';
       const mockOrder = {
         id: orderId,
-        customerId: 'customer-123',
+        userId: 'customer-123',
         status: OrderStatus.PENDING,
         total: 199.98,
         createdAt: new Date(),
@@ -152,7 +132,7 @@ describe('OrderController', () => {
       const newStatus = OrderStatus.CONFIRMED;
       const mockOrder = {
         id: orderId,
-        customerId: 'customer-123',
+        userId: 'customer-123',
         status: newStatus,
         total: 199.98,
         createdAt: new Date(),

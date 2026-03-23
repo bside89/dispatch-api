@@ -5,6 +5,11 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { ConfigService } from '@nestjs/config';
 import { BasicAuthMiddleware } from './middleware/basic-auth.middleware';
 
+// Fix for crypto module issue in TypeORM
+if (typeof (global as any).crypto === 'undefined') {
+  (global as any).crypto = require('crypto');
+}
+
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   const configService = app.get(ConfigService);
@@ -34,6 +39,7 @@ async function bootstrap() {
     )
     .setVersion(configService.get('API_VERSION') || '1.0.0')
     .addTag('orders', 'Order management endpoints')
+    .addTag('users', 'User management endpoints')
     .addBearerAuth()
     .build();
 

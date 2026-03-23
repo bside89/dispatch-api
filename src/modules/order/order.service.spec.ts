@@ -7,12 +7,14 @@ import { Order } from './entities/order.entity';
 import { OrderItem } from './entities/order-item.entity';
 import { OrderStatus } from './enums/order-status.enum';
 import { JobQueue } from '../common/enums/job-queue.enum';
+import { CacheService } from '../cache/cache.service';
 
 describe('OrderService', () => {
   let service: OrderService;
   let orderRepository: any;
   let orderItemRepository: any;
   let cacheManager: any;
+  let cacheService: any;
   let orderQueue: any;
 
   beforeEach(async () => {
@@ -52,6 +54,14 @@ describe('OrderService', () => {
             add: jest.fn(),
           },
         },
+        {
+          provide: CacheService,
+          useValue: {
+            get: jest.fn(),
+            set: jest.fn(),
+            delete: jest.fn(),
+          },
+        },
       ],
     }).compile();
 
@@ -59,6 +69,7 @@ describe('OrderService', () => {
     orderRepository = module.get(getRepositoryToken(Order));
     orderItemRepository = module.get(getRepositoryToken(OrderItem));
     cacheManager = module.get(CACHE_MANAGER);
+    cacheService = module.get<CacheService>(CacheService);
     orderQueue = module.get(getQueueToken(JobQueue.ORDER_PROCESSING));
   });
 
@@ -67,136 +78,82 @@ describe('OrderService', () => {
   });
 
   describe('create', () => {
-    it('should create an order successfully without idempotency key', async () => {
-      const createOrderDto = {
-        customerId: 'customer-123',
-        items: [
-          {
-            productId: 'product-456',
-            quantity: 2,
-            price: 99.99,
-          },
-        ],
-      };
+    const createOrderDto = {
+      userId: 'customer-123',
+      items: [
+        {
+          productId: 'product-456',
+          quantity: 2,
+          price: 99.99,
+        },
+      ],
+    };
+    const idempotencyKey = 'unique-key-123';
 
-      const mockOrder = {
-        id: 'order-uuid',
-        customerId: 'customer-123',
-        total: 199.98,
-        status: OrderStatus.PENDING,
-        items: [
-          {
-            id: 'item-uuid',
-            productId: 'product-456',
-            quantity: 2,
-            price: 99.99,
-            orderId: 'order-uuid',
-          },
-        ],
-      };
+    const mockOrder = {
+      id: 'order-uuid',
+      userId: 'customer-123',
+      total: 199.98,
+      status: OrderStatus.PENDING,
+      items: [
+        {
+          id: 'item-uuid',
+          productId: 'product-456',
+          quantity: 2,
+          price: 99.99,
+          orderId: 'order-uuid',
+        },
+      ],
+    };
 
+    it('should create an order successfully when no idempotency key exists in cache', async () => {
+      // Mock cache get to return null (no existing order)
+      cacheService.get.mockResolvedValue(null);
       orderRepository.create.mockReturnValue(mockOrder);
       orderRepository.save.mockResolvedValue(mockOrder);
       orderItemRepository.create.mockImplementation((data) => data);
       orderItemRepository.save.mockResolvedValue([]);
       orderRepository.findOne.mockResolvedValue(mockOrder);
+      cacheService.set.mockResolvedValue(undefined);
+      cacheService.delete.mockResolvedValue(undefined);
 
-      const result = await service.create(createOrderDto);
+      const result = await service.create(createOrderDto, idempotencyKey);
 
       expect(result).toEqual(mockOrder);
+      expect(cacheService.get).toHaveBeenCalledWith(
+        `idempotency:${idempotencyKey}`,
+      );
+      expect(cacheService.set).toHaveBeenCalledWith(
+        `idempotency:${idempotencyKey}`,
+        mockOrder,
+        86400000, // IDEMPOTENCY_TTL in milliseconds
+      );
       expect(orderRepository.create).toHaveBeenCalled();
       expect(orderRepository.save).toHaveBeenCalled();
       expect(orderItemRepository.save).toHaveBeenCalled();
       expect(orderQueue.add).toHaveBeenCalledWith('process-order', {
         orderId: mockOrder.id,
-        customerId: mockOrder.customerId,
+        userId: mockOrder.userId,
         total: mockOrder.total,
       });
     });
 
-    it('should create an order with idempotency key', async () => {
-      const createOrderDto = {
-        customerId: 'customer-123',
-        items: [
-          {
-            productId: 'product-456',
-            quantity: 2,
-            price: 99.99,
-          },
-        ],
-      };
-
-      const idempotencyKey = 'unique-key-123';
-
-      const mockOrder = {
-        id: 'order-uuid',
-        customerId: 'customer-123',
-        total: 199.98,
-        status: OrderStatus.PENDING,
-        items: [
-          {
-            id: 'item-uuid',
-            productId: 'product-456',
-            quantity: 2,
-            price: 99.99,
-            orderId: 'order-uuid',
-          },
-        ],
-      };
-
-      // Mock cache get to return null (no existing order)
-      cacheManager.get.mockResolvedValue(null);
-      orderRepository.create.mockReturnValue(mockOrder);
-      orderRepository.save.mockResolvedValue(mockOrder);
-      orderItemRepository.create.mockImplementation((data) => data);
-      orderItemRepository.save.mockResolvedValue([]);
-      orderRepository.findOne.mockResolvedValue(mockOrder);
-
-      const result = await service.create(createOrderDto, idempotencyKey);
-
-      expect(result).toEqual(mockOrder);
-      expect(cacheManager.get).toHaveBeenCalledWith(
-        `idempotency:${idempotencyKey}`,
-      );
-      expect(cacheManager.set).toHaveBeenCalledWith(
-        `idempotency:${idempotencyKey}`,
-        mockOrder,
-        86400, // IDEMPOTENCY_TTL
-      );
-      expect(orderRepository.create).toHaveBeenCalled();
-      expect(orderRepository.save).toHaveBeenCalled();
-      expect(orderItemRepository.save).toHaveBeenCalled();
-    });
-
-    it('should return existing order when idempotency key exists', async () => {
-      const createOrderDto = {
-        customerId: 'customer-123',
-        items: [
-          {
-            productId: 'product-456',
-            quantity: 2,
-            price: 99.99,
-          },
-        ],
-      };
-
-      const idempotencyKey = 'existing-key-123';
-
+    it('should return existing order when idempotency key exists in cache', async () => {
       const existingOrder = {
         id: 'existing-order-uuid',
-        customerId: 'customer-123',
+        userId: 'customer-123',
         total: 199.98,
         status: OrderStatus.PENDING,
         items: [],
       };
 
       // Mock cache get to return existing order
-      cacheManager.get.mockResolvedValue(existingOrder);
+      cacheService.get.mockResolvedValue(existingOrder);
 
       const result = await service.create(createOrderDto, idempotencyKey);
 
       expect(result).toEqual(existingOrder);
-      expect(cacheManager.get).toHaveBeenCalledWith(
+      expect(cacheService.get).toHaveBeenCalledWith(
         `idempotency:${idempotencyKey}`,
       );
       expect(orderRepository.create).not.toHaveBeenCalled();
@@ -209,17 +166,17 @@ describe('OrderService', () => {
       const orderId = 'order-uuid';
       const mockOrder = {
         id: orderId,
-        customerId: 'customer-123',
+        userId: 'customer-123',
         status: OrderStatus.PENDING,
         total: 199.98,
       };
 
-      cacheManager.get.mockResolvedValue(mockOrder);
+      cacheService.get.mockResolvedValue(mockOrder);
 
       const result = await service.findOne(orderId);
 
       expect(result).toEqual(mockOrder);
-      expect(cacheManager.get).toHaveBeenCalledWith(`order:${orderId}`);
+      expect(cacheService.get).toHaveBeenCalledWith(`order:${orderId}`);
       expect(orderRepository.findOne).not.toHaveBeenCalled();
     });
 
@@ -227,13 +184,14 @@ describe('OrderService', () => {
       const orderId = 'order-uuid';
       const mockOrder = {
         id: orderId,
-        customerId: 'customer-123',
+        userId: 'customer-123',
         status: OrderStatus.PENDING,
         total: 199.98,
       };
 
-      cacheManager.get.mockResolvedValue(null);
+      cacheService.get.mockResolvedValue(null);
       orderRepository.findOne.mockResolvedValue(mockOrder);
+      cacheService.set.mockResolvedValue(undefined);
 
       const result = await service.findOne(orderId);
 
@@ -242,10 +200,10 @@ describe('OrderService', () => {
         where: { id: orderId },
         relations: ['items'],
       });
-      expect(cacheManager.set).toHaveBeenCalledWith(
+      expect(cacheService.set).toHaveBeenCalledWith(
         `order:${orderId}`,
         mockOrder,
-        300,
+        300000,
       );
     });
   });

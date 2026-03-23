@@ -1,10 +1,53 @@
 ### Variables
 @baseUrl = http://localhost:3000
 @orderId = replace-with-actual-order-id
-@customerId = customer-123
+@userId = replace-with-actual-user-id
 
 ### Health Check
 GET {{baseUrl}}/
+
+### ========= USER ENDPOINTS =========
+
+### Create User
+POST {{baseUrl}}/users
+Content-Type: application/json
+Idempotency-Key: user-create-123456
+
+{
+  "name": "João Silva",
+  "email": "joao.silva@email.com",
+  "password": "mySecurePassword123"
+}
+
+### Get All Users
+GET {{baseUrl}}/users
+
+### Get User by ID
+GET {{baseUrl}}/users/{{userId}}
+
+### Update User
+PATCH {{baseUrl}}/users/{{userId}}
+Content-Type: application/json
+
+{
+  "name": "João Santos",
+  "email": "joao.santos@email.com"
+}
+
+### Update User Login Credentials
+PATCH {{baseUrl}}/users/{{userId}}/login
+Content-Type: application/json
+
+{
+  "email": "joao.novo@email.com",
+  "currentPassword": "mySecurePassword123",
+  "newPassword": "newSecurePassword456"
+}
+
+### Delete User
+DELETE {{baseUrl}}/users/{{userId}}
+
+### ========= ORDER ENDPOINTS =========
 
 ### Create Order
 POST {{baseUrl}}/orders
@@ -12,7 +55,7 @@ Content-Type: application/json
 Idempotency-Key: 550e8400-e29b-41d4-a716-446655440000
 
 {
-  "customerId": "{{customerId}}",
+  "userId": "{{userId}}",
   "items": [
     {
       "productId": "product-abc123",
@@ -33,7 +76,7 @@ Content-Type: application/json
 Idempotency-Key: 550e8400-e29b-41d4-a716-446655440000
 
 {
-  "customerId": "{{customerId}}",
+  "userId": "{{userId}}",
   "items": [
     {
       "productId": "product-abc123",
@@ -48,32 +91,17 @@ Idempotency-Key: 550e8400-e29b-41d4-a716-446655440000
   ]
 }
 
-### Create Order - Without Idempotency Key (should fail)
-POST {{baseUrl}}/orders
-Content-Type: application/json
-
-{
-  "customerId": "{{customerId}}",
-  "items": [
-    {
-      "productId": "product-xyz789",
-      "quantity": 1,
-      "price": 199.99
-    }
-  ]
-}
-
 ### Get All Orders (with pagination)
 GET {{baseUrl}}/orders?page=1&limit=10
 
 ### Get All Orders (with filters)
-GET {{baseUrl}}/orders?customerId={{customerId}}&status=PENDING&page=1&limit=5
+GET {{baseUrl}}/orders?userId={{userId}}&status=PENDING&page=1&limit=5
 
 ### Get Order by ID
 GET {{baseUrl}}/orders/{{orderId}}
 
-### Get Orders by Customer ID
-GET {{baseUrl}}/orders/customer/{{customerId}}
+### Get Orders by User ID
+GET {{baseUrl}}/orders/user/{{userId}}
 
 ### Update Order Status
 PATCH {{baseUrl}}/orders/{{orderId}}/status
@@ -88,7 +116,7 @@ PATCH {{baseUrl}}/orders/{{orderId}}
 Content-Type: application/json
 
 {
-  "customerId": "{{customerId}}",
+  "userId": "{{userId}}",
   "status": "PROCESSING",
   "items": [
     {

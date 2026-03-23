@@ -1,16 +1,22 @@
-import { IsOptional, IsString, IsEnum, IsDateString, IsUUID } from 'class-validator';
+import {
+  IsOptional,
+  IsString,
+  IsEnum,
+  IsDateString,
+  IsUUID,
+} from 'class-validator';
 import { Transform } from 'class-transformer';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { OrderStatus } from '../enums/order-status.enum';
 
 export class OrderQueryDto {
   @ApiPropertyOptional({
-    description: 'Customer ID to filter orders',
-    example: 'customer-123',
+    description: 'User ID to filter orders',
+    example: '550e8400-e29b-41d4-a716-446655440001',
   })
   @IsOptional()
   @IsString()
-  customerId?: string;
+  userId?: string;
 
   @ApiPropertyOptional({
     description: 'Order status to filter',
