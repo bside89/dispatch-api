@@ -10,6 +10,7 @@ import { BullBoardModule } from '@bull-board/nestjs';
 import { ExpressAdapter } from '@bull-board/express';
 import { BullMQAdapter } from '@bull-board/api/bullMQAdapter';
 import { JobQueue } from './modules/common/enums/job-queue.enum';
+import { AdminController } from './controllers/admin.controller';
 
 @Module({
   imports: [
@@ -49,5 +50,6 @@ import { JobQueue } from './modules/common/enums/job-queue.enum';
     // Feature modules
     OrderModule,
   ],
+  controllers: [AdminController],
 })
 export class AppModule {}

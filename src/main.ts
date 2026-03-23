@@ -3,6 +3,7 @@ import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { ConfigService } from '@nestjs/config';
+import { BasicAuthMiddleware } from './middleware/basic-auth.middleware';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -39,12 +40,22 @@ async function bootstrap() {
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api/docs', app, document);
 
+  // Apply the middleware manually for the admin routes
+  // This ensures it runs before any library routes (like BullBoard)
+  const authMiddleware = new BasicAuthMiddleware(configService);
+  app.use('/admin/*path', (req, res, next) =>
+    authMiddleware.use(req, res, next),
+  );
+
   const port = configService.get('APP_PORT') || 3000;
   await app.listen(port);
 
   console.log(`🚀 Application is running on: http://localhost:${port}`);
   console.log(
     `📚 Swagger documentation available at: http://localhost:${port}/api/docs`,
+  );
+  console.log(
+    `🔐 Bull Board dashboard available at: http://localhost:${port}/admin/queues (requires authentication)`,
   );
 }
 
