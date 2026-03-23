@@ -6,6 +6,10 @@ import { typeOrmConfig } from './config/typeorm.config';
 import { bullmqConfig } from './config/bullmq.config';
 import { OrderModule } from './modules/order/order.module';
 import { CacheModule } from './modules/cache/cache.module';
+import { BullBoardModule } from '@bull-board/nestjs';
+import { ExpressAdapter } from '@bull-board/express';
+import { BullMQAdapter } from '@bull-board/api/bullMQAdapter';
+import { JobQueue } from './modules/common/enums/job-queue.enum';
 
 @Module({
   imports: [
@@ -27,6 +31,16 @@ import { CacheModule } from './modules/cache/cache.module';
       imports: [ConfigModule],
       useFactory: bullmqConfig,
       inject: [ConfigService],
+    }),
+
+    // Bull Board (for monitoring queues)
+    BullBoardModule.forFeature({
+      name: JobQueue.ORDER_PROCESSING,
+      adapter: BullMQAdapter,
+    }),
+    BullBoardModule.forRoot({
+      route: '/admin/queues', // URL for Bull Board dashboard
+      adapter: ExpressAdapter,
     }),
 
     // Cache (Redis)

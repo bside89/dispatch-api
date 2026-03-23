@@ -14,6 +14,11 @@ import { CacheModule } from '../cache/cache.module';
     TypeOrmModule.forFeature([Order, OrderItem]),
     BullModule.registerQueue({
       name: JobQueue.ORDER_PROCESSING,
+      defaultJobOptions: {
+        attempts: 3, // Try 3 times before marking as failed
+        backoff: 3000, // Wait 3s between attempts
+        removeOnFail: { age: 24 * 3600 }, // Remove failed jobs after 24h
+      },
     }),
     CacheModule,
   ],
