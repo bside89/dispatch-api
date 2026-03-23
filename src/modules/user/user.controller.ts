@@ -35,8 +35,8 @@ import { UpdateLoginDto } from './dto/update-login.dto';
 import { UserQueryDto } from './dto/user-query.dto';
 import { UserResponseDto } from './dto/user-response.dto';
 
-@ApiTags('users')
 @Controller('users')
+@ApiTags('users')
 export class UserController {
   private readonly logger = new Logger(UserController.name);
 

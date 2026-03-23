@@ -21,7 +21,8 @@ export class OrderService {
   private readonly logger = new Logger(OrderService.name);
   private readonly CACHE_PREFIX = 'order';
   private readonly IDEMPOTENCY_PREFIX = 'idempotency';
-  private readonly CACHE_TTL = 300 * 1000; // 5 minutes
+  private readonly CACHE_TTL = 300 * 1000; // 5 minutes - for individual orders
+  private readonly LIST_CACHE_TTL = 60 * 1000; // 1 minute - for order lists (shorter TTL)
   private readonly IDEMPOTENCY_TTL = 86400 * 1000; // 24 hours
 
   constructor(
@@ -171,8 +172,8 @@ export class OrderService {
       data: orders,
     };
 
-    // Cache the result
-    await this.cacheService.set(cacheKey, result, this.CACHE_TTL);
+    // Cache the result with shorter TTL for lists
+    await this.cacheService.set(cacheKey, result, this.LIST_CACHE_TTL);
 
     this.logger.log(
       `Found ${orders.length} orders (page ${page}/${result.totalPages})`,
@@ -284,8 +285,8 @@ export class OrderService {
       order: { createdAt: 'DESC' },
     });
 
-    // Cache the orders
-    await this.cacheService.set(cacheKey, orders, this.CACHE_TTL);
+    // Cache the orders with shorter TTL (it's a list)
+    await this.cacheService.set(cacheKey, orders, this.LIST_CACHE_TTL);
 
     this.logger.log(`Found ${orders.length} orders for user: ${userId}`);
     return orders;
@@ -301,6 +302,7 @@ export class OrderService {
     orderId?: string,
   ): Promise<void> {
     const keysToDelete: string[] = [];
+    const patternsToDelete: string[] = [];
 
     // Clear specific order if ID provided
     if (orderId) {
@@ -312,14 +314,43 @@ export class OrderService {
       keysToDelete.push(`${this.CACHE_PREFIX}:user:${userId}`);
     }
 
-    // Clear list cache (this is a simplified approach, in production you might want to be more selective)
-    // For now, we'll clear some common list cache patterns
-    for (let i = 1; i <= 5; i++) {
-      keysToDelete.push(`${this.CACHE_PREFIX}:list:{"page":${i},"limit":10}`);
-    }
+    // Clear ALL list cache patterns using deletePattern
+    // This clears ANY list cache regardless of pagination, filters, etc.
+    patternsToDelete.push(`${this.CACHE_PREFIX}:list:*`);
 
-    await Promise.all(keysToDelete.map((key) => this.cacheService.delete(key)));
+    // Execute deletions
+    await Promise.all([
+      // Delete specific keys
+      ...keysToDelete.map((key) => this.cacheService.delete(key)),
+      // Delete pattern-based keys
+      ...patternsToDelete.map((pattern) =>
+        this.cacheService.deletePattern(pattern),
+      ),
+    ]);
 
-    this.logger.log(`Cleared cache for keys: ${keysToDelete.join(', ')}`);
+    this.logger.log(
+      `Cleared cache keys: ${keysToDelete.join(', ')} and patterns: ${patternsToDelete.join(', ')}`,
+    );
+  }
+
+  /**
+   * Clear only user-specific cached data (for targeted invalidation)
+   */
+  private async clearUserOrderCache(userId: string): Promise<void> {
+    const keysToDelete = [`${this.CACHE_PREFIX}:user:${userId}`];
+
+    // Clear only list caches that might contain this user's orders
+    const patternsToDelete = [
+      `${this.CACHE_PREFIX}:list:*"userId":"${userId}"*`, // Lists filtered by this user
+      `${this.CACHE_PREFIX}:list:*`, // or clear all lists (safer but less efficient)
+    ];
+
+    await Promise.all([
+      ...keysToDelete.map((key) => this.cacheService.delete(key)),
+      // Use only the first pattern if you want targeted clearing, or the second for safety
+      this.cacheService.deletePattern(patternsToDelete[1]), // Using global clear for safety
+    ]);
+
+    this.logger.log(`Cleared user-specific cache for userId: ${userId}`);
   }
 }

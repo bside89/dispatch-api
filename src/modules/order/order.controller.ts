@@ -35,8 +35,8 @@ import { OrderResponseDto } from './dto/order-response.dto';
 import { Order } from './entities/order.entity';
 import { OrderStatus } from './enums/order-status.enum';
 
-@ApiTags('orders')
 @Controller('orders')
+@ApiTags('orders')
 export class OrderController {
   private readonly logger = new Logger(OrderController.name);
 

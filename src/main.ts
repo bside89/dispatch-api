@@ -38,8 +38,10 @@ async function bootstrap() {
         'API for processing orders with PostgreSQL, Redis and BullMQ. Built with NestJS.',
     )
     .setVersion(configService.get('API_VERSION') || '1.0.0')
-    .addTag('orders', 'Order management endpoints')
+    .addTag('auth', 'Authentication endpoints')
     .addTag('users', 'User management endpoints')
+    .addTag('orders', 'Order management endpoints')
+    .addTag('admin', 'Admin endpoints')
     .addBearerAuth()
     .build();
 

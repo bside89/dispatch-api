@@ -19,6 +19,7 @@ import { AuthService } from '../auth/auth.service';
 @Injectable()
 export class UserService {
   private readonly logger = new Logger(UserService.name);
+  private readonly CACHE_TTL = 3600 * 1000; // 1 hour
   private readonly IDEMPOTENCY_PREFIX = 'user_idempotency';
   private readonly IDEMPOTENCY_TTL = 86400 * 1000; // 24 hours
 
@@ -118,8 +119,9 @@ export class UserService {
 
     const users = await queryBuilder.getMany();
     this.logger.log(`Retrieved ${users.length} users`);
+    const result = users.map((user) => this.mapToResponseDto(user));
 
-    return users.map((user) => this.mapToResponseDto(user));
+    return result;
   }
 
   async findOne(id: string): Promise<UserResponseDto> {
@@ -134,6 +136,21 @@ export class UserService {
     }
 
     this.logger.log(`User found: ${user.email}`);
+    return this.mapToResponseDto(user);
+  }
+
+  async findByEmail(email: string): Promise<UserResponseDto> {
+    this.logger.log(`Finding user by email: ${email}`);
+
+    const user = await this.userRepository.findOne({
+      where: { email },
+    });
+
+    if (!user) {
+      throw new NotFoundException(`User with email ${email} not found`);
+    }
+
+    this.logger.log(`User found with email: ${email}`);
     return this.mapToResponseDto(user);
   }
 
@@ -167,6 +184,10 @@ export class UserService {
 
     const updatedUser = await this.userRepository.save(user);
     this.logger.log(`User updated successfully: ${updatedUser.email}`);
+
+    // Update the jwt cache
+    const cacheKey = `user_${updatedUser.id}`;
+    await this.cacheService.set(cacheKey, updatedUser, this.CACHE_TTL); // Cache for 1 hour
 
     return this.mapToResponseDto(updatedUser);
   }
@@ -228,6 +249,10 @@ export class UserService {
       `Login updated successfully for user: ${updatedUser.email}`,
     );
 
+    // Update the jwt cache
+    const cacheKey = `user_${updatedUser.id}`;
+    await this.cacheService.set(cacheKey, updatedUser, this.CACHE_TTL); // Cache for 1 hour
+
     return this.mapToResponseDto(updatedUser);
   }
 
@@ -241,6 +266,10 @@ export class UserService {
     }
 
     this.logger.log(`User with ID ${id} deleted successfully`);
+
+    // Remove the user from the jwt cache
+    const cacheKey = `user_${id}`;
+    await this.cacheService.delete(cacheKey);
   }
 
   private mapToResponseDto(user: User): UserResponseDto {

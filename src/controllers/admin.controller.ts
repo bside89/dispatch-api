@@ -1,6 +1,8 @@
 import { Controller, Get } from '@nestjs/common';
+import { ApiTags } from '@nestjs/swagger';
 
 @Controller('admin')
+@ApiTags('admin')
 export class AdminController {
   @Get('test')
   test() {

@@ -9,6 +9,7 @@ import {
 } from 'typeorm';
 import { Order } from '../../order/entities/order.entity';
 import { ApiProperty } from '@nestjs/swagger';
+import { UserRole } from '../enums/user-role.enum';
 
 @Entity('users')
 @Index('IDX_user_email', ['email'], { unique: true })
@@ -36,6 +37,9 @@ export class User {
 
   @Column({ nullable: false, select: false })
   password: string;
+
+  @Column({ nullable: false, default: UserRole.USER })
+  role: UserRole;
 
   @ApiProperty({
     description: 'User creation date',
