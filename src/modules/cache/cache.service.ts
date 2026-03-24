@@ -18,6 +18,17 @@ export class CacheService {
     await this.cacheManager.set(key, value, ttl);
   }
 
+  async setIfNotExists<T>(
+    key: string,
+    value: T,
+    ttl?: number,
+  ): Promise<boolean> {
+    const existing = await this.cacheManager.get<T>(key);
+    if (existing) return false;
+    await this.cacheManager.set(key, value, ttl);
+    return true;
+  }
+
   async delete(key: string): Promise<void> {
     await this.cacheManager.del(key);
   }

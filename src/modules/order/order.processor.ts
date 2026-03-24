@@ -4,24 +4,39 @@ import { Job } from 'bullmq';
 import { JobHandlerFactory } from './factories/job-handler.factory';
 import { JobQueue } from '../common/enums/job-queue.enum';
 
+import { CacheService } from '../cache/cache.service';
+
 @Processor(JobQueue.ORDER_PROCESSING)
 export class OrderProcessor extends WorkerHost {
   private readonly logger = new Logger(OrderProcessor.name);
 
+  constructor(
+    private readonly factory: JobHandlerFactory,
+    private readonly cacheService: CacheService,
+  ) {
+    super();
+  }
+
   async process(job: Job): Promise<void> {
-    const { name } = job;
+    const lockKey = `lock:job:${job.id}`;
 
-    this.logger.log(`Processing job: ${name} with id: ${job.id}`);
+    const lock = await this.cacheService.setIfNotExists(lockKey, '1', 30);
+    if (!lock) {
+      this.logger.warn(`Job ${job.id} already running`);
+      return;
+    }
 
-    // Use Factory Pattern to get appropriate strategy
-    const handler = JobHandlerFactory.createHandler(name);
+    try {
+      const handler = this.factory.createHandler(job.name);
 
-    if (handler) {
+      if (!handler) {
+        this.logger.warn(`Unknown job: ${job.name}`);
+        return;
+      }
+
       await handler.execute(job, this.logger);
-    } else {
-      this.logger.warn(
-        `Unknown job type: ${name}. Supported types: ${JobHandlerFactory.getSupportedJobTypes().join(', ')}`,
-      );
+    } finally {
+      await this.cacheService.delete(lockKey);
     }
   }
 }

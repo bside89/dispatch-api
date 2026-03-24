@@ -43,7 +43,7 @@ export class Order {
     enum: OrderStatus,
     default: OrderStatus.PENDING,
   })
-  status: OrderStatus;
+  status: string;
 
   @ApiProperty({
     description: 'Order total amount',
