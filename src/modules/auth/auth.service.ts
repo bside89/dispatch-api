@@ -6,6 +6,7 @@ import { User } from '../user/entities/user.entity';
 import { Repository } from 'typeorm';
 import { LoginResponseDto } from './dto/login-response.dto';
 import { ConfigService } from '@nestjs/config';
+import { JwtPayload } from './interfaces/jwt-payload.interface';
 
 @Injectable()
 export class AuthService {
@@ -87,7 +88,7 @@ export class AuthService {
   }
 
   private async generateTokens(user: any): Promise<LoginResponseDto> {
-    const payload = {
+    const payload: JwtPayload = {
       sub: user.id,
       email: user.email,
       role: user.role,

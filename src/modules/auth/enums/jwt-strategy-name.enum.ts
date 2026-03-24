@@ -1,4 +1,4 @@
 export enum JwtStrategyName {
-  Access = 'jwt',
-  Refresh = 'jwt-refresh',
+  ACCESS = 'jwt',
+  REFRESH = 'jwt-refresh',
 }

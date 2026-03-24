@@ -20,6 +20,7 @@ import { AdminController } from './controllers/admin.controller';
 import { APP_GUARD } from '@nestjs/core';
 import { JwtAuthGuard } from './modules/auth/guards/jwt.guard';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
+import { RolesGuard } from './modules/auth/guards/roles.guard';
 
 @Module({
   imports: [
@@ -82,6 +83,12 @@ import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
     {
       provide: APP_GUARD,
       useClass: ThrottlerGuard,
+    },
+
+    // Global Roles Guard (for role-based access control)
+    {
+      provide: APP_GUARD,
+      useClass: RolesGuard,
     },
   ],
 })

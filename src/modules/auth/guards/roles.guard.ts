@@ -1,20 +1,41 @@
 import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
+import { UserRole } from '../../user/enums/user-role.enum';
+import { IS_PUBLIC_KEY } from '../decorators/public.decorator';
 
 @Injectable()
 export class RolesGuard implements CanActivate {
   constructor(private reflector: Reflector) {}
 
   canActivate(context: ExecutionContext): boolean {
-    const requiredRoles = this.reflector.get<string[]>(
-      'roles',
+    // Verify if the route is marked as public
+    const isPublic = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, [
       context.getHandler(),
+      context.getClass(),
+    ]);
+
+    if (isPublic) {
+      return true;
+    }
+
+    // Search for required roles in the route's metadata
+    const requiredRoles = this.reflector.getAllAndOverride<UserRole[]>(
+      'roles',
+      [context.getHandler(), context.getClass()],
     );
 
-    if (!requiredRoles) return true;
+    // If no specific roles are defined, allow access for authenticated users
+    if (!requiredRoles) {
+      return true;
+    }
 
+    // Check if the user has one of the required roles
     const request = context.switchToHttp().getRequest();
     const user = request.user;
+
+    if (!user) {
+      return false;
+    }
 
     return requiredRoles.includes(user.role);
   }

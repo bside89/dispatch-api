@@ -4,7 +4,7 @@ import { AuthGuard } from '@nestjs/passport';
 import { JwtStrategyName } from '../enums/jwt-strategy-name.enum';
 
 @Injectable()
-export class JwtAuthGuard extends AuthGuard(JwtStrategyName.Access) {
+export class JwtAuthGuard extends AuthGuard(JwtStrategyName.ACCESS) {
   constructor(private reflector: Reflector) {
     super();
   }
