@@ -4,26 +4,71 @@
 
 ## 🚀 Features
 
+### Core Functionality
+
 - **Complete CRUD for Orders** with Order Items
-- **Automatic Swagger documentation**
-- **Redis caching** for performance optimization
-- **Asynchronous order processing** with BullMQ queues
-- **Queue monitoring** with BullBoard dashboard (protected with Basic Auth)
-- **Data validation** with class-validator
-- **Pagination** and advanced filtering
+- **Complete CRUD for Users** with idempotency support
+- **Advanced pagination** and filtering for all endpoints
 - **Event-driven architecture** for status updates
-- **TypeORM** for PostgreSQL ORM
+
+### Authentication & Security
+
+- **JWT Authentication** with Access and Refresh tokens (15min/7days)
+- **Role-based authorization** (USER, ADMIN) with custom decorators
+- **Secure password hashing** with Argon2ID algorithm
+- **Rate limiting/Throttling** protection (10 req/min configurable)
+- **HTTP security headers** with Helmet middleware
+- **Idempotency support** for critical operations (with Redis cache)
+
+### Performance & Monitoring
+
+- **Redis caching** with intelligent TTL management
+- **Asynchronous processing** with BullMQ job queues
+- **Queue monitoring dashboard** (BullBoard) with Basic Auth protection
+- **Automatic Swagger documentation** with OpenAPI 3.0
+- **Structured logging** with detailed operation tracking
+
+### Data & Validation
+
+- **Data validation** with class-validator and transformation
+- **TypeORM** for PostgreSQL with entity relationships
+- **Global validation pipes** with whitelist and transformation
 
 ## 🛠️ Technologies
 
-- **NestJS** - Progressive Node.js framework
-- **PostgreSQL** - Relational database
-- **TypeORM** - TypeScript ORM
-- **Redis** - In-memory cache
-- **BullMQ** - Redis-based queue system for job processing
-- **BullBoard** - Queue monitoring dashboard
-- **Swagger/OpenAPI** - API documentation
-- **Docker** - Containerization
+### Core Framework
+
+- **NestJS** - Progressive Node.js framework with TypeScript
+- **TypeORM** - TypeScript-first ORM for PostgreSQL
+
+### Database & Cache
+
+- **PostgreSQL** - Robust relational database
+- **Redis** - In-memory cache and queue backend
+- **Cache Manager** - Intelligent caching with Redis store
+
+### Authentication & Security
+
+- **JWT (JSON Web Tokens)** - Secure authentication with refresh tokens
+- **Passport.js** - Authentication middleware with JWT strategy
+- **Argon2ID** - Advanced password hashing algorithm
+- **Helmet** - Security headers middleware
+- **@nestjs/throttler** - Rate limiting and DDoS protection
+
+### Queues & Background Jobs
+
+- **BullMQ** - Redis-based robust queue system
+- **BullBoard** - Real-time queue monitoring dashboard
+
+### API & Documentation
+
+- **Swagger/OpenAPI** - Interactive API documentation
+- **class-validator/transformer** - Request validation and transformation
+
+### Deployment & Infrastructure
+
+- **Docker & Docker Compose** - Containerization
+- **Environment Configuration** - Flexible env-based setup
 
 ## 📋 Prerequisites
 
@@ -116,15 +161,68 @@ The `docker-compose.yml` file includes:
 
 ## 🔌 Main Endpoints
 
+### Authentication
+
+- `POST /auth/login` - User authentication (returns access + refresh tokens)
+- `POST /auth/refresh` - Refresh access token using refresh token
+- `POST /auth/logout` - Logout and invalidate tokens
+
+### Users
+
+- `POST /users` - Create a new user (with idempotency support)
+- `GET /users` - List users with pagination and filters
+- `GET /users/:id` - Get user by ID
+- `PATCH /users/:id` - Update user information
+- `PATCH /users/:id/login` - Update user login credentials
+- `DELETE /users/:id` - Delete user
+
 ### Orders
 
-- `POST /orders` - Create a new order
+- `POST /orders` - Create a new order (with idempotency support)
 - `GET /orders` - List orders with pagination and filters
 - `GET /orders/:id` - Get order by ID
 - `GET /orders/customer/:customerId` - Get orders of a customer
 - `PATCH /orders/:id` - Update order
 - `PATCH /orders/:id/status` - Update status only
 - `DELETE /orders/:id` - Delete order
+
+### Example Payload to Create User
+
+```json
+{
+  "name": "John Doe",
+  "email": "john.doe@example.com",
+  "password": "SecurePass123!",
+  "role": "USER"
+}
+```
+
+### Example Authentication Flow
+
+```bash
+# 1. Login
+curl -X POST http://localhost:3000/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "john.doe@example.com",
+    "password": "SecurePass123!"
+  }'
+
+# Response includes:
+# {
+#   "access_token": "eyJ...",
+#   "refresh_token": "eyJ...",
+#   "user": { "id": "uuid", "name": "John Doe", ... }
+# }
+
+# 2. Use access token for protected routes
+curl -X GET http://localhost:3000/orders \
+  -H "Authorization: Bearer <access_token>"
+
+# 3. Refresh when access token expires
+curl -X POST http://localhost:3000/auth/refresh \
+  -H "Authorization: Bearer <refresh_token>"
+```
 
 ### Example Payload to Create Order
 
@@ -148,19 +246,20 @@ The `docker-compose.yml` file includes:
 
 ## 🔒 Idempotency
 
-The `POST /orders` endpoint implements idempotency to prevent creation of duplicate orders.
+Both `POST /orders` and `POST /users` endpoints implement idempotency to prevent creation of duplicate resources.
 
 ### How to Use
 
 1. **Required header**: Include the `Idempotency-Key` header with a unique key (UUID recommended)
-2. **Cache**: Response is stored in Redis for 24 hours
-3. **Behavior**: If the same key is used again, the original order is returned
+2. **Cache**: Response is stored in Redis with appropriate TTL (24h for orders, 1h for users)
+3. **Behavior**: If the same key is used again, the original resource is returned
 
-### Example with cURL
+### Example with cURL (Orders)
 
 ```bash
 curl -X POST http://localhost:3000/orders \
   -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <access_token>" \
   -H "Idempotency-Key: 550e8400-e29b-41d4-a716-446655440000" \
   -d '{
     "customerId": "customer-123",
@@ -174,14 +273,28 @@ curl -X POST http://localhost:3000/orders \
   }'
 ```
 
+### Example with cURL (Users)
+
+```bash
+curl -X POST http://localhost:3000/users \
+  -H "Content-Type: application/json" \
+  -H "Idempotency-Key: 550e8400-e29b-41d4-a716-446655440001" \
+  -d '{
+    "name": "John Doe",
+    "email": "john.doe@example.com",
+    "password": "SecurePass123!",
+    "role": "USER"
+  }'
+```
+
 ### Expected Behavior
 
-- ✅ **First request**: Creates the order and returns Status 201
-- ✅ **Subsequent requests** (same key): Returns the same order (Status 201)
+- ✅ **First request**: Creates the resource and returns Status 201
+- ✅ **Subsequent requests** (same key): Returns the same resource (Status 201)
 
 ### Benefits
 
-- **Avoids duplicate orders** in case of client application retries
+- **Avoids duplicate resources** in case of client application retries
 - **Security on unstable networks** where requests can be lost
 - **REST API compatibility** following idempotency standards
 
@@ -207,6 +320,43 @@ Monitor your queue jobs in real-time:
   - `process-order`: Process new orders asynchronously
   - `status-update`: Handle order status changes
   - `cancel-order`: Process order cancellations
+
+## 🛡️ Rate Limiting & Security
+
+### Rate Limiting (Throttling)
+
+The API includes built-in rate limiting to prevent abuse:
+
+- **Default limit**: 10 requests per minute per IP
+- **Window**: 60 seconds (rolling window)
+- **Response**: HTTP 429 (Too Many Requests) when exceeded
+- **Headers**: Includes rate limit information in response headers
+
+#### Rate Limit Headers
+
+```http
+X-RateLimit-Limit: 10
+X-RateLimit-Remaining: 7
+X-RateLimit-Reset: 1640995200
+```
+
+#### Custom Rate Limits
+
+Some endpoints may have custom limits:
+
+```typescript
+@Throttle({ default: { limit: 3, ttl: 60000 } }) // 3 req/min for sensitive operations
+@Post('/auth/login')
+async login() { ... }
+```
+
+### Security Features
+
+- **Helmet middleware**: Adds security headers (HSTS, CSP, etc.)
+- **CORS protection**: Configured for allowed origins
+- **Input validation**: All requests validated and sanitized
+- **JWT security**: Tokens with configurable expiration
+- **Password security**: Argon2ID hashing with salt
 
 ## ⚡ Event-Driven Features
 
@@ -236,18 +386,28 @@ The application uses BullMQ queues for asynchronous processing:
 ## 🎯 Cache & Queue Strategy
 
 ### Cache Strategy
-- Individual order cache by ID
-- Customer orders cache
-- Paginated lists cache
-- Idempotency key cache (24h TTL)
-- Configurable TTL (default: 5 minutes)
+- **Individual resource cache**: Orders and Users by ID
+- **Collection cache**: Customer orders, user listings
+- **Paginated results cache**: Filtered and sorted data
+- **Idempotency key cache**: Orders (24h TTL), Users (1h TTL)
+- **Intelligent TTL**: Orders (5min), Users (1h), configurable per resource
+- **Pattern-based invalidation**: Efficient cache cleanup on updates
+- **Redis backend**: `cache-manager` with Redis store for persistence
+
+### Authentication Cache Strategy
+- **JWT token cache**: Access token validation (in-memory)
+- **User session cache**: Active user data for performance
+- **Refresh token rotation**: Secure token management
 
 ### Queue Strategy
-- **BullMQ** for reliable job processing
-- **Redis** as the queue backend
-- **Retry policies** with exponential backoff
-- **Job prioritization** and delayed execution
-- **Real-time monitoring** via BullBoard dashboard
+- **BullMQ** for reliable job processing with Redis persistence
+- **Strategy Pattern**: Modular job handlers (process-order, status-update, cancel-order)
+- **Factory Pattern**: Dynamic job handler creation and routing
+- **Retry policies**: 3 attempts with exponential backoff (3s base delay)
+- **Job prioritization**: High priority for critical operations
+- **Delayed execution**: Scheduled jobs for time-based processing
+- **Real-time monitoring**: BullBoard dashboard with job details
+- **Graceful cleanup**: Failed jobs auto-removed after 24h
 
 ## 🧪 Tests
 
@@ -325,8 +485,26 @@ src/
 ├── controllers/     # Admin controllers (queue dashboard auth)
 ├── middleware/      # Custom middleware (Basic Auth)
 ├── modules/
+│   ├── auth/        # JWT Authentication module
+│   │   ├── decorators/  # @Public, @Roles decorators
+│   │   ├── dto/         # Login DTOs
+│   │   ├── enums/       # JWT strategy enums
+│   │   ├── guards/      # JWT guards, roles guard
+│   │   ├── strategies/  # JWT & refresh strategies
+│   │   ├── auth.controller.ts
+│   │   ├── auth.service.ts
+│   │   └── auth.module.ts
 │   ├── cache/       # Redis cache module
+│   │   ├── cache.service.ts
+│   │   └── cache.module.ts
 │   ├── common/      # Shared enums and utilities
+│   ├── user/        # Users module with CRUD & idempotency
+│   │   ├── dto/         # User DTOs
+│   │   ├── entities/    # User entity
+│   │   ├── enums/       # User roles and status
+│   │   ├── user.controller.ts
+│   │   ├── user.service.ts
+│   │   └── user.module.ts
 │   └── order/       # Orders module
 │       ├── dto/     # Data Transfer Objects
 │       ├── entities/ # TypeORM entities
@@ -338,11 +516,11 @@ src/
 │       ├── order.service.ts
 │       ├── order.processor.ts  # BullMQ job processor
 │       └── order.module.ts
-├── app.module.ts    # Main module (includes BullBoard setup)
-└── main.ts         # Entry point
+├── app.module.ts    # Main module (includes auth, throttling, BullBoard)
+└── main.ts         # Entry point with security middleware
 ```
 
-## � Environment Variables
+## 🌐 Environment Variables
 
 Create a `.env` file based on `.env.example` and configure the following variables:
 
@@ -370,16 +548,43 @@ REDIS_URL=redis://localhost:6379
 ```env
 APP_PORT=3000
 APP_ENV=development
+NODE_ENV=development
+```
+
+### Authentication & Security
+
+```env
+# JWT Configuration
+JWT_SECRET=your-super-secret-jwt-key-here
+JWT_EXPIRES_IN=15m
+JWT_REFRESH_EXPIRES_IN=7d
+
+# Rate Limiting
+THROTTLE_TTL=60000
+THROTTLE_LIMIT=10
 ```
 
 ### Admin Security
 
 ```env
+# BullBoard Dashboard Credentials
 ADMIN_USERNAME=admin
 ADMIN_PASSWORD=admin123
+
+# Alternative names (legacy support)
+BULLBOARD_USERNAME=admin
+BULLBOARD_PASSWORD=admin123
 ```
 
-⚠️ **Security Warning**: Always use strong, unique credentials in production environments!
+### Cache Configuration
+
+```env
+# Cache TTL (in seconds)
+CACHE_TTL=300
+USER_CACHE_TTL=3600
+```
+
+⚠️ **Security Warning**: Always use strong, unique credentials and secrets in production environments!
 
 ## �🚀 Deploy
 
