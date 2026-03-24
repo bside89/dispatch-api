@@ -7,6 +7,7 @@ import { Repository } from 'typeorm';
 import { LoginResponseDto } from './dto/login-response.dto';
 import { ConfigService } from '@nestjs/config';
 import { JwtPayload } from './interfaces/jwt-payload.interface';
+import { CacheService } from '../cache/cache.service';
 
 @Injectable()
 export class AuthService {
@@ -15,6 +16,7 @@ export class AuthService {
     private readonly userRepository: Repository<User>,
 
     private readonly jwtService: JwtService,
+    private readonly cacheService: CacheService,
     private readonly configService: ConfigService,
   ) {}
 
@@ -81,8 +83,10 @@ export class AuthService {
     return tokens;
   }
 
-  async logout(userId: string): Promise<void> {
-    await this.userRepository.update(userId, {
+  async logout(user: any): Promise<void> {
+    // Invalidate the JWT by storing its jti in the cache with a short expiration
+    await this.cacheService.set(`blacklist:${user.jti}`, true, 15 * 60 * 1000); // 15 minutes
+    await this.userRepository.update(user.id, {
       refreshToken: null,
     });
   }
@@ -92,6 +96,7 @@ export class AuthService {
       sub: user.id,
       email: user.email,
       role: user.role,
+      jti: crypto.randomUUID(), // Generate a random JWT ID for token revocation
     };
 
     // Generate access token with short expiration and refresh token with longer expiration

@@ -28,6 +28,6 @@ export class AuthController {
 
   @Post('logout')
   logout(@Req() req) {
-    return this.authService.logout(req.user.id);
+    return this.authService.logout(req.user);
   }
 }
