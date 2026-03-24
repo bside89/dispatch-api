@@ -1,5 +1,7 @@
 export enum OrderJob {
-  ProcessOrder = 'process-order',
-  UpdateStatus = 'update-status',
-  CancelOrder = 'cancel-order',
+  PROCESS_ORDER = 'process-order',
+  SHIP_ORDER = 'ship-order',
+  DELIVER_ORDER = 'deliver-order',
+  CANCEL_ORDER = 'cancel-order',
+  NOTIFICATION_ORDER = 'notification-order',
 }

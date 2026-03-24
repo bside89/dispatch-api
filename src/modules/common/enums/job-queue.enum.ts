@@ -1,3 +1,3 @@
 export enum JobQueue {
-  ORDER_PROCESSING = 'order-processing',
+  ORDER_FLOW = 'order-flow',
 }

@@ -6,7 +6,7 @@ import { JobQueue } from '../common/enums/job-queue.enum';
 
 import { CacheService } from '../cache/cache.service';
 
-@Processor(JobQueue.ORDER_PROCESSING)
+@Processor(JobQueue.ORDER_FLOW)
 export class OrderProcessor extends WorkerHost {
   private readonly logger = new Logger(OrderProcessor.name);
 

@@ -1,2 +1,2 @@
 export * from './job-handler.factory';
-export * from './status-action.factory';
+export * from './status-notification.factory';

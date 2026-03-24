@@ -13,6 +13,7 @@ import {
   HttpStatus,
   BadRequestException,
   Logger,
+  Req,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -71,17 +72,22 @@ export class OrderController {
   })
   async create(
     @Body() createOrderDto: CreateOrderDto,
-    @Headers('idempotency-key') idempotencyKey?: string,
+    @Headers('idempotency-key') idempotencyKey: string,
+    @Req() req,
   ): Promise<Order> {
     if (!idempotencyKey) {
       throw new BadRequestException('Idempotency-Key header is required');
     }
 
     this.logger.log(
-      `POST /orders - Creating order for user: ${createOrderDto.userId} with idempotency key: ${idempotencyKey}`,
+      `POST /orders - Creating order for user: ${req.user.id} with idempotency key: ${idempotencyKey}`,
     );
 
-    return this.orderService.create(createOrderDto, idempotencyKey);
+    return this.orderService.create(
+      createOrderDto,
+      req.user.id,
+      idempotencyKey,
+    );
   }
 
   @Get()

@@ -9,14 +9,22 @@ export class CancelOrderStrategy extends BaseJobStrategy<CancelOrderJob> {
   async execute(job: Job<CancelOrderJob>, logger: Logger): Promise<void> {
     const { orderId, customerId } = job.data;
 
-    const key = `idempotency:order:cancel:${orderId}`;
-
     // Idempotency check
+    const key = `idempotency:order:cancel:${orderId}`;
     if (await this.hasKey(key)) return;
-
-    if (await this.isAlreadyInStatus(orderId, OrderStatus.CANCELLED)) return;
-
     await this.setKey(key);
+
+    if (
+      await this.isAlreadyInStatusArray(orderId, [
+        OrderStatus.CANCELLED,
+        OrderStatus.REFUNDED,
+      ])
+    ) {
+      logger.debug(
+        `Order ${orderId} is already in CANCELLED or REFUNDED status`,
+      );
+      return;
+    }
 
     logger.log(`Cancelling order ${orderId}`);
 
@@ -28,6 +36,9 @@ export class CancelOrderStrategy extends BaseJobStrategy<CancelOrderJob> {
       await this.orderRepository.update(orderId, {
         status: OrderStatus.CANCELLED,
       });
+
+      // Send notification to the queue
+      await this.notifyCustomer(OrderStatus.CANCELLED, orderId);
 
       logger.log(`Order ${orderId} cancelled`);
     } catch (error) {

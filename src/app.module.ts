@@ -56,7 +56,7 @@ import { RolesGuard } from './modules/auth/guards/roles.guard';
 
     // Bull Board (for monitoring queues)
     BullBoardModule.forFeature({
-      name: JobQueue.ORDER_PROCESSING,
+      name: JobQueue.ORDER_FLOW,
       adapter: BullMQAdapter,
     }),
     BullBoardModule.forRoot({

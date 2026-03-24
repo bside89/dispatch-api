@@ -39,7 +39,6 @@ describe('OrderController', () => {
 
   describe('create', () => {
     const createOrderDto: CreateOrderDto = {
-      userId: 'customer-123',
       items: [
         {
           productId: 'product-456',
@@ -61,24 +60,32 @@ describe('OrderController', () => {
     };
 
     it('should create an order with idempotency key', async () => {
+      const req = { user: { id: 'customer-123' } };
       jest.spyOn(service, 'create').mockResolvedValue(mockOrder as any);
 
-      const result = await controller.create(createOrderDto, idempotencyKey);
+      const result = await controller.create(
+        createOrderDto,
+        idempotencyKey,
+        req,
+      );
 
       expect(result).toEqual(mockOrder);
       expect(service.create).toHaveBeenCalledWith(
         createOrderDto,
+        req.user.id,
         idempotencyKey,
       );
     });
 
     it('should throw BadRequestException when idempotency key is not provided', async () => {
-      await expect(controller.create(createOrderDto)).rejects.toThrow(
-        BadRequestException,
-      );
-      await expect(controller.create(createOrderDto)).rejects.toThrow(
-        'Idempotency-Key header is required',
-      );
+      const req = { user: { id: 'customer-123' } };
+
+      await expect(
+        controller.create(createOrderDto, undefined, req),
+      ).rejects.toThrow(BadRequestException);
+      await expect(
+        controller.create(createOrderDto, undefined, req),
+      ).rejects.toThrow('Idempotency-Key header is required');
 
       expect(service.create).not.toHaveBeenCalled();
     });

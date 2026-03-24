@@ -16,7 +16,7 @@ export const typeOrmConfig = (
   database: configService.get('DB_DATABASE'),
   entities: [Order, OrderItem, User],
   synchronize: configService.get('APP_ENV') === 'development',
-  logging: configService.get('APP_ENV') === 'development',
+  logging: configService.get('DB_LOGGING') === 'true',
   migrations: ['dist/migrations/*.js'],
   migrationsTableName: 'migrations',
 });

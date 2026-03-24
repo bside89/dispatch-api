@@ -30,7 +30,7 @@ export class OrderService {
     private readonly orderRepository: Repository<Order>,
     @InjectRepository(OrderItem)
     private readonly orderItemRepository: Repository<OrderItem>,
-    @InjectQueue(JobQueue.ORDER_PROCESSING)
+    @InjectQueue(JobQueue.ORDER_FLOW)
     private readonly orderQueue: Queue,
 
     private readonly cacheService: CacheService,
@@ -38,6 +38,7 @@ export class OrderService {
 
   async create(
     createOrderDto: CreateOrderDto,
+    userId: string,
     idempotencyKey: string,
   ): Promise<Order> {
     const idempotencyKeyFormatted = `${this.IDEMPOTENCY_PREFIX}:${idempotencyKey}`;
@@ -66,7 +67,7 @@ export class OrderService {
 
     // Create order entity
     const order = this.orderRepository.create({
-      userId: createOrderDto.userId,
+      user: { id: userId },
       total,
       status: OrderStatus.PENDING,
     });
@@ -92,14 +93,21 @@ export class OrderService {
     });
 
     // Add job to processing queue
-    await this.orderQueue.add(OrderJob.ProcessOrder, {
-      orderId: completeOrder.id,
-      userId: completeOrder.userId,
-      total: completeOrder.total,
-    });
+    await this.orderQueue.add(
+      OrderJob.PROCESS_ORDER,
+      {
+        orderId: completeOrder.id,
+        userId: userId,
+        total: completeOrder.total,
+      },
+      {
+        attempts: 3,
+        backoff: { type: 'exponential', delay: 2000 },
+      },
+    );
 
     // Clear related cache
-    await this.clearOrderCache(completeOrder.userId);
+    await this.clearOrderCache(userId);
 
     // Cache the created order with idempotency key
     await this.cacheService.set(
@@ -192,7 +200,7 @@ export class OrderService {
 
     const order = await this.orderRepository.findOne({
       where: { id },
-      relations: ['items'],
+      relations: ['user', 'items'],
     });
 
     if (!order) {
@@ -224,6 +232,7 @@ export class OrderService {
       );
 
       await this.orderItemRepository.save(orderItems);
+      order.items = orderItems;
 
       // Recalculate total
       order.total = updateOrderDto.items.reduce(
@@ -232,19 +241,23 @@ export class OrderService {
       );
     }
 
-    const updatedOrder = await this.orderRepository.save(order);
-
-    // Add status update job to queue if status changed
+    // Notify status change if status is updated
     if (updateOrderDto.status && updateOrderDto.status !== order.status) {
-      await this.orderQueue.add(OrderJob.UpdateStatus, {
-        orderId: id,
-        oldStatus: order.status,
-        newStatus: updateOrderDto.status,
-      });
+      await this.orderQueue.add(
+        OrderJob.NOTIFICATION_ORDER,
+        {
+          orderId: id,
+          newStatus: updateOrderDto.status,
+        },
+        {
+          attempts: 3,
+          backoff: { type: 'exponential', delay: 2000 },
+        },
+      );
     }
 
     // Clear cache
-    await this.clearOrderCache(order.userId, id);
+    await this.clearOrderCache(order.user.id, id);
 
     this.logger.log(`Order updated: ${id}`);
 
@@ -256,15 +269,22 @@ export class OrderService {
     const order = await this.findOne(id);
 
     // Add cancellation job to queue
-    await this.orderQueue.add(OrderJob.CancelOrder, {
-      orderId: id,
-      userId: order.userId,
-    });
+    await this.orderQueue.add(
+      OrderJob.CANCEL_ORDER,
+      {
+        orderId: id,
+        userId: order.user.id,
+      },
+      {
+        attempts: 3,
+        backoff: { type: 'exponential', delay: 2000 },
+      },
+    );
 
     await this.orderRepository.remove(order);
 
     // Clear cache
-    await this.clearOrderCache(order.userId, id);
+    await this.clearOrderCache(order.user.id, id);
 
     this.logger.log(`Order deleted: ${id}`);
     return order;
@@ -280,7 +300,7 @@ export class OrderService {
     }
 
     const orders = await this.orderRepository.find({
-      where: { userId },
+      where: { user: { id: userId } },
       relations: ['items'],
       order: { createdAt: 'DESC' },
     });

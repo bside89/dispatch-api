@@ -49,7 +49,7 @@ describe('OrderService', () => {
           },
         },
         {
-          provide: getQueueToken(JobQueue.ORDER_PROCESSING),
+          provide: getQueueToken(JobQueue.ORDER_FLOW),
           useValue: {
             add: jest.fn(),
           },
@@ -60,6 +60,7 @@ describe('OrderService', () => {
             get: jest.fn(),
             set: jest.fn(),
             delete: jest.fn(),
+            deletePattern: jest.fn(),
           },
         },
       ],
@@ -70,7 +71,7 @@ describe('OrderService', () => {
     orderItemRepository = module.get(getRepositoryToken(OrderItem));
     cacheManager = module.get(CACHE_MANAGER);
     cacheService = module.get<CacheService>(CacheService);
-    orderQueue = module.get(getQueueToken(JobQueue.ORDER_PROCESSING));
+    orderQueue = module.get(getQueueToken(JobQueue.ORDER_FLOW));
   });
 
   afterEach(() => {
@@ -79,7 +80,6 @@ describe('OrderService', () => {
 
   describe('create', () => {
     const createOrderDto = {
-      userId: 'customer-123',
       items: [
         {
           productId: 'product-456',
@@ -88,6 +88,7 @@ describe('OrderService', () => {
         },
       ],
     };
+    const userId = 'customer-123';
     const idempotencyKey = 'unique-key-123';
 
     const mockOrder = {
@@ -117,7 +118,11 @@ describe('OrderService', () => {
       cacheService.set.mockResolvedValue(undefined);
       cacheService.delete.mockResolvedValue(undefined);
 
-      const result = await service.create(createOrderDto, idempotencyKey);
+      const result = await service.create(
+        createOrderDto,
+        userId,
+        idempotencyKey,
+      );
 
       expect(result).toEqual(mockOrder);
       expect(cacheService.get).toHaveBeenCalledWith(
@@ -150,7 +155,11 @@ describe('OrderService', () => {
       // Mock cache get to return existing order
       cacheService.get.mockResolvedValue(existingOrder);
 
-      const result = await service.create(createOrderDto, idempotencyKey);
+      const result = await service.create(
+        createOrderDto,
+        userId,
+        idempotencyKey,
+      );
 
       expect(result).toEqual(existingOrder);
       expect(cacheService.get).toHaveBeenCalledWith(
@@ -198,7 +207,7 @@ describe('OrderService', () => {
       expect(result).toEqual(mockOrder);
       expect(orderRepository.findOne).toHaveBeenCalledWith({
         where: { id: orderId },
-        relations: ['items'],
+        relations: ['user', 'items'],
       });
       expect(cacheService.set).toHaveBeenCalledWith(
         `order:${orderId}`,

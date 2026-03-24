@@ -22,13 +22,6 @@ export class Order {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @ApiProperty({
-    description: 'User ID who placed the order',
-    example: '550e8400-e29b-41d4-a716-446655440001',
-  })
-  @Column()
-  userId: string;
-
   @ManyToOne(() => User, (user) => user.orders)
   @JoinColumn({ name: 'userId' })
   user: User;

@@ -39,14 +39,6 @@ export class CreateOrderItemDto {
 
 export class CreateOrderDto {
   @ApiProperty({
-    description: 'User unique identifier',
-    example: '550e8400-e29b-41d4-a716-446655440001',
-  })
-  @IsString()
-  @IsNotEmpty()
-  userId: string;
-
-  @ApiProperty({
     description: 'Order items',
     type: [CreateOrderItemDto],
   })
