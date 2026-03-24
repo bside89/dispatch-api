@@ -19,6 +19,7 @@ import { JobQueue } from './modules/common/enums/job-queue.enum';
 import { AdminController } from './controllers/admin.controller';
 import { APP_GUARD } from '@nestjs/core';
 import { JwtAuthGuard } from './modules/auth/guards/jwt.guard';
+import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 
 @Module({
   imports: [
@@ -26,6 +27,16 @@ import { JwtAuthGuard } from './modules/auth/guards/jwt.guard';
     ConfigModule.forRoot({
       isGlobal: true,
       envFilePath: '.env',
+    }),
+
+    // Rate limiting
+    ThrottlerModule.forRoot({
+      throttlers: [
+        {
+          ttl: 60000, // 1 minute
+          limit: 10, // Limit to 10 requests per minute for all endpoints
+        },
+      ],
     }),
 
     // Database
@@ -65,6 +76,12 @@ import { JwtAuthGuard } from './modules/auth/guards/jwt.guard';
     {
       provide: APP_GUARD,
       useClass: JwtAuthGuard,
+    },
+
+    // Global Rate Limiting Guard
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard,
     },
   ],
 })
