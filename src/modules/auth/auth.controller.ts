@@ -5,6 +5,7 @@ import { ApiSecurity, ApiTags } from '@nestjs/swagger';
 import { Public } from './decorators/public.decorator';
 import { AuthGuard } from '@nestjs/passport';
 import { JwtStrategyName } from './enums/jwt-strategy-name.enum';
+import { JwtRefreshAuthGuard } from './guards/jwt-refresh.guard';
 
 @Controller('auth')
 @ApiTags('auth')
@@ -19,7 +20,8 @@ export class AuthController {
   }
 
   @Post('refresh')
-  @UseGuards(AuthGuard(JwtStrategyName.Refresh))
+  @Public()
+  @UseGuards(JwtRefreshAuthGuard)
   refresh(@Req() req) {
     return this.authService.refresh(req.user);
   }

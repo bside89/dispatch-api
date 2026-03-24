@@ -51,8 +51,23 @@ export class AuthService {
     return tokens;
   }
 
-  async refresh(user: User): Promise<LoginResponseDto> {
-    const tokens = await this.generateTokens(user, false); // Don't generate a new refresh token on refresh
+  async refresh(userPayload: User): Promise<LoginResponseDto> {
+    const refreshToken = userPayload.refreshToken;
+    if (!refreshToken)
+      throw new UnauthorizedException('No refresh token found');
+
+    const user = await this.userRepository.findOne({
+      where: { email: userPayload.email },
+      select: ['id', 'email', 'password', 'role', 'refreshToken'],
+    });
+    if (!user) throw new UnauthorizedException('User not found');
+
+    const isValid = await this.verifyPasswordOrToken(
+      user.refreshToken,
+      refreshToken,
+    );
+    if (!isValid) throw new UnauthorizedException('Invalid refresh token');
+    const tokens = await this.generateTokens(userPayload, false); // Don't generate a new refresh token on refresh
 
     return tokens;
   }
@@ -80,11 +95,13 @@ export class AuthService {
       this.configService.get<string>('JWT_REFRESH_EXPIRES_IN') || '7d';
 
     const accessToken = this.jwtService.sign(payload as any, {
+      secret: this.configService.get<string>('JWT_ACCESS_SECRET'),
       expiresIn: accessTokenExpiry as any,
     });
     let refreshToken: string | undefined;
     if (includeRefreshToken) {
       refreshToken = this.jwtService.sign(payload as any, {
+        secret: this.configService.get<string>('JWT_REFRESH_SECRET'),
         expiresIn: refreshTokenExpiry as any,
       });
     }

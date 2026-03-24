@@ -13,13 +13,7 @@ import { CacheModule } from '../cache/cache.module';
 @Module({
   imports: [
     TypeOrmModule.forFeature([User]),
-    JwtModule.registerAsync({
-      imports: [ConfigModule],
-      useFactory: async (configService: ConfigService) => ({
-        secret: configService.get('JWT_SECRET'),
-      }),
-      inject: [ConfigService],
-    }),
+    JwtModule.register({}),
     CacheModule,
   ],
   exports: [AuthService],
