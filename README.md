@@ -1,6 +1,6 @@
 # OrderFlow
 
-**A production-ready API for intelligent order processing** built with NestJS, featuring advanced JWT authentication, event-driven architecture with Design Patterns (Factory & Strategy), PostgreSQL with TypeORM, Redis caching, and BullMQ queues for enterprise-grade asynchronous processing.
+**A production-ready API for intelligent order processing** built with NestJS, featuring advanced JWT authentication, event-driven architecture with Design Patterns (Factory & Strategy), PostgreSQL with TypeORM, Redis caching, and BullMQ queues for enterprise-grade asynchronous processing with sequential job chaining (Process → Ship → Deliver).
 
 ## 🚀 Features
 
@@ -8,6 +8,7 @@
 
 - **Complete CRUD for Orders** with Order Items and advanced entity relationships
 - **Complete CRUD for Users** with enterprise-grade idempotency support
+- **Sequential Order Processing** - Automated job chaining (Process → Ship → Deliver) with BullMQ broker
 - **Advanced pagination** and intelligent filtering for all endpoints
 - **Event-driven architecture** with sophisticated status management
 - **Design Patterns Implementation** - Factory and Strategy patterns for extensible job processing
@@ -28,6 +29,7 @@
 
 - **Intelligent Redis Caching** - Pattern-based invalidation, TTL optimization, and session management
 - **Advanced Asynchronous Processing** - BullMQ with Factory/Strategy patterns for job handling
+- **Sequential Job Chaining** - Automated order flow (Process → Shipping → Delivery) with BullMQ broker
 - **Enterprise Queue Monitoring** - BullBoard dashboard with real-time metrics and job analytics
 - **Auto-generated API Documentation** - Enhanced Swagger/OpenAPI 3.0 with organized tags
 - **Production-grade Logging** - Structured logging with context tracking and job monitoring
@@ -86,19 +88,22 @@
 #### 🏭 **Factory Pattern Implementation**
 
 - **JobHandlerFactory** - Dynamic creation of job processing strategies
-- **StatusActionFactory** - Status-specific action handler creation
+- **StatusNotificationFactory** - Status-specific notification handler creation
+- **Sequential Job Routing** - Intelligent routing through Process → Ship → Deliver chain
 - **Extensible Registration** - Easy addition of new job types without code modification
 - **Runtime Strategy Selection** - Intelligent handler selection based on job type
 
 #### 🎯 **Strategy Pattern Implementation**
 
 - **JobProcessingStrategy** - Base interface for all job processing strategies
-- **BaseJobStrategy** - Abstract foundation with common functionality
-- **Concrete Strategies:**
-  - `ProcessOrderStrategy` - New order processing logic
-  - `StatusUpdateStrategy` - Order status transition management
-  - `CancelOrderStrategy` - Order cancellation workflows
-  - `Status-specific Actions` - Confirmed, Shipped, Delivered, Cancelled handlers
+- **BaseJobStrategy** - Abstract foundation with common functionality and job chaining
+- **Sequential Processing Strategies:**
+  - `ProcessOrderStrategy` - Order validation, payment, inventory → triggers shipping
+  - `ShipOrderStrategy` - Shipping simulation → triggers delivery
+  - `DeliverOrderStrategy` - Final delivery simulation → completes order flow
+  - `CancelOrderStrategy` - Order cancellation workflows at any stage
+  - `NotificationStrategy` - Customer notifications at each stage
+- **Chained Job Architecture** - Each strategy automatically triggers the next step
 
 #### 📦 **Repository Pattern with TypeORM**
 
@@ -361,18 +366,38 @@ Powered by the latest BullMQ technology with comprehensive monitoring:
 
 ### Smart Job Processing Architecture
 
+#### Sequential Order Processing Flow
+
+🔄 **Automated Job Chaining** - Complete order lifecycle automation:
+
+```
+[Order Created]
+    ↓
+[PROCESS_ORDER] → Validate → Payment → Inventory Reserve
+    ↓ (auto-trigger)
+[SHIP_ORDER] → Shipping Simulation → Tracking Generation
+    ↓ (auto-trigger)
+[DELIVER_ORDER] → Delivery Simulation → Final Status
+    ↓
+[NOTIFICATION_ORDER] → Customer notification at each stage
+```
+
 #### Design Pattern Integration
 - **Factory Pattern**: `JobHandlerFactory` dynamically creates appropriate handlers
-- **Strategy Pattern**: Modular, interchangeable job processing strategies
+- **Strategy Pattern**: Modular, interchangeable job processing strategies with auto-chaining
+- **Sequential Processing**: Each job automatically triggers the next stage
 - **Event-driven**: Loose coupling between job creation and processing
+- **Idempotency Protection**: Redis-based duplicate prevention for reliable processing
 - **Extensible**: Add new job types without modifying existing code
 
 #### Production-grade Queue Configuration
 
-**order-processing** queue with intelligent job routing:
-- ⚙️ `process-order` - Handles new orders using ProcessOrderStrategy
-- 🔄 `status-update` - Manages status transitions using StatusUpdateStrategy
-- ❌ `cancel-order` - Processes cancellations using CancelOrderStrategy
+**order-flow** queue with sequential job chaining:
+- ⚙️ `process-order` - Order validation, payment, inventory (triggers shipping)
+- 🚚 `ship-order` - Shipping simulation and tracking (triggers delivery)
+- 📦 `deliver-order` - Final delivery simulation (completes order)
+- 📧 `notification-order` - Customer notifications at each stage
+- ❌ `cancel-order` - Order cancellation at any stage
 
 #### Enterprise Job Features
 - **Retry Policies**: Exponential backoff with 3 intelligent retry attempts
@@ -423,26 +448,33 @@ async login() { ... }
 
 ### Workers/Processors
 
-The application uses BullMQ queues for asynchronous processing:
+The application uses BullMQ queues for sequential order processing:
 
-1. **process-order** - Validates and processes new orders
-2. **status-update** - Handles order status transitions and notifications
-3. **cancel-order** - Processes order cancellations and cleanup
+1. **process-order** - Order validation, payment processing, inventory reservation
+2. **ship-order** - Shipping simulation with tracking (auto-triggered after processing)
+3. **deliver-order** - Delivery simulation and order completion (auto-triggered after shipping)
+4. **notification-order** - Customer notifications sent at each stage transition
+5. **cancel-order** - Order cancellation handling at any stage
 
-**Queue Configuration:**
-- **Retry Policy**: 3 attempts with 3-second backoff
+**Sequential Chain Configuration:**
+- **Auto-Chaining**: Each job automatically triggers the next stage
+- **Idempotency Protection**: Redis-based duplicate prevention
+- **Retry Policy**: 3 attempts with exponential backoff (3-second base)
 - **Job Cleanup**: Failed jobs removed after 24 hours
-- **Monitoring**: All jobs visible in BullBoard dashboard
+- **Monitoring**: Complete chain visible in BullBoard dashboard with stage tracking
 
-### Order Status
+### Order Status Flow
 
-- `PENDING` - Awaiting processing
-- `CONFIRMED` - Confirmed
-- `PROCESSING` - Being processed
-- `SHIPPED` - Shipped
-- `DELIVERED` - Delivered
-- `CANCELLED` - Cancelled
-- `REFUNDED` - Refunded
+**Sequential Processing Chain:**
+- `PENDING` - Initial state after creation
+- `CONFIRMED` - Order confirmed by customer
+- `PROCESSED` - ✅ Completed by `process-order` job → triggers shipping
+- `SHIPPED` - ✅ Completed by `ship-order` job → triggers delivery
+- `DELIVERED` - ✅ Completed by `deliver-order` job → final state
+- `CANCELLED` - Cancellation possible at any stage
+- `REFUNDED` - Post-cancellation refund processed
+
+**🔄 Automatic Progression:** Each status change automatically triggers the next job in the chain, with customer notifications sent at every transition.
 
 ## 🎯 Enterprise Cache & Queue Strategy
 
@@ -467,16 +499,21 @@ The application uses BullMQ queues for asynchronous processing:
 ### Production Queue Strategy
 
 #### BullMQ Advanced Features
+- **Sequential Job Chaining**: Automated progression through order lifecycle
 - **Event-driven Processing**: Decoupled job creation and execution
 - **Design Patterns Integration**:
-  - **Strategy Pattern**: Pluggable job processing algorithms
-  - **Factory Pattern**: Dynamic handler creation and registration
+  - **Strategy Pattern**: Pluggable job processing algorithms with auto-chaining
+  - **Factory Pattern**: Dynamic job handler creation and routing
+  - **Chain of Responsibility**: Sequential job execution with fallback handling
   - **State Pattern**: Order status transition management
 
 #### Reliability & Scalability
+- **Sequential Reliability**: Failed jobs don't break the chain - retries preserve order
+- **Idempotency Protection**: Redis-based duplicate prevention across the entire chain
 - **Exponential Backoff**: 3 attempts with progressive delay (3s base)
 - **Job Prioritization**: Critical operations processed first
-- **Dead Letter Queue**: Analysis of permanently failed jobs
+- **Dead Letter Queue**: Analysis of permanently failed jobs with stage context
+- **Chain Recovery**: Failed jobs can resume from last successful stage
 - **Horizontal Scaling**: Multiple worker processes for high throughput
 - **Graceful Shutdown**: Clean job completion during deployments
 
@@ -515,6 +552,16 @@ The application uses BullMQ queues for asynchronous processing:
 - ✅ **Database Migrations** - Type-safe migrations with TypeORM
 - ✅ **Connection Pooling** - Performance optimization for high load
 - ✅ **Environment Configuration** - Flexible and secure config management
+
+### 🔗 **Sequential Job Processing Implementation**
+- ✅ **Automated Order Workflow** - Complete Process → Ship → Deliver chain with BullMQ broker
+- ✅ **Job Chaining** - Each stage automatically triggers the next for seamless flow
+- ✅ **Idempotency Protection** - Redis-based duplicate prevention across entire pipeline
+- ✅ **Stage-based Notifications** - Customer notifications at each transition point
+- ✅ **Chain Recovery** - Failed jobs can resume from last successful stage
+- ✅ **Real-time Monitoring** - Complete workflow visibility in BullBoard dashboard
+- ✅ **Cancellation Support** - Order cancellation possible at any stage
+- 📚 **Flow**: Order Created → Process (validate/payment) → Ship (tracking) → Deliver (complete)
 
 ## 🧪 Enterprise Testing Suite
 
@@ -861,6 +908,57 @@ USER_CACHE_TTL=3600
 3. Commit your changes
 4. Push to the branch
 5. Open a Pull Request
+
+## 🧪 Testing the Sequential Job Processing
+
+To test the new sequential order processing flow:
+
+1. **Start the application:**
+
+   ```bash
+   npm run dev
+   ```
+
+2. **Create an order via API:**
+
+   ```bash
+   # First login to get access token
+   curl -X POST http://localhost:3000/auth/login \
+     -H "Content-Type: application/json" \
+     -d '{"email": "user@example.com", "password": "password"}'
+
+   # Create order (this triggers the job chain)
+   curl -X POST http://localhost:3000/orders \
+     -H "Content-Type: application/json" \
+     -H "Authorization: Bearer <access_token>" \
+     -H "Idempotency-Key: $(uuidgen)" \
+     -d '{
+       "customerId": "customer-123",
+       "items": [
+         {"productId": "prod-1", "quantity": 2, "unitPrice": 25.99}
+       ]
+     }'
+   ```
+
+3. **Monitor the job chain in BullBoard:**
+   - Visit: http://localhost:3000/admin/queues
+   - Login: admin / admin123
+   - Watch jobs progress through: `PROCESS_ORDER` → `SHIP_ORDER` → `DELIVER_ORDER`
+
+4. **Check order status progression:**
+   ```bash
+   # Get order details to see status changes
+   curl -X GET http://localhost:3000/orders/:orderId \
+     -H "Authorization: Bearer <access_token>"
+   ```
+
+**Expected Flow:**
+
+- Order created → Status: `PENDING`
+- Job `PROCESS_ORDER` completes → Status: `PROCESSED`
+- Job `SHIP_ORDER` auto-triggers → Status: `SHIPPED`
+- Job `DELIVER_ORDER` auto-triggers → Status: `DELIVERED`
+- Notifications sent at each stage transition
 
 ## 📄 License
 
