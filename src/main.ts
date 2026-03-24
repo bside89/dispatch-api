@@ -4,6 +4,7 @@ import { ValidationPipe } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { ConfigService } from '@nestjs/config';
 import { BasicAuthMiddleware } from './middleware/basic-auth.middleware';
+import helmet from 'helmet';
 
 // Fix for crypto module issue in TypeORM
 if (typeof (global as any).crypto === 'undefined') {
@@ -13,6 +14,9 @@ if (typeof (global as any).crypto === 'undefined') {
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   const configService = app.get(ConfigService);
+
+  // Security middleware
+  app.use(helmet());
 
   // Global validation pipe
   app.useGlobalPipes(
