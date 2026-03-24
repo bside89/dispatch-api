@@ -66,8 +66,16 @@ export class AuthService {
       user.refreshToken,
       refreshToken,
     );
-    if (!isValid) throw new UnauthorizedException('Invalid refresh token');
-    const tokens = await this.generateTokens(userPayload, false); // Don't generate a new refresh token on refresh
+    if (!isValid) {
+      await this.logout(user.id);
+      throw new UnauthorizedException(
+        'Invalid refresh token. User logged out. Please log in again.',
+      );
+    }
+    const tokens = await this.generateTokens(userPayload);
+
+    // Update the stored refresh token to the new one (optional, can keep the same refresh token until it expires)
+    await this.saveRefreshToken(user.id, tokens.refreshToken);
 
     return tokens;
   }
@@ -78,10 +86,7 @@ export class AuthService {
     });
   }
 
-  private async generateTokens(
-    user: any,
-    includeRefreshToken = true,
-  ): Promise<LoginResponseDto> {
+  private async generateTokens(user: any): Promise<LoginResponseDto> {
     const payload = {
       sub: user.id,
       email: user.email,
@@ -90,21 +95,19 @@ export class AuthService {
 
     // Generate access token with short expiration and refresh token with longer expiration
     const accessTokenExpiry =
-      this.configService.get<string>('JWT_EXPIRES_IN') || '15m';
+      this.configService.get<string>('JWT_ACCESS_EXPIRES_IN') || '15m';
     const refreshTokenExpiry =
       this.configService.get<string>('JWT_REFRESH_EXPIRES_IN') || '7d';
 
+    // Sign the tokens with different secrets for added security
     const accessToken = this.jwtService.sign(payload as any, {
       secret: this.configService.get<string>('JWT_ACCESS_SECRET'),
       expiresIn: accessTokenExpiry as any,
     });
-    let refreshToken: string | undefined;
-    if (includeRefreshToken) {
-      refreshToken = this.jwtService.sign(payload as any, {
-        secret: this.configService.get<string>('JWT_REFRESH_SECRET'),
-        expiresIn: refreshTokenExpiry as any,
-      });
-    }
+    const refreshToken = this.jwtService.sign(payload as any, {
+      secret: this.configService.get<string>('JWT_REFRESH_SECRET'),
+      expiresIn: refreshTokenExpiry as any,
+    });
 
     const result: LoginResponseDto = {
       accessToken,

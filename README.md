@@ -557,7 +557,7 @@ NODE_ENV=development
 # JWT Configuration
 JWT_ACCESS_SECRET=your-super-access-secret-jwt-key-here
 JWT_REFRESH_SECRET=your-super-refresh-secret-jwt-key-here
-JWT_EXPIRES_IN=15m
+JWT_ACCESS_EXPIRES_IN=15m
 JWT_REFRESH_EXPIRES_IN=7d
 
 # Rate Limiting

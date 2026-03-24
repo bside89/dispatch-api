@@ -6,7 +6,6 @@ export class LoginResponseDto {
 
   @ApiProperty({
     description: 'Refresh token for obtaining new access tokens',
-    required: false,
   })
-  refreshToken?: string;
+  refreshToken: string;
 }
