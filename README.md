@@ -1,13 +1,20 @@
-
 # 🚀 Order Flow API
 
+![Node](https://img.shields.io/badge/node-20+-green)
+![NestJS](https://img.shields.io/badge/nestjs-backend-red)
+![Docker](https://img.shields.io/badge/docker-ready-blue)
+![License](https://img.shields.io/badge/license-MIT-lightgrey)
+
+---
+
 ## 🚀 TL;DR
-API de pedidos construída com NestJS utilizando arquitetura orientada a eventos, filas com BullMQ e padrões Strategy + Factory.
+
+API de pedidos construída com NestJS utilizando arquitetura orientada a eventos (dentro de um monólito), filas com BullMQ e padrões Strategy + Factory.
 
 - Processamento assíncrono com filas
-- Event Bus desacoplado para notificações
+- Event Bus desacoplado
 - Idempotência e controle de concorrência
-- Logs estruturados com correlação (Pino)
+- Logs estruturados com correlationId
 - Observabilidade com Grafana + Loki
 
 👉 Projeto focado em demonstrar arquitetura escalável e boas práticas de backend.
@@ -40,17 +47,23 @@ Client → API (NestJS)
         ↓
      Event Bus
         ↓
-     Notifications
+     Notifications / Side Effects
 ```
 
 ---
 
 ## 🤔 Decisões de Arquitetura
 
-- **BullMQ + Redis**: utilizado para processamento assíncrono e resiliência
-- **Strategy Pattern**: permite adicionar novos fluxos de negócio sem alterar código existente
-- **Event Bus**: desacopla efeitos colaterais (ex: notificações)
-- **Idempotência**: evita duplicidade em cenários de retry
+- BullMQ + Redis
+  → processamento assíncrono e resiliência
+- Strategy Pattern
+  → facilita extensão de fluxos sem alterar código existente
+- Factory Pattern
+  → criação dinâmica de handlers
+- Event Bus
+  → desacopla efeitos colaterais (notificações, logs, etc.)
+- Idempotência
+  → evita duplicidade em cenários de retry
 
 ---
 
@@ -69,15 +82,44 @@ Permite rastrear o fluxo completo de um pedido entre múltiplos jobs e eventos.
 
 - Arquitetura escalável com filas
 - Separação de responsabilidades
-- Boas práticas de backend
 - Processamento assíncrono
+- Boas práticas de backend
 - Observabilidade e tracing
+- Design patterns aplicados na prática
 
 ---
 
 ## 🏗️ Arquitetura (Detalhada)
 
-Este projeto utiliza um estilo **event-driven dentro de um monólito**, garantindo desacoplamento e escalabilidade sem a complexidade de microserviços.
+Este projeto utiliza um estilo event-driven dentro de um monólito, garantindo:
+
+- Desacoplamento entre fluxos
+- Facilidade de evolução
+- Menor complexidade operacional que microserviços
+
+---
+
+## ⚙️ Features
+
+- Criação e processamento de pedidos
+- Pipeline assíncrono com múltiplos estágios
+- Encadeamento de jobs (process → ship → deliver)
+- Sistema de notificações desacoplado
+- Idempotência em jobs e eventos
+- Suporte a múltiplos dispositivos (auth)
+- Refresh token com hash
+- Logout com invalidação de sessão
+
+---
+
+## ⚖️ Trade-offs
+
+- Monólito vs Microservices
+  → Escolhido monólito para reduzir complexidade operacional
+- BullMQ vs Kafka
+  → BullMQ é mais simples e suficiente para o escopo atual
+- Event-driven parcial
+  → Aplicado apenas onde agrega valor (jobs e notificações)
 
 ---
 
