@@ -27,7 +27,7 @@ export const loggerConfig = (configService: ConfigService) => {
         ? {
             target: 'pino-loki',
             options: {
-              host: 'http://loki:3100',
+              host: 'http://localhost:3100',
               labels: { app: 'order-flow-api' },
             },
           }
