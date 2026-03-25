@@ -34,7 +34,8 @@
 - **Separated Event Bus** - Dedicated notification system with isolated event processing queue
 - **Enterprise Queue Monitoring** - BullBoard dashboard with real-time metrics and job analytics
 - **Auto-generated API Documentation** - Enhanced Swagger/OpenAPI 3.0 with organized tags
-- **Production-grade Logging** - Structured logging with context tracking and job monitoring
+- **Production-grade Logging** - Structured JSON logging with Pino, request correlation IDs, and configurable log levels
+- **Observability Stack** - Grafana + Loki + Promtail for log aggregation, real-time dashboards, and Docker container log collection
 - **Performance Optimization** - Connection pooling, horizontal scaling readiness
 - **Health Monitoring** - Built-in health checks and observability features
 
@@ -73,6 +74,14 @@
 - **BullBoard Dashboard** - Real-time queue monitoring and job management interface
 - **Design Patterns Integration** - Factory and Strategy patterns for job processing
 - **Event Bus System** - Isolated event processing for notifications and user communications
+
+### Logging & Observability
+
+- **Pino / nestjs-pino** - High-performance structured JSON logging with request correlation IDs
+- **pino-pretty** - Human-readable colored log formatting for development
+- **Grafana** - Log visualization and observability dashboards (port 3001)
+- **Loki** - Scalable log aggregation backend (port 3100)
+- **Promtail** - Log collector that ships Docker container logs to Loki via Docker socket
 
 ### API & Documentation
 
@@ -194,6 +203,7 @@ After starting the application, access the documentation and monitoring tools at
 
 - **Swagger UI**: http://localhost:3000/api/docs
 - **Queue Dashboard**: http://localhost:3000/admin/queues (requires authentication)
+- **Grafana**: http://localhost:3001 (log visualization — default credentials: admin / admin)
 
 ### 🔐 Queue Dashboard Authentication
 
@@ -208,8 +218,12 @@ The BullBoard dashboard is protected with Basic Authentication:
 
 The `docker-compose.yml` file includes:
 
-- **PostgreSQL** (port 5432) - Main database
-- **Redis** (port 6379) - Cache and BullMQ queues
+- **PostgreSQL** (port 5432) - Main relational database
+- **Redis** (port 6379) - Cache store and BullMQ queue backend
+- **Loki** (port 3100) - Log aggregation backend
+- **Promtail** - Log collector; reads Docker container logs and ships them to Loki
+- **Grafana** (port 3001) - Log visualization and observability dashboards (default credentials: admin / admin)
+- **app** - Main NestJS application (excluded when running `debug.sh` for local VS Code debugging)
 
 ## 🔌 Main Endpoints
 
@@ -545,14 +559,12 @@ The application uses BullMQ with separated queue architecture:
 - ✅ **Performance boost** with improved Redis connection handling
 - ✅ **Enhanced reliability** with better error handling and job recovery
 - ✅ **API compatibility** maintained for seamless transition
-- 📚 **[Complete Migration Guide](tmp/MIGRATION-BULLMQ.md)** - Detailed documentation
 
 ### 🎨 **Design Patterns Implementation**
 - ✅ **Factory Pattern** - Dynamic job handler creation system
 - ✅ **Strategy Pattern** - Pluggable job processing algorithms
 - ✅ **Repository Pattern** - Clean data access layer with TypeORM
 - ✅ **Decorator Pattern** - Enhanced authentication and authorization
-- 📚 **[Design Patterns Guide](tmp/DESIGN_PATTERNS.md)** - Architecture documentation
 
 ### 🔒 **Security Enhancements**
 - ✅ **Argon2ID Implementation** - Quantum-resistant password hashing
@@ -587,14 +599,13 @@ The application uses BullMQ with separated queue architecture:
 - ✅ **Global Event System** - @Global EventsModule accessible throughout the application
 - 📚 **Flow**: Order Processing → Event Publishing → Isolated Notification Processing
 
-### 🚀 **Event Bus Architecture Implementation**
-- ✅ **Separated Notification System** - Dedicated Event Bus for user notifications with isolated processing
-- ✅ **Dual-Queue Design** - Orders queue for business logic, Events queue for notifications
-- ✅ **Decoupled Communications** - Event-driven architecture between order processing and notifications
-- ✅ **Improved Performance** - Isolated event processing prevents notification bottlenecks
-- ✅ **Enhanced Monitoring** - Separate queue visibility in BullBoard dashboard
-- ✅ **Global Event System** - @Global EventsModule accessible throughout the application
-- 📚 **Flow**: Order Processing → Event Publishing → Isolated Notification Processing
+### � **Structured Logging & Observability Stack**
+- ✅ **Pino Integration** - High-performance structured JSON logging via `nestjs-pino`
+- ✅ **Request Tracing** - Auto-generated correlation IDs for every HTTP request
+- ✅ **Grafana Dashboards** - Log visualization and querying at http://localhost:3001
+- ✅ **Loki Backend** - Scalable log aggregation (port 3100) replacing file-based logging
+- ✅ **Promtail Collector** - Automatic Docker container log collection via Docker socket
+- ✅ **Environment-aware** - Pretty-printed colored logs in development, raw JSON in production
 
 ## 🧪 Enterprise Testing Suite
 
@@ -697,9 +708,13 @@ npm run test:watch    # Continuous testing mode
 
 ## 🐛 Debug and Logs
 
-- Structured logs with context
-- Different log levels per environment
-- Performance monitoring with metrics
+- **Structured JSON logging** with Pino across all layers (HTTP requests, queues, services)
+- Different log levels per environment (configurable via `LOG_LEVEL` env var)
+- **Development mode**: human-readable colored output via `pino-pretty`
+- **Production mode**: raw JSON output fully compatible with Loki ingestion
+- **Grafana**: http://localhost:3001 — visualize and query logs from all containers
+- **Loki** (port 3100) — log aggregation backend fed automatically by Promtail
+- **Promtail** — collects logs from all Docker containers via Docker socket and ships to Loki
 - **Queue monitoring** via BullBoard dashboard at `/admin/queues`
 - **Job debugging**: View job payloads, execution times, and failure reasons
 - **Real-time updates**: Monitor queue performance in real-time
@@ -710,6 +725,7 @@ npm run test:watch    # Continuous testing mode
 src/
 ├── config/                    # 🔧 Advanced Configuration Layer
 │   ├── bullmq.config.ts          # BullMQ enterprise queue configuration
+│   ├── logger.config.ts          # Pino structured logger configuration
 │   ├── redis.config.ts           # Redis connection pooling + caching
 │   └── typeorm.config.ts         # Database configuration + migrations
 │
@@ -722,78 +738,77 @@ src/
 ├── modules/                   # 🏢 Feature-based Module Architecture
 │   ├── auth/                   # 🔑 Advanced JWT Authentication
 │   │   ├── decorators/             # @Public, @Roles custom decorators
-│   │   ├── dto/                   # Login/Response DTOs with validation
-│   │   ├── enums/                 # JWT strategy type definitions
-│   │   ├── guards/                # JWT, Refresh, Roles guards
-│   │   ├── interfaces/            # JWT payload type definitions
-│   │   ├── strategies/            # Passport JWT + Refresh strategies
-│   │   ├── auth.controller.ts     # Authentication endpoints
-│   │   ├── auth.service.ts        # Business logic + Argon2ID
-│   │   └── auth.module.ts         # Module configuration
+│   │   ├── dto/                    # Login/Response DTOs with validation
+│   │   ├── enums/                  # JWT strategy type definitions
+│   │   ├── guards/                 # JWT, Refresh, Roles guards
+│   │   ├── interfaces/             # JWT payload type definitions
+│   │   ├── strategies/             # Passport JWT + Refresh strategies
+│   │   ├── auth.controller.ts      # Authentication endpoints
+│   │   ├── auth.service.ts         # Business logic + Argon2ID
+│   │   └── auth.module.ts          # Module configuration
 │   │
 │   ├── cache/                  # ⚡ Intelligent Cache Management
-│   │   ├── cache.service.ts       # Custom cache service with patterns
-│   │   └── cache.module.ts        # Redis cache configuration
+│   │   ├── cache.service.ts        # Custom cache service with patterns
+│   │   └── cache.module.ts         # Redis cache configuration
+│   │
+│   ├── common/                 # 🔧 Shared Utilities
+│   │   └── helpers/                # Shared helper functions
 │   │
 │   ├── events/                 # 📧 Event-driven Notification System
-│   │   ├── constants/             # Event bus tokens and configuration
-│   │   ├── implementations/       # BullEventBus implementation
-│   │   ├── interfaces/            # EventBus interface definition
-│   │   ├── misc/                  # Event job data types (NotifyUserJobData)
-│   │   ├── processors/            # EventProcessor for notification handling
-│   │   ├── strategies/            # NotificationStrategy (moved from order module)
-│   │   └── events.module.ts       # @Global Events module configuration
-│   │
-│   ├── common/                 # 🔧 Shared Components
-│   │   ├── enums/                 # Global enumerations
-│   │   └── middleware/            # Shared middleware components
+│   │   ├── constants/              # Event bus tokens and configuration
+│   │   ├── implementations/        # BullEventBus implementation
+│   │   ├── interfaces/             # EventBus interface definition
+│   │   ├── misc/                   # Event job data types (NotifyUserJobData)
+│   │   ├── processors/             # EventProcessor for notification handling
+│   │   ├── strategies/             # NotificationStrategy
+│   │   └── events.module.ts        # @Global Events module configuration
 │   │
 │   ├── user/                   # 👥 User Management Module
-│   │   ├── dto/                   # User DTOs with comprehensive validation
-│   │   ├── entities/              # TypeORM User entity with relationships
-│   │   ├── enums/                 # User roles and status enumerations
-│   │   ├── user.controller.ts     # RESTful user endpoints
-│   │   ├── user.service.ts        # User business logic + idempotency
-│   │   └── user.module.ts         # User module configuration
+│   │   ├── dto/                    # User DTOs with comprehensive validation
+│   │   ├── entities/               # TypeORM User entity with relationships
+│   │   ├── enums/                  # User roles enumerations
+│   │   ├── user.controller.ts      # RESTful user endpoints
+│   │   ├── user.service.ts         # User business logic + idempotency
+│   │   └── user.module.ts          # User module configuration
 │   │
 │   └── order/                  # 📦 Order Processing with Design Patterns
-│       ├── dto/                   # Data Transfer Objects with validation
-│       ├── entities/              # Order + OrderItem TypeORM entities
-│       ├── enums/                 # Order status and job type enumerations
+│       ├── dto/                    # Data Transfer Objects with validation
+│       ├── entities/               # Order + OrderItem TypeORM entities
+│       ├── enums/                  # Order status and job type enumerations
+│       ├── misc/                   # Job data types (OrderJobData)
 │       │
-│       ├── factories/             # 🏭 Factory Pattern Implementation
-│       │   ├── job-handler.factory.ts      # Dynamic job handler creation
-│       │   ├── status-action.factory.ts    # Status-specific action factory
-│       │   └── index.ts                   # Factory pattern exports
+│       ├── factories/              # 🏭 Factory Pattern Implementation
+│       │   ├── order-job-handler.factory.ts  # Dynamic job handler creation
+│       │   └── index.ts                      # Factory exports
 │       │
-│       ├── interfaces/            # Type definitions for job contracts
-│       │   ├── cancel-order-job.interfaces.ts
-│       │   ├── order-process-job.interfaces.ts
-│       │   └── status-update-job.interfaces.ts
+│       ├── processors/             # ⚙️ BullMQ job processor
+│       │   └── order.processor.ts
 │       │
-│       ├── strategies/            # 🎯 Strategy Pattern Implementation
-│       │   ├── job-processing.strategy.ts      # Base strategy interface
-│       │   ├── process-order.strategy.ts       # New order processing
-│       │   ├── status-update.strategy.ts       # Status transition logic
-│       │   ├── cancel-order.strategy.ts        # Cancellation workflows
-│       │   ├── status-actions.strategy.ts      # Status-specific actions
-│       │   └── index.ts                       # Strategy exports
+│       ├── strategies/             # 🎯 Strategy Pattern Implementation
+│       │   ├── base-order-job.strategy.ts    # Abstract base with event bus integration
+│       │   ├── process-order.strategy.ts     # Order validation, payment & inventory
+│       │   ├── ship-order.strategy.ts        # Shipping simulation → triggers delivery
+│       │   ├── deliver-order.strategy.ts     # Final delivery simulation
+│       │   ├── cancel-order.strategy.ts      # Cancellation workflows at any stage
+│       │   └── index.ts                      # Strategy exports
 │       │
-│       ├── order.controller.ts    # RESTful order management API
-│       ├── order.service.ts       # Order business logic + caching
-│       ├── order.processor.ts     # ⚙️ BullMQ job processor with patterns
-│       └── order.module.ts        # Order module configuration
+│       ├── order.controller.ts     # RESTful order management API
+│       ├── order.service.ts        # Order business logic + caching
+│       └── order.module.ts         # Order module configuration
 │
 ├── app.module.ts              # 📋 Main application module
-└── main.ts                   # 🚀 Application bootstrap with security
+└── main.ts                    # 🚀 Application bootstrap with security
 
 # 🚀 Development & Infrastructure
-scripts/                      # Automated development workflows
-├── setup.sh                    # Complete environment setup
+scripts/
+├── create-db.sh                # Fresh database creation with schema
+├── debug.sh                    # Debug setup (infra only — app runs via VS Code)
 ├── dev.sh                      # Development mode with hot reload
-├── debug.sh                    # Enhanced debugging setup
+├── diagnose-vscode.sh          # VS Code environment diagnostics
 ├── fix-db.sh                   # Database recovery automation
+├── init-db.sql                 # Database initialization SQL
 ├── reset.sh                    # Nuclear reset option
+├── setup.sh                    # Complete environment setup
 └── stop.sh                     # Graceful service shutdown
 
 # 📋 Documentation & Examples
@@ -801,10 +816,8 @@ root/
 ├── api-examples.http           # 📚 Comprehensive API testing scenarios
 ├── DEBUG.md                    # 🐞 Complete debugging guide
 ├── docker-compose.yml          # 🐳 Production-ready container setup
-└── tmp/
-    ├── DESIGN_PATTERNS.md      # 🎨 Architecture documentation
-    ├── MIGRATION-BULLMQ.md     # 🔄 Migration detailed guide
-    └── PACKAGE-UPDATES.md      # 📦 Dependency update history
+├── promtail-config.yml         # 📊 Promtail log collection configuration
+└── quick-start.sh              # ⚡ Quick environment bootstrap
 ```
 
 ### 🏆 **Architectural Highlights**
