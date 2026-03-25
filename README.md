@@ -1,6 +1,6 @@
 # OrderFlow
 
-**A production-ready API for intelligent order processing** built with NestJS, featuring advanced JWT authentication, event-driven architecture with Design Patterns (Factory & Strategy), PostgreSQL with TypeORM, Redis caching, and BullMQ queues for enterprise-grade asynchronous processing with sequential job chaining (Process → Ship → Deliver).
+**A production-ready API for intelligent order processing** built with NestJS, featuring advanced JWT authentication, event-driven architecture with Design Patterns (Factory & Strategy), PostgreSQL with TypeORM, Redis caching, BullMQ with separated Event Bus architecture for notifications and sequential job chaining (Process → Ship → Deliver).
 
 ## 🚀 Features
 
@@ -9,6 +9,7 @@
 - **Complete CRUD for Orders** with Order Items and advanced entity relationships
 - **Complete CRUD for Users** with enterprise-grade idempotency support
 - **Sequential Order Processing** - Automated job chaining (Process → Ship → Deliver) with BullMQ broker
+- **Separated Event Bus Architecture** - Dedicated event system for notifications with isolated processing
 - **Advanced pagination** and intelligent filtering for all endpoints
 - **Event-driven architecture** with sophisticated status management
 - **Design Patterns Implementation** - Factory and Strategy patterns for extensible job processing
@@ -30,6 +31,7 @@
 - **Intelligent Redis Caching** - Pattern-based invalidation, TTL optimization, and session management
 - **Advanced Asynchronous Processing** - BullMQ with Factory/Strategy patterns for job handling
 - **Sequential Job Chaining** - Automated order flow (Process → Shipping → Delivery) with BullMQ broker
+- **Separated Event Bus** - Dedicated notification system with isolated event processing queue
 - **Enterprise Queue Monitoring** - BullBoard dashboard with real-time metrics and job analytics
 - **Auto-generated API Documentation** - Enhanced Swagger/OpenAPI 3.0 with organized tags
 - **Production-grade Logging** - Structured logging with context tracking and job monitoring
@@ -67,9 +69,10 @@
 ### Queues & Background Jobs
 
 - **BullMQ (Latest)** - Advanced Redis-based queue system (migrated from Bull)
+- **Separated Queue Architecture** - Dedicated queues for order processing and event notifications
 - **BullBoard Dashboard** - Real-time queue monitoring and job management interface
 - **Design Patterns Integration** - Factory and Strategy patterns for job processing
-- **Job Processing Strategies** - ProcessOrderStrategy, StatusUpdateStrategy, CancelOrderStrategy
+- **Event Bus System** - Isolated event processing for notifications and user communications
 
 ### API & Documentation
 
@@ -87,8 +90,9 @@
 
 #### 🏭 **Factory Pattern Implementation**
 
-- **JobHandlerFactory** - Dynamic creation of job processing strategies
-- **StatusNotificationFactory** - Status-specific notification handler creation
+- **JobHandlerFactory** - Dynamic creation of order processing strategies
+- **StatusNotificationFactory** - Status-specific notification handler creation (deprecated in favor of Event Bus)
+- **Event Bus Factory** - Global event system for decoupled notifications
 - **Sequential Job Routing** - Intelligent routing through Process → Ship → Deliver chain
 - **Extensible Registration** - Easy addition of new job types without code modification
 - **Runtime Strategy Selection** - Intelligent handler selection based on job type
@@ -96,14 +100,14 @@
 #### 🎯 **Strategy Pattern Implementation**
 
 - **JobProcessingStrategy** - Base interface for all job processing strategies
-- **BaseJobStrategy** - Abstract foundation with common functionality and job chaining
-- **Sequential Processing Strategies:**
-  - `ProcessOrderStrategy` - Order validation, payment, inventory → triggers shipping
-  - `ShipOrderStrategy` - Shipping simulation → triggers delivery
-  - `DeliverOrderStrategy` - Final delivery simulation → completes order flow
-  - `CancelOrderStrategy` - Order cancellation workflows at any stage
-  - `NotificationStrategy` - Customer notifications at each stage
-- **Chained Job Architecture** - Each strategy automatically triggers the next step
+- **BaseOrderJobStrategy** - Abstract foundation with common functionality and event bus integration
+- **Sequential Order Processing Strategies:**
+  - `ProcessOrderStrategy` - Order validation, payment, inventory → triggers shipping + notification
+  - `ShipOrderStrategy` - Shipping simulation → triggers delivery + notification
+  - `DeliverOrderStrategy` - Final delivery simulation → completion + notification
+  - `CancelOrderStrategy` - Order cancellation workflows at any stage + notification
+- **Event-driven Notification Strategy** - Separate strategy in dedicated Events module for user notifications
+- **Chained Job Architecture** - Each strategy automatically triggers the next step and publishes events
 
 #### 📦 **Repository Pattern with TypeORM**
 
@@ -373,33 +377,40 @@ Powered by the latest BullMQ technology with comprehensive monitoring:
 ```
 [Order Created]
     ↓
-[PROCESS_ORDER] → Validate → Payment → Inventory Reserve
-    ↓ (auto-trigger)
-[SHIP_ORDER] → Shipping Simulation → Tracking Generation
-    ↓ (auto-trigger)
-[DELIVER_ORDER] → Delivery Simulation → Final Status
-    ↓
-[NOTIFICATION_ORDER] → Customer notification at each stage
+[PROCESS_ORDER] → Validate → Payment → Inventory Reserve → Publish Event
+    ↓ (auto-trigger)          ↓ (event bus)
+[SHIP_ORDER] → Shipping Simulation → Tracking Generation → Publish Event
+    ↓ (auto-trigger)          ↓ (event bus)
+[DELIVER_ORDER] → Delivery Simulation → Final Status → Publish Event
+    ↓                        ↓ (event bus)
+[Order Complete]     [NOTIFICATION_EVENT] → Customer notification
 ```
+
+**🔄 Dual-Queue Architecture:**
+- **Orders Queue** - Handles sequential order processing (process → ship → deliver → cancel)
+- **Events Queue** - Handles all user notifications and event-driven communications
 
 #### Design Pattern Integration
 - **Factory Pattern**: `JobHandlerFactory` dynamically creates appropriate handlers
 - **Strategy Pattern**: Modular, interchangeable job processing strategies with auto-chaining
+- **Event Bus Pattern**: Decoupled event publishing for notifications and cross-module communication
 - **Sequential Processing**: Each job automatically triggers the next stage
-- **Event-driven**: Loose coupling between job creation and processing
+- **Event-driven**: Loose coupling between job processing and notification through Event Bus
 - **Idempotency Protection**: Redis-based duplicate prevention for reliable processing
 - **Extensible**: Add new job types without modifying existing code
 
 #### Production-grade Queue Configuration
 
-**order-flow** queue with sequential job chaining:
+**orders** queue (focused on business logic):
 - ⚙️ `process-order` - Order validation, payment, inventory (triggers shipping)
 - 🚚 `ship-order` - Shipping simulation and tracking (triggers delivery)
 - 📦 `deliver-order` - Final delivery simulation (completes order)
-- 📧 `notification-order` - Customer notifications at each stage
 - ❌ `cancel-order` - Order cancellation at any stage
 
-#### Enterprise Job Features
+**events** queue (dedicated to notifications):
+- 📧 `NotifyUserJobData` - User notifications and communications
+- 🔔 Event-driven notifications triggered by order processing stages
+- 📱 Isolated processing for better performance and reliability
 - **Retry Policies**: Exponential backoff with 3 intelligent retry attempts
 - **Job Prioritization**: Critical operations get high priority processing
 - **Delayed Execution**: Schedule jobs for future processing
@@ -448,20 +459,24 @@ async login() { ... }
 
 ### Workers/Processors
 
-The application uses BullMQ queues for sequential order processing:
+The application uses BullMQ with separated queue architecture:
 
+**Order Processing (orders queue):**
 1. **process-order** - Order validation, payment processing, inventory reservation
 2. **ship-order** - Shipping simulation with tracking (auto-triggered after processing)
 3. **deliver-order** - Delivery simulation and order completion (auto-triggered after shipping)
-4. **notification-order** - Customer notifications sent at each stage transition
-5. **cancel-order** - Order cancellation handling at any stage
+4. **cancel-order** - Order cancellation handling at any stage
+
+**Event Processing (events queue):**
+5. **NotifyUserJobData** - Customer notifications triggered by order stage transitions
 
 **Sequential Chain Configuration:**
 - **Auto-Chaining**: Each job automatically triggers the next stage
-- **Idempotency Protection**: Redis-based duplicate prevention
+- **Event Publishing**: Order strategies publish events to the Event Bus
+- **Idempotency Protection**: Redis-based duplicate prevention across both queues
 - **Retry Policy**: 3 attempts with exponential backoff (3-second base)
 - **Job Cleanup**: Failed jobs removed after 24 hours
-- **Monitoring**: Complete chain visible in BullBoard dashboard with stage tracking
+- **Monitoring**: Both queues visible in BullBoard dashboard with complete workflow tracking
 
 ### Order Status Flow
 
@@ -562,6 +577,24 @@ The application uses BullMQ queues for sequential order processing:
 - ✅ **Real-time Monitoring** - Complete workflow visibility in BullBoard dashboard
 - ✅ **Cancellation Support** - Order cancellation possible at any stage
 - 📚 **Flow**: Order Created → Process (validate/payment) → Ship (tracking) → Deliver (complete)
+
+### 🚀 **Event Bus Architecture Implementation**
+- ✅ **Separated Notification System** - Dedicated Event Bus for user notifications with isolated processing
+- ✅ **Dual-Queue Design** - Orders queue for business logic, Events queue for notifications
+- ✅ **Decoupled Communications** - Event-driven architecture between order processing and notifications
+- ✅ **Improved Performance** - Isolated event processing prevents notification bottlenecks
+- ✅ **Enhanced Monitoring** - Separate queue visibility in BullBoard dashboard
+- ✅ **Global Event System** - @Global EventsModule accessible throughout the application
+- 📚 **Flow**: Order Processing → Event Publishing → Isolated Notification Processing
+
+### 🚀 **Event Bus Architecture Implementation**
+- ✅ **Separated Notification System** - Dedicated Event Bus for user notifications with isolated processing
+- ✅ **Dual-Queue Design** - Orders queue for business logic, Events queue for notifications
+- ✅ **Decoupled Communications** - Event-driven architecture between order processing and notifications
+- ✅ **Improved Performance** - Isolated event processing prevents notification bottlenecks
+- ✅ **Enhanced Monitoring** - Separate queue visibility in BullBoard dashboard
+- ✅ **Global Event System** - @Global EventsModule accessible throughout the application
+- 📚 **Flow**: Order Processing → Event Publishing → Isolated Notification Processing
 
 ## 🧪 Enterprise Testing Suite
 
@@ -701,6 +734,15 @@ src/
 │   ├── cache/                  # ⚡ Intelligent Cache Management
 │   │   ├── cache.service.ts       # Custom cache service with patterns
 │   │   └── cache.module.ts        # Redis cache configuration
+│   │
+│   ├── events/                 # 📧 Event-driven Notification System
+│   │   ├── constants/             # Event bus tokens and configuration
+│   │   ├── implementations/       # BullEventBus implementation
+│   │   ├── interfaces/            # EventBus interface definition
+│   │   ├── misc/                  # Event job data types (NotifyUserJobData)
+│   │   ├── processors/            # EventProcessor for notification handling
+│   │   ├── strategies/            # NotificationStrategy (moved from order module)
+│   │   └── events.module.ts       # @Global Events module configuration
 │   │
 │   ├── common/                 # 🔧 Shared Components
 │   │   ├── enums/                 # Global enumerations
@@ -886,6 +928,55 @@ USER_CACHE_TTL=3600
 - **Environment Flexibility** - Comprehensive configuration management
 - **Migration Support** - Type-safe database migrations with rollback capabilities
 
+### 🔗 **Event-Driven Architecture Benefits**
+
+- **Separation of Concerns** - Order processing and notifications are completely isolated
+- **Performance Optimization** - Notifications don't affect critical business logic processing
+- **Independent Scalability** - Each queue can scale based on its specific load patterns
+- **Enhanced Monitoring** - Complete visibility of both order workflow and event processing
+- **Cross-Module Communication** - Global Event Bus enables decoupled module interactions
+- **Fault Isolation** - Event processing failures don't impact order processing pipeline
+
+## 🔄 **Dual-Queue Architecture Overview**
+
+This project implements a sophisticated dual-queue architecture that separates business logic from communication concerns:
+
+### **📦 Orders Queue (Business Logic)**
+
+- **Purpose**: Handles sequential order processing workflow
+- **Jobs**: `process-order`, `ship-order`, `deliver-order`, `cancel-order`
+- **Flow**: Each job automatically triggers the next stage in the order lifecycle
+- **Database Updates**: Directly modifies order status and business entities
+- **Events**: Publishes events to the Event Bus after completing each stage
+
+### **📧 Events Queue (Notifications)**
+
+- **Purpose**: Handles all user notifications and communications
+- **Jobs**: `NotifyUserJobData` events triggered by order processing stages
+- **Processing**: Isolated from business logic for better performance
+- **Idempotency**: Redis-based duplicate prevention for reliable notifications
+- **Extensibility**: Can be used by any module for cross-cutting communications
+
+### **🔗 Event Bus Integration**
+
+```typescript
+// Example: Order strategy publishes event after processing
+await this.eventBus.publish(
+  new NotifyUserJobData(
+    userId,
+    `Your order ${orderId} has been processed successfully!`,
+  ),
+);
+```
+
+### **📊 Monitoring**
+
+Both queues are visible in BullBoard dashboard:
+
+- **Orders tab**: Monitor business logic progression
+- **Events tab**: Monitor notification delivery
+- **Complete traceability**: From order creation to customer notification
+
 ## 🚀 Deploy
 
 1. **Build the application:**
@@ -940,10 +1031,11 @@ To test the new sequential order processing flow:
      }'
    ```
 
-3. **Monitor the job chain in BullBoard:**
+3. **Monitor the dual-queue system in BullBoard:**
    - Visit: http://localhost:3000/admin/queues
    - Login: admin / admin123
-   - Watch jobs progress through: `PROCESS_ORDER` → `SHIP_ORDER` → `DELIVER_ORDER`
+   - **Orders Queue**: Watch jobs progress through `PROCESS_ORDER` → `SHIP_ORDER` → `DELIVER_ORDER`
+   - **Events Queue**: Monitor `NotifyUserJobData` events triggered by each order stage
 
 4. **Check order status progression:**
    ```bash
@@ -955,10 +1047,10 @@ To test the new sequential order processing flow:
 **Expected Flow:**
 
 - Order created → Status: `PENDING`
-- Job `PROCESS_ORDER` completes → Status: `PROCESSED`
-- Job `SHIP_ORDER` auto-triggers → Status: `SHIPPED`
-- Job `DELIVER_ORDER` auto-triggers → Status: `DELIVERED`
-- Notifications sent at each stage transition
+- Job `PROCESS_ORDER` completes → Status: `PROCESSED` + Event published
+- Job `SHIP_ORDER` auto-triggers → Status: `SHIPPED` + Event published
+- Job `DELIVER_ORDER` auto-triggers → Status: `DELIVERED` + Event published
+- `NotifyUserJobData` events processed independently for customer notifications
 
 ## 📄 License
 

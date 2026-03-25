@@ -1,8 +1,6 @@
-import { Injectable, NotFoundException, Inject, Logger } from '@nestjs/common';
+import { Injectable, NotFoundException, Logger, Inject } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Between } from 'typeorm';
-import { CACHE_MANAGER } from '@nestjs/cache-manager';
-import { Cache } from 'cache-manager';
+import { Repository } from 'typeorm';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import { Order } from './entities/order.entity';
@@ -13,8 +11,11 @@ import { OrderQueryDto } from './dto/order-query.dto';
 import { OrderResponseDto } from './dto/order-response.dto';
 import { OrderStatus } from './enums/order-status.enum';
 import { OrderJob } from './enums/order-job.enum';
-import { JobQueue } from '../common/enums/job-queue.enum';
 import { CacheService } from '../cache/cache.service';
+import { CancelOrderJobData, ProcessOrderJobData } from './misc/order-job-data';
+import { EVENT_BUS } from '../events/constants/event-bus.token';
+import { EventBus } from '../events/interfaces/event-bus.interface';
+import { NotifyUserJobData } from '../events/misc/events-job-data';
 
 @Injectable()
 export class OrderService {
@@ -30,8 +31,10 @@ export class OrderService {
     private readonly orderRepository: Repository<Order>,
     @InjectRepository(OrderItem)
     private readonly orderItemRepository: Repository<OrderItem>,
-    @InjectQueue(JobQueue.ORDER_FLOW)
+    @InjectQueue('orders')
     private readonly orderQueue: Queue,
+    @Inject(EVENT_BUS)
+    private readonly eventBus: EventBus,
 
     private readonly cacheService: CacheService,
   ) {}
@@ -95,15 +98,7 @@ export class OrderService {
     // Add job to processing queue
     await this.orderQueue.add(
       OrderJob.PROCESS_ORDER,
-      {
-        orderId: completeOrder.id,
-        userId: userId,
-        total: completeOrder.total,
-      },
-      {
-        attempts: 3,
-        backoff: { type: 'exponential', delay: 2000 },
-      },
+      new ProcessOrderJobData(userId, completeOrder.id, total),
     );
 
     // Clear related cache
@@ -243,16 +238,11 @@ export class OrderService {
 
     // Notify status change if status is updated
     if (updateOrderDto.status && updateOrderDto.status !== order.status) {
-      await this.orderQueue.add(
-        OrderJob.NOTIFICATION_ORDER,
-        {
-          orderId: id,
-          newStatus: updateOrderDto.status,
-        },
-        {
-          attempts: 3,
-          backoff: { type: 'exponential', delay: 2000 },
-        },
+      await this.eventBus.publish(
+        new NotifyUserJobData(
+          order.user.id,
+          `TO CUSTOMER: Your order with id ${order.id} status has been updated to ${updateOrderDto.status}`,
+        ),
       );
     }
 
@@ -271,14 +261,7 @@ export class OrderService {
     // Add cancellation job to queue
     await this.orderQueue.add(
       OrderJob.CANCEL_ORDER,
-      {
-        orderId: id,
-        userId: order.user.id,
-      },
-      {
-        attempts: 3,
-        backoff: { type: 'exponential', delay: 2000 },
-      },
+      new CancelOrderJobData(id, order.user.id),
     );
 
     await this.orderRepository.remove(order);

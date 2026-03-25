@@ -15,12 +15,12 @@ import { CacheModule } from './modules/cache/cache.module';
 import { BullBoardModule } from '@bull-board/nestjs';
 import { ExpressAdapter } from '@bull-board/express';
 import { BullMQAdapter } from '@bull-board/api/bullMQAdapter';
-import { JobQueue } from './modules/common/enums/job-queue.enum';
 import { AdminController } from './controllers/admin.controller';
 import { APP_GUARD } from '@nestjs/core';
 import { JwtAuthGuard } from './modules/auth/guards/jwt.guard';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { RolesGuard } from './modules/auth/guards/roles.guard';
+import { EventsModule } from './modules/events/events.module';
 
 @Module({
   imports: [
@@ -55,10 +55,16 @@ import { RolesGuard } from './modules/auth/guards/roles.guard';
     }),
 
     // Bull Board (for monitoring queues)
-    BullBoardModule.forFeature({
-      name: JobQueue.ORDER_FLOW,
-      adapter: BullMQAdapter,
-    }),
+    BullBoardModule.forFeature(
+      {
+        name: 'orders',
+        adapter: BullMQAdapter,
+      },
+      {
+        name: 'events',
+        adapter: BullMQAdapter,
+      },
+    ),
     BullBoardModule.forRoot({
       route: '/admin/queues', // URL for Bull Board dashboard
       adapter: ExpressAdapter,
@@ -69,6 +75,7 @@ import { RolesGuard } from './modules/auth/guards/roles.guard';
 
     // Feature modules
     OrderModule,
+    EventsModule,
     UserModule,
   ],
   controllers: [AdminController],

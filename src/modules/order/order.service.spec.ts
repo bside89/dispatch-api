@@ -6,7 +6,6 @@ import { OrderService } from './order.service';
 import { Order } from './entities/order.entity';
 import { OrderItem } from './entities/order-item.entity';
 import { OrderStatus } from './enums/order-status.enum';
-import { JobQueue } from '../common/enums/job-queue.enum';
 import { CacheService } from '../cache/cache.service';
 
 describe('OrderService', () => {
@@ -49,7 +48,7 @@ describe('OrderService', () => {
           },
         },
         {
-          provide: getQueueToken(JobQueue.ORDER_FLOW),
+          provide: getQueueToken('orders'),
           useValue: {
             add: jest.fn(),
           },
@@ -71,7 +70,7 @@ describe('OrderService', () => {
     orderItemRepository = module.get(getRepositoryToken(OrderItem));
     cacheManager = module.get(CACHE_MANAGER);
     cacheService = module.get<CacheService>(CacheService);
-    orderQueue = module.get(getQueueToken(JobQueue.ORDER_FLOW));
+    orderQueue = module.get(getQueueToken('orders'));
   });
 
   afterEach(() => {

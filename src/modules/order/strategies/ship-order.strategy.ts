@@ -1,14 +1,16 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Job } from 'bullmq';
 import { OrderStatus } from '../enums/order-status.enum';
-import { ShipOrderJob } from '../interfaces/ship-order-job.interface';
-import { BaseJobStrategy } from './job-processing.strategy';
+import { BaseOrderJobStrategy } from './base-order-job.strategy';
 import { OrderJob } from '../enums/order-job.enum';
+import { DeliverOrderJobData, ShipOrderJobData } from '../misc/order-job-data';
+import { delay } from '../../common/helpers/helpers';
+import { NotifyUserJobData } from '../../events/misc/events-job-data';
 
 @Injectable()
-export class ShipOrderStrategy extends BaseJobStrategy<ShipOrderJob> {
-  async execute(job: Job<ShipOrderJob>, logger: Logger): Promise<void> {
-    const { orderId } = job.data;
+export class ShipOrderStrategy extends BaseOrderJobStrategy<ShipOrderJobData> {
+  async execute(job: Job<ShipOrderJobData>, logger: Logger): Promise<void> {
+    const { userId, orderId } = job.data;
 
     // Idempotency check
     const key = `idempotency:order:ship:${orderId}`;
@@ -29,17 +31,18 @@ export class ShipOrderStrategy extends BaseJobStrategy<ShipOrderJob> {
         status: OrderStatus.SHIPPED,
       });
 
-      // Send notification to the queue
-      await this.notifyCustomer(OrderStatus.SHIPPED, orderId);
+      // Send notification to the event bus
+      await this.eventBus.publish(
+        new NotifyUserJobData(
+          userId,
+          `TO CUSTOMER: Your order with id ${orderId} has been shipped successfully!`,
+        ),
+      );
 
       // Trigger delivery job after shipping
       await this.orderQueue.add(
         OrderJob.DELIVER_ORDER,
-        { orderId },
-        {
-          attempts: 3,
-          backoff: { type: 'exponential', delay: 2000 },
-        },
+        new DeliverOrderJobData(userId, orderId),
       );
     } catch (error) {
       await this.removeKey(key);
@@ -48,7 +51,7 @@ export class ShipOrderStrategy extends BaseJobStrategy<ShipOrderJob> {
   }
 
   private async simulateShipping(logger: Logger) {
-    await this.delay(2000);
-    logger.debug('Shipping simulated');
+    await delay(2000);
+    logger.debug('Shipping OK');
   }
 }

@@ -1,4 +1,4 @@
-import { Logger } from '@nestjs/common';
+import { Inject, Logger } from '@nestjs/common';
 import { Job, Queue } from 'bullmq';
 import { OrderStatus } from '../enums/order-status.enum';
 import { CacheService } from '../../cache/cache.service';
@@ -6,28 +6,20 @@ import { Order } from '../entities/order.entity';
 import { Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
 import { InjectQueue } from '@nestjs/bullmq';
-import { JobQueue } from '../../common/enums/job-queue.enum';
-import { OrderJob } from '../enums/order-job.enum';
+import { EventBus } from '../../events/interfaces/event-bus.interface';
+import { EVENT_BUS } from '../../events/constants/event-bus.token';
 
-export interface JobProcessingStrategy<T = any> {
-  execute(job: Job<T>, logger: Logger): Promise<void>;
-}
-
-export abstract class BaseJobStrategy<
-  T = any,
-> implements JobProcessingStrategy<T> {
+export abstract class BaseOrderJobStrategy<T = any> {
   constructor(
-    @InjectQueue(JobQueue.ORDER_FLOW)
+    @InjectQueue('orders')
     protected readonly orderQueue: Queue,
     @InjectRepository(Order)
     protected readonly orderRepository: Repository<Order>,
+    @Inject(EVENT_BUS)
+    protected readonly eventBus: EventBus,
 
     protected readonly cacheService: CacheService,
   ) {}
-
-  protected async delay(ms: number): Promise<void> {
-    return new Promise((resolve) => setTimeout(resolve, ms));
-  }
 
   protected async isAlreadyInStatus(
     orderId: string,
@@ -59,17 +51,6 @@ export abstract class BaseJobStrategy<
 
   protected async removeKey(key: string): Promise<void> {
     await this.cacheService.delete(key);
-  }
-
-  protected async notifyCustomer(status: OrderStatus, orderId: string) {
-    await this.orderQueue.add(
-      OrderJob.NOTIFICATION_ORDER,
-      { orderId, newStatus: status },
-      {
-        attempts: 3,
-        backoff: { type: 'exponential', delay: 2000 },
-      },
-    );
   }
 
   abstract execute(job: Job<T>, logger: Logger): Promise<void>;

@@ -1,14 +1,16 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Job } from 'bullmq';
-import { BaseJobStrategy } from './job-processing.strategy';
-import { ProcessOrderJob } from '../interfaces/process-order-job.interfaces';
+import { BaseOrderJobStrategy } from './base-order-job.strategy';
 import { OrderStatus } from '../enums/order-status.enum';
 import { OrderJob } from '../enums/order-job.enum';
+import { ProcessOrderJobData, ShipOrderJobData } from '../misc/order-job-data';
+import { NotifyUserJobData } from '../../events/misc/events-job-data';
+import { delay } from '../../common/helpers/helpers';
 
 @Injectable()
-export class ProcessOrderStrategy extends BaseJobStrategy<ProcessOrderJob> {
-  async execute(job: Job<ProcessOrderJob>, logger: Logger): Promise<void> {
-    const { orderId } = job.data;
+export class ProcessOrderStrategy extends BaseOrderJobStrategy<ProcessOrderJobData> {
+  async execute(job: Job<ProcessOrderJobData>, logger: Logger): Promise<void> {
+    const { userId, orderId } = job.data;
 
     // Idempotency check
     const key = `idempotency:order:process:${orderId}`;
@@ -31,17 +33,18 @@ export class ProcessOrderStrategy extends BaseJobStrategy<ProcessOrderJob> {
         status: OrderStatus.PROCESSED,
       });
 
-      // Send notification to the queue
-      await this.notifyCustomer(OrderStatus.PROCESSED, orderId);
+      // Send notification to the event bus
+      await this.eventBus.publish(
+        new NotifyUserJobData(
+          userId,
+          `TO CUSTOMER: Your order with id ${orderId} has been processed successfully!`,
+        ),
+      );
 
       // Trigger shipping job after processing
       await this.orderQueue.add(
         OrderJob.SHIP_ORDER,
-        { orderId },
-        {
-          attempts: 3,
-          backoff: { type: 'exponential', delay: 2000 },
-        },
+        new ShipOrderJobData(userId, orderId),
       );
 
       logger.log(`Order ${orderId} moved to PROCESSING`);
@@ -51,19 +54,19 @@ export class ProcessOrderStrategy extends BaseJobStrategy<ProcessOrderJob> {
     }
   }
 
-  private async validateOrder(data: ProcessOrderJob, logger: Logger) {
-    await this.delay(1000);
+  private async validateOrder(data: ProcessOrderJobData, logger: Logger) {
+    await delay(1000);
     if (data.total <= 0) throw new Error('Invalid order total');
     logger.debug(`Validation OK`);
   }
 
-  private async processPayment(data: ProcessOrderJob, logger: Logger) {
-    await this.delay(2000);
+  private async processPayment(data: ProcessOrderJobData, logger: Logger) {
+    await delay(2000);
     logger.debug(`Payment OK`);
   }
 
-  private async reserveInventory(data: ProcessOrderJob, logger: Logger) {
-    await this.delay(1500);
+  private async reserveInventory(data: ProcessOrderJobData, logger: Logger) {
+    await delay(1500);
     logger.debug(`Inventory OK`);
   }
 }

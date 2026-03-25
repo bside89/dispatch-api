@@ -1,13 +1,13 @@
 import { Injectable } from '@nestjs/common';
 import { ProcessOrderStrategy } from '../strategies/process-order.strategy';
-import { NotificationStrategy } from '../strategies/notification.strategy';
+import { NotificationStrategy } from '../../events/strategies/notification.strategy';
 import { CancelOrderStrategy } from '../strategies/cancel-order.strategy';
 import { OrderJob } from '../enums/order-job.enum';
 import { ShipOrderStrategy } from '../strategies/ship-order.strategy';
 import { DeliverOrderStrategy } from '../strategies/deliver-order.strategy';
 
 @Injectable()
-export class JobHandlerFactory {
+export class OrderJobHandlerFactory {
   constructor(
     private readonly processOrder: ProcessOrderStrategy,
     private readonly shipOrder: ShipOrderStrategy,

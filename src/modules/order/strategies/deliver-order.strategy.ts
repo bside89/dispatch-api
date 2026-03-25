@@ -1,13 +1,15 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Job } from 'bullmq';
 import { OrderStatus } from '../enums/order-status.enum';
-import { DeliverOrderJob } from '../interfaces/deliver-order-job.interface';
-import { BaseJobStrategy } from './job-processing.strategy';
+import { BaseOrderJobStrategy } from './base-order-job.strategy';
+import { DeliverOrderJobData } from '../misc/order-job-data';
+import { delay } from '../../common/helpers/helpers';
+import { NotifyUserJobData } from '../../events/misc/events-job-data';
 
 @Injectable()
-export class DeliverOrderStrategy extends BaseJobStrategy<DeliverOrderJob> {
-  async execute(job: Job<DeliverOrderJob>, logger: Logger): Promise<void> {
-    const { orderId } = job.data;
+export class DeliverOrderStrategy extends BaseOrderJobStrategy<DeliverOrderJobData> {
+  async execute(job: Job<DeliverOrderJobData>, logger: Logger): Promise<void> {
+    const { userId, orderId } = job.data;
 
     // Idempotency check
     const key = `idempotency:order:deliver:${orderId}`;
@@ -28,8 +30,13 @@ export class DeliverOrderStrategy extends BaseJobStrategy<DeliverOrderJob> {
         status: OrderStatus.DELIVERED,
       });
 
-      // Send notification to the queue
-      await this.notifyCustomer(OrderStatus.DELIVERED, orderId);
+      // Send notification to the event bus
+      await this.eventBus.publish(
+        new NotifyUserJobData(
+          userId,
+          `TO CUSTOMER: Your order with id ${orderId} has been delivered successfully!`,
+        ),
+      );
 
       logger.log(`Order ${orderId} delivered`);
     } catch (error) {
@@ -39,7 +46,7 @@ export class DeliverOrderStrategy extends BaseJobStrategy<DeliverOrderJob> {
   }
 
   private async simulateDelivery(logger: Logger) {
-    await this.delay(3000);
-    logger.debug('Delivery simulated');
+    await delay(3000);
+    logger.debug('Delivery OK');
   }
 }

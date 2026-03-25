@@ -1,17 +1,16 @@
 import { Processor, WorkerHost } from '@nestjs/bullmq';
 import { Logger } from '@nestjs/common';
 import { Job } from 'bullmq';
-import { JobHandlerFactory } from './factories/job-handler.factory';
-import { JobQueue } from '../common/enums/job-queue.enum';
+import { OrderJobHandlerFactory } from '../factories/order-job-handler.factory';
 
-import { CacheService } from '../cache/cache.service';
+import { CacheService } from '../../cache/cache.service';
 
-@Processor(JobQueue.ORDER_FLOW)
+@Processor('orders')
 export class OrderProcessor extends WorkerHost {
   private readonly logger = new Logger(OrderProcessor.name);
 
   constructor(
-    private readonly factory: JobHandlerFactory,
+    private readonly factory: OrderJobHandlerFactory,
     private readonly cacheService: CacheService,
   ) {
     super();
