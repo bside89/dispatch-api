@@ -1,6 +1,6 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
-import { ValidationPipe } from '@nestjs/common';
+import { ValidationPipe, VersioningType } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { ConfigService } from '@nestjs/config';
 import { BasicAuthMiddleware } from './middleware/basic-auth.middleware';
@@ -20,6 +20,10 @@ async function bootstrap() {
 
   // Use the Pino logger from the app context BEFORE any other configuration
   app.useLogger(app.get(Logger));
+
+  // Global prefix and URI versioning → all routes available at /api/v{version}/...
+  app.setGlobalPrefix('api');
+  app.enableVersioning({ type: VersioningType.URI, defaultVersion: '1' });
 
   // Security middleware
   app.use(helmet());
@@ -61,7 +65,12 @@ async function bootstrap() {
   // Apply the middleware manually for the admin routes
   // This ensures it runs before any library routes (like BullBoard)
   const authMiddleware = new BasicAuthMiddleware(configService);
+  // Protect BullBoard (Express-mounted, unaffected by global prefix)
   app.use('/admin/*path', (req, res, next) =>
+    authMiddleware.use(req, res, next),
+  );
+  // Protect versioned AdminController routes
+  app.use('/api/v1/admin/*path', (req, res, next) =>
     authMiddleware.use(req, res, next),
   );
 
