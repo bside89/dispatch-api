@@ -24,13 +24,7 @@ export const loggerConfig = (configService: ConfigService) => {
       },
 
       transport: isProduction
-        ? {
-            target: 'pino-loki',
-            options: {
-              host: 'http://localhost:3100',
-              labels: { app: 'order-flow-api' },
-            },
-          }
+        ? undefined
         : {
             target: 'pino-pretty',
             options: {
