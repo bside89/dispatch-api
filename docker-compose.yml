@@ -77,50 +77,11 @@ services:
         condition: service_started
     ports:
       - '3000:3000'
-    environment:
-      # Database
-      DB_HOST: postgres
-      DB_PORT: 5432
-      DB_USERNAME: postgres
-      DB_PASSWORD: postgres
-      DB_DATABASE: order_processing
-      DB_LOGGING: 'false'
-      
-      # Redis
-      REDIS_HOST: redis
-      REDIS_PORT: 6379
-      REDIS_PASSWORD: ''
-      REDIS_URL: redis://redis:6379
-      
-      # Application
-      APP_PORT: 3000
-      APP_ENV: production
-      NODE_ENV: production
-      
-      # Cache
-      CACHE_TTL: 300
-      
-      # Admin (Basic Auth)
-      ADMIN_USERNAME: admin
-      ADMIN_PASSWORD: admin123
-      
-      # JWT Settings
-      JWT_ACCESS_SECRET: 079289fa8f21332c670c70773153c5d5e7705aeff3561eb2f5123cc4c8e4aec7
-      JWT_REFRESH_SECRET: f8c2e91d47ba6f023c4d7e8a1e9b2f46c3e5d9a7b8f1c4e6d8a2b5f7c9e1a3d6
-      JWT_ACCESS_EXPIRES_IN: 15m
-      JWT_REFRESH_EXPIRES_IN: 7d
-      
-      # API
-      API_VERSION: 1.0.0
-      API_TITLE: Order Flow
-      API_DESCRIPTION: API for processing orders with PostgreSQL, Redis and BullMQ. Built with NestJS.
-      
-      # Debug Settings
-      LOG_LEVEL: info
-      TYPEORM_LOGGING: 'false'
-      NEST_DEBUG: 'false'
+    env_file:
+      - .env.docker
     volumes:
       - ./logs:/app/logs
+      - ./.env.docker:/app/.env:ro
     networks:
       - order-processing-network
     healthcheck:
