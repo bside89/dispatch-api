@@ -1,4 +1,4 @@
-import { Body, Controller, Post, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Logger, Post, Req, UseGuards } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { ApiSecurity, ApiTags } from '@nestjs/swagger';
@@ -11,6 +11,8 @@ import { JwtRefreshAuthGuard } from './guards/jwt-refresh.guard';
 @ApiTags('auth')
 @ApiSecurity('bearer')
 export class AuthController {
+  private readonly logger: Logger = new Logger(AuthController.name);
+
   constructor(private readonly authService: AuthService) {}
 
   @Post('login')
@@ -29,5 +31,16 @@ export class AuthController {
   @Post('logout')
   logout(@Req() req) {
     return this.authService.logout(req.user);
+  }
+
+  @Post('test')
+  @Public()
+  test() {
+    this.logger.verbose({ foo: 'bar' }, 'baz %s', 'qux');
+    this.logger.debug('foo %s %o', 'bar', { baz: 'qux' });
+    this.logger.log('foo');
+    this.logger.warn('foo %s', 'bar');
+    this.logger.error('foo %s', 'bar');
+    return { message: 'This is a test route' };
   }
 }

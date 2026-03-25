@@ -32,9 +32,31 @@ services:
     networks:
       - order-processing-network
 
+  loki:
+    image: grafana/loki:2.9.0
+    ports:
+      - '3100:3100'
+    volumes:
+      - loki_data:/loki
+    networks:
+      - order-processing-network
+
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - '3001:3000'
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    volumes:
+      - grafana_data:/var/lib/grafana
+    networks:
+      - order-processing-network
+
 volumes:
   postgres_data:
   redis_data:
+  loki_data:
+  grafana_data:
 
 networks:
   order-processing-network:

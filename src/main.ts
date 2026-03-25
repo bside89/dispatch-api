@@ -5,6 +5,7 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { ConfigService } from '@nestjs/config';
 import { BasicAuthMiddleware } from './middleware/basic-auth.middleware';
 import helmet from 'helmet';
+import { Logger } from 'nestjs-pino';
 
 // Fix for crypto module issue in TypeORM
 if (typeof (global as any).crypto === 'undefined') {
@@ -12,8 +13,13 @@ if (typeof (global as any).crypto === 'undefined') {
 }
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule, {
+    bufferLogs: true,
+  });
   const configService = app.get(ConfigService);
+
+  // Use the Pino logger from the app context BEFORE any other configuration
+  app.useLogger(app.get(Logger));
 
   // Security middleware
   app.use(helmet());
@@ -61,6 +67,21 @@ async function bootstrap() {
 
   const port = configService.get('APP_PORT') || 3000;
   await app.listen(port);
+
+  const logger = app.get(Logger);
+
+  logger.log(
+    `🚀 Application is running on: http://localhost:${port}`,
+    'Bootstrap',
+  );
+  logger.log(
+    `📚 Swagger documentation available at: http://localhost:${port}/api/docs`,
+    'Bootstrap',
+  );
+  logger.log(
+    `🔐 Bull Board dashboard available at: http://localhost:${port}/admin/queues (requires authentication)`,
+    'Bootstrap',
+  );
 
   console.log(`🚀 Application is running on: http://localhost:${port}`);
   console.log(
