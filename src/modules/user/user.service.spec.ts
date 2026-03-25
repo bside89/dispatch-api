@@ -13,6 +13,7 @@ import { UpdateUserDto } from './dto/update-user.dto';
 import { UpdateLoginDto } from './dto/update-login.dto';
 import { UserQueryDto } from './dto/user-query.dto';
 import { CacheService } from '../cache/cache.service';
+import { AuthService } from '../auth/auth.service';
 
 describe('UserService', () => {
   let service: UserService;
@@ -62,6 +63,13 @@ describe('UserService', () => {
           provide: CacheService,
           useValue: mockCacheService,
         },
+        {
+          provide: AuthService,
+          useValue: {
+            hashPasswordOrToken: jest.fn().mockImplementation((v) => Promise.resolve(`hashed_${v}`)),
+            verifyPasswordOrToken: jest.fn().mockResolvedValue(true),
+          },
+        },
       ],
     }).compile();
 
@@ -97,10 +105,11 @@ describe('UserService', () => {
       expect(userRepository.findOne).toHaveBeenCalledWith({
         where: { email: createUserDto.email },
       });
+      // Password is hashed by AuthService before being passed to repository.create
       expect(userRepository.create).toHaveBeenCalledWith({
         name: createUserDto.name,
         email: createUserDto.email,
-        password: createUserDto.password,
+        password: expect.stringContaining('hashed_'),
       });
       expect(userRepository.save).toHaveBeenCalledWith(mockUser);
       expect(cacheService.set).toHaveBeenCalledWith(

@@ -7,6 +7,7 @@ import { Order } from './entities/order.entity';
 import { OrderItem } from './entities/order-item.entity';
 import { OrderStatus } from './enums/order-status.enum';
 import { CacheService } from '../cache/cache.service';
+import { EVENT_BUS } from '../events/constants/event-bus.token';
 
 describe('OrderService', () => {
   let service: OrderService;
@@ -61,6 +62,10 @@ describe('OrderService', () => {
             delete: jest.fn(),
             deletePattern: jest.fn(),
           },
+        },
+        {
+          provide: EVENT_BUS,
+          useValue: { publish: jest.fn() },
         },
       ],
     }).compile();
@@ -135,7 +140,8 @@ describe('OrderService', () => {
       expect(orderRepository.create).toHaveBeenCalled();
       expect(orderRepository.save).toHaveBeenCalled();
       expect(orderItemRepository.save).toHaveBeenCalled();
-      expect(orderQueue.add).toHaveBeenCalledWith('process-order', {
+      // Queue job name is the OrderJob enum value, not a kebab-case string
+      expect(orderQueue.add).toHaveBeenCalledWith('PROCESS_ORDER', {
         orderId: mockOrder.id,
         userId: mockOrder.userId,
         total: mockOrder.total,
