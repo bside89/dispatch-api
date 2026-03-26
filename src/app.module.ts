@@ -16,6 +16,7 @@ import { BullBoardModule } from '@bull-board/nestjs';
 import { ExpressAdapter } from '@bull-board/express';
 import { BullMQAdapter } from '@bull-board/api/bullMQAdapter';
 import { AdminController } from './controllers/admin.controller';
+import { AppController } from './app.controller';
 import { APP_GUARD } from '@nestjs/core';
 import { JwtAuthGuard } from './modules/auth/guards/jwt.guard';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
@@ -65,6 +66,11 @@ import { LoggerModule } from 'nestjs-pino';
     }),
 
     // Bull Board (for monitoring queues)
+    // forRoot MUST come before forFeature so BULL_BOARD_TOKEN is registered first
+    BullBoardModule.forRoot({
+      route: '/admin/queues',
+      adapter: ExpressAdapter,
+    }),
     BullBoardModule.forFeature(
       {
         name: 'orders',
@@ -75,10 +81,6 @@ import { LoggerModule } from 'nestjs-pino';
         adapter: BullMQAdapter,
       },
     ),
-    BullBoardModule.forRoot({
-      route: '/admin/queues', // URL for Bull Board dashboard
-      adapter: ExpressAdapter,
-    }),
 
     // Cache (Redis)
     CacheModule,
@@ -89,7 +91,7 @@ import { LoggerModule } from 'nestjs-pino';
     EventsModule,
     UserModule,
   ],
-  controllers: [AdminController],
+  controllers: [AppController, AdminController],
   providers: [
     // Global JWT Auth Guard
     {

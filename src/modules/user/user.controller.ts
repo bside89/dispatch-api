@@ -13,6 +13,7 @@ import {
   HttpStatus,
   BadRequestException,
   Logger,
+  UseGuards,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -36,8 +37,10 @@ import { UpdateLoginDto } from './dto/update-login.dto';
 import { UserQueryDto } from './dto/user-query.dto';
 import { UserResponseDto } from './dto/user-response.dto';
 import { Public } from '../auth/decorators/public.decorator';
+import { Roles } from '../auth/decorators/roles.decorator';
+import { UserRole } from './enums/user-role.enum';
 
-@Controller('users')
+@Controller({ path: 'v1/users', version: '1' })
 @ApiTags('users')
 @ApiSecurity('bearer')
 export class UserController {
@@ -233,6 +236,7 @@ export class UserController {
   }
 
   @Delete(':id')
+  @Roles(UserRole.ADMIN) // Only allow users with the ADMIN role to delete users
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({
     summary: 'Delete user',

@@ -18,7 +18,6 @@ import {
 import {
   ApiTags,
   ApiOperation,
-  ApiResponse,
   ApiParam,
   ApiQuery,
   ApiBody,
@@ -36,8 +35,10 @@ import { OrderQueryDto } from './dto/order-query.dto';
 import { OrderResponseDto } from './dto/order-response.dto';
 import { Order } from './entities/order.entity';
 import { OrderStatus } from './enums/order-status.enum';
+import { UserRole } from '../user/enums/user-role.enum';
+import { Roles } from '../auth/decorators/roles.decorator';
 
-@Controller('orders')
+@Controller({ path: 'v1/orders', version: '1' })
 @ApiTags('orders')
 @ApiSecurity('bearer')
 export class OrderController {
@@ -251,6 +252,7 @@ export class OrderController {
   }
 
   @Delete(':id')
+  @Roles(UserRole.ADMIN) // Only allow users with the ADMIN role to delete orders
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Delete an order',

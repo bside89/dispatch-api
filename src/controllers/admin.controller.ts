@@ -1,7 +1,7 @@
-import { Controller, Get } from '@nestjs/common';
+import { Controller, Get, VERSION_NEUTRAL } from '@nestjs/common';
 import { ApiSecurity, ApiTags } from '@nestjs/swagger';
 
-@Controller('admin')
+@Controller({ path: 'admin', version: VERSION_NEUTRAL })
 @ApiTags('admin')
 @ApiSecurity('bearer')
 export class AdminController {

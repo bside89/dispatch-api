@@ -5,7 +5,7 @@ import { ApiSecurity, ApiTags } from '@nestjs/swagger';
 import { Public } from './decorators/public.decorator';
 import { JwtRefreshAuthGuard } from './guards/jwt-refresh.guard';
 
-@Controller('auth')
+@Controller({ path: 'v1/auth', version: '1' })
 @ApiTags('auth')
 @ApiSecurity('bearer')
 export class AuthController {

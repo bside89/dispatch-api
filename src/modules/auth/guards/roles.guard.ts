@@ -19,7 +19,7 @@ export class RolesGuard implements CanActivate {
     }
 
     // Search for required roles in the route's metadata
-    const requiredRoles = this.reflector.getAllAndOverride<UserRole[]>(
+    const requiredRoles = this.reflector.getAllAndOverride<string[]>(
       'roles',
       [context.getHandler(), context.getClass()],
     );

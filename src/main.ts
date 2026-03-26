@@ -21,12 +21,20 @@ async function bootstrap() {
   // Use the Pino logger from the app context BEFORE any other configuration
   app.useLogger(app.get(Logger));
 
-  // Global prefix and URI versioning → all routes available at /api/v{version}/...
-  app.setGlobalPrefix('api');
-  app.enableVersioning({ type: VersioningType.URI, defaultVersion: '1' });
-
-  // Security middleware
-  app.use(helmet());
+  // Security middleware — disable CSP for Bull Board (it uses inline scripts/styles)
+  app.use('/admin/queues', helmet({ contentSecurityPolicy: false }));
+  app.use(
+    helmet({
+      contentSecurityPolicy: {
+        directives: {
+          defaultSrc: ["'self'"],
+          scriptSrc: ["'self'"],
+          styleSrc: ["'self'", "'unsafe-inline'"],
+          imgSrc: ["'self'", 'data:'],
+        },
+      },
+    }),
+  );
 
   // Global validation pipe
   app.useGlobalPipes(
@@ -52,6 +60,7 @@ async function bootstrap() {
         'API for processing orders with PostgreSQL, Redis and BullMQ. Built with NestJS.',
     )
     .setVersion(configService.get('API_VERSION') || '1.0.0')
+    .addTag('default', 'App default endpoints')
     .addTag('auth', 'Authentication endpoints')
     .addTag('users', 'User management endpoints')
     .addTag('orders', 'Order management endpoints')
@@ -63,18 +72,18 @@ async function bootstrap() {
   SwaggerModule.setup('api/docs', app, document);
 
   // Apply the middleware manually for the admin routes
-  // This ensures it runs before any library routes (like BullBoard)
   const authMiddleware = new BasicAuthMiddleware(configService);
-  // Protect BullBoard (Express-mounted, unaffected by global prefix)
-  app.use('/admin/*path', (req, res, next) =>
+
+  // Protect versioned AdminController routes and Bull Board
+  app.use('/api/v1/admin', (req, res, next) =>
     authMiddleware.use(req, res, next),
   );
-  // Protect versioned AdminController routes
-  app.use('/api/v1/admin/*path', (req, res, next) =>
+  app.use('/admin/queues', (req, res, next) =>
     authMiddleware.use(req, res, next),
   );
 
   const port = configService.get('APP_PORT') || 3000;
+  const grafanaPort = configService.get('GRAFANA_PORT') || 3001;
   await app.listen(port);
 
   const logger = app.get(Logger);
@@ -91,6 +100,10 @@ async function bootstrap() {
     `🔐 Bull Board dashboard available at: http://localhost:${port}/admin/queues (requires authentication)`,
     'Bootstrap',
   );
+  logger.log(
+    `📊 Grafana dashboard available at: http://localhost:${grafanaPort} (requires authentication)`,
+    'Bootstrap',
+  );
 
   console.log(`🚀 Application is running on: http://localhost:${port}`);
   console.log(
@@ -98,6 +111,9 @@ async function bootstrap() {
   );
   console.log(
     `🔐 Bull Board dashboard available at: http://localhost:${port}/admin/queues (requires authentication)`,
+  );
+  console.log(
+    `📊 Grafana dashboard available at: http://localhost:${grafanaPort} (requires authentication)`,
   );
 }
 
