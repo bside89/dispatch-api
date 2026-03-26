@@ -33,6 +33,7 @@
     "create-db": "chmod +x scripts/create-db.sh && scripts/create-db.sh",
     "docker:up": "docker-compose up -d",
     "docker:down": "docker-compose down",
+    "docker:build": "docker-compose build --no-cache",
     "docker:logs": "docker-compose logs -f",
     "docker:status": "docker-compose ps"
   },
