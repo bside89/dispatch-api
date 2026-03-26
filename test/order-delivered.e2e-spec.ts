@@ -5,18 +5,17 @@
  * so it can run in CI without external services.
  *
  * Flow:
- *   1. POST /api/v1/users  → create a test user
- *   2. POST /api/v1/auth/login → obtain JWT access token
- *   3. POST /api/v1/orders → create an order (status: PENDING, PROCESS_ORDER job enqueued)
+ *   1. POST /v1/users  → create a test user
+ *   2. POST /v1/auth/login → obtain JWT access token
+ *   3. POST /v1/orders → create an order (status: PENDING, PROCESS_ORDER job enqueued)
  *   4. Drive the strategy chain manually: PROCESS → SHIP → DELIVER
- *   5. GET  /api/v1/orders/:id → assert final status is DELIVERED
+ *   5. GET  /v1/orders/:id → assert final status is DELIVERED
  */
 
 import { Test, TestingModule } from '@nestjs/testing';
 import {
   INestApplication,
   ValidationPipe,
-  VersioningType,
 } from '@nestjs/common';
 import * as request from 'supertest';
 import { getRepositoryToken } from '@nestjs/typeorm';
@@ -32,11 +31,6 @@ import { ProcessOrderStrategy } from '../src/modules/order/strategies/process-or
 import { ShipOrderStrategy } from '../src/modules/order/strategies/ship-order.strategy';
 import { DeliverOrderStrategy } from '../src/modules/order/strategies/deliver-order.strategy';
 import { CacheService } from '../src/modules/cache/cache.service';
-import {
-  ProcessOrderJobData,
-  ShipOrderJobData,
-  DeliverOrderJobData,
-} from '../src/modules/order/misc/order-job-data';
 import { OrderJob } from '../src/modules/order/enums/order-job.enum';
 import * as argon2 from 'argon2';
 
@@ -187,8 +181,6 @@ describe('POST /orders → DELIVERED (e2e)', () => {
 
     app = moduleFixture.createNestApplication();
 
-    app.setGlobalPrefix('api');
-    app.enableVersioning({ type: VersioningType.URI, defaultVersion: '1' });
     app.useGlobalPipes(
       new ValidationPipe({
         transform: true,

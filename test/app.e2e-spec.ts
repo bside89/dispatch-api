@@ -32,7 +32,6 @@ describe('OrderController (e2e)', () => {
   describe('/orders (POST)', () => {
     it('should create a new order', () => {
       const createOrderDto = {
-        customerId: 'customer-e2e-test',
         items: [
           {
             productId: 'product-e2e-1',
@@ -53,7 +52,6 @@ describe('OrderController (e2e)', () => {
         .expect(201)
         .then((response) => {
           expect(response.body).toHaveProperty('id');
-          expect(response.body.customerId).toBe(createOrderDto.customerId);
           expect(response.body.status).toBe(OrderStatus.PENDING);
           expect(response.body.total).toBe('349.97');
           expect(response.body.items).toHaveLength(2);
@@ -63,7 +61,6 @@ describe('OrderController (e2e)', () => {
 
     it('should return validation error for invalid order', () => {
       const invalidOrderDto = {
-        customerId: '',
         items: [],
       };
 
@@ -89,13 +86,13 @@ describe('OrderController (e2e)', () => {
         });
     });
 
-    it('should filter orders by customer', () => {
+    it('should filter orders by user', () => {
       return request(app.getHttpServer())
-        .get('/orders?customerId=customer-e2e-test')
+        .get('/orders?userId=user-e2e-test')
         .expect(200)
         .then((response) => {
           response.body.data.forEach((order: any) => {
-            expect(order.customerId).toBe('customer-e2e-test');
+            expect(order.userId).toBe('user-e2e-test');
           });
         });
     });
@@ -108,7 +105,6 @@ describe('OrderController (e2e)', () => {
         .expect(200)
         .then((response) => {
           expect(response.body.id).toBe(orderId);
-          expect(response.body).toHaveProperty('customerId');
           expect(response.body).toHaveProperty('status');
           expect(response.body).toHaveProperty('total');
           expect(response.body).toHaveProperty('items');
@@ -135,16 +131,16 @@ describe('OrderController (e2e)', () => {
     });
   });
 
-  describe('/orders/customer/:customerId (GET)', () => {
-    it('should return orders for specific customer', () => {
+  describe('/orders/user/:userId (GET)', () => {
+    it('should return orders for specific user', () => {
       return request(app.getHttpServer())
-        .get('/orders/customer/customer-e2e-test')
+        .get('/orders/user/user-e2e-test')
         .expect(200)
         .then((response) => {
           expect(Array.isArray(response.body)).toBe(true);
           if (response.body.length > 0) {
             response.body.forEach((order: any) => {
-              expect(order.customerId).toBe('customer-e2e-test');
+              expect(order.userId).toBe('user-e2e-test');
             });
           }
         });

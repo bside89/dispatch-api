@@ -1,6 +1,6 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
-import { ValidationPipe, VersioningType } from '@nestjs/common';
+import { ValidationPipe } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { ConfigService } from '@nestjs/config';
 import { BasicAuthMiddleware } from './middleware/basic-auth.middleware';
@@ -75,10 +75,10 @@ async function bootstrap() {
   const authMiddleware = new BasicAuthMiddleware(configService);
 
   // Protect versioned AdminController routes and Bull Board
-  app.use('/api/v1/admin', (req, res, next) =>
+  app.use('/v1/admin', (req, res, next) =>
     authMiddleware.use(req, res, next),
   );
-  app.use('/admin/queues', (req, res, next) =>
+  app.use('/queues-board', (req, res, next) =>
     authMiddleware.use(req, res, next),
   );
 
@@ -97,7 +97,7 @@ async function bootstrap() {
     'Bootstrap',
   );
   logger.log(
-    `🔐 Bull Board dashboard available at: http://localhost:${port}/admin/queues (requires authentication)`,
+    `🔐 Bull Board dashboard available at: http://localhost:${port}/queues-board (requires authentication)`,
     'Bootstrap',
   );
   logger.log(
@@ -110,7 +110,7 @@ async function bootstrap() {
     `📚 Swagger documentation available at: http://localhost:${port}/api/docs`,
   );
   console.log(
-    `🔐 Bull Board dashboard available at: http://localhost:${port}/admin/queues (requires authentication)`,
+    `🔐 Bull Board dashboard available at: http://localhost:${port}/queues-board (requires authentication)`,
   );
   console.log(
     `📊 Grafana dashboard available at: http://localhost:${grafanaPort} (requires authentication)`,

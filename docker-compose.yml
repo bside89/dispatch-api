@@ -36,7 +36,7 @@ services:
     image: grafana/promtail:latest
     container_name: promtail
     environment:
-    - DOCKER_API_VERSION=1.44
+      - DOCKER_API_VERSION=1.44
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - ./promtail-config.yml:/etc/promtail/config.yml
@@ -85,11 +85,11 @@ services:
     networks:
       - order-processing-network
     healthcheck:
-      test: ['CMD', 'curl', '-f', 'http://localhost:3000/health']
-      interval: 10s
+      test: ['CMD-SHELL', 'curl -f http://localhost:3000/health || exit 1']
+      interval: 30s
       timeout: 5s
-      retries: 5
-      start_period: 30s
+      retries: 3
+      start_period: 20s
 
 volumes:
   postgres_data:
