@@ -3,8 +3,6 @@ import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { ApiSecurity, ApiTags } from '@nestjs/swagger';
 import { Public } from './decorators/public.decorator';
-import { AuthGuard } from '@nestjs/passport';
-import { JwtStrategyName } from './enums/jwt-strategy-name.enum';
 import { JwtRefreshAuthGuard } from './guards/jwt-refresh.guard';
 
 @Controller('auth')
@@ -33,14 +31,15 @@ export class AuthController {
     return this.authService.logout(req.user);
   }
 
-  @Post('test')
-  @Public()
-  test() {
-    this.logger.verbose({ foo: 'bar' }, 'baz %s', 'qux');
-    this.logger.debug('foo %s %o', 'bar', { baz: 'qux' });
-    this.logger.log('foo');
-    this.logger.warn('foo %s', 'bar');
-    this.logger.error('foo %s', 'bar');
-    return { message: 'This is a test route' };
-  }
+  // Comentado, usado apenas para testar o logger
+  // @Post('test')
+  // @Public()
+  // test() {
+  //   this.logger.verbose({ foo: 'bar' }, 'baz %s', 'qux');
+  //   this.logger.debug('foo %s %o', 'bar', { baz: 'qux' });
+  //   this.logger.log('foo');
+  //   this.logger.warn('foo %s', 'bar');
+  //   this.logger.error('foo %s', 'bar');
+  //   return { message: 'This is a test route' };
+  // }
 }
