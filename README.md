@@ -30,6 +30,10 @@ This project demonstrates how to achieve all of the above **without the complexi
 
 ## ⚡ Quick Start
 
+**Create a .env.docker file** (you can copy the .env.example one available in the code)
+
+In the Terminal, type:
+
 ```bash
 docker-compose up --build
 ```
