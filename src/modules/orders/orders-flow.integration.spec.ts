@@ -31,7 +31,7 @@ import {
 } from './misc/order-job-data';
 
 // Skip real delays so the suite runs fast
-jest.mock('../common/helpers/helpers', () => ({
+jest.mock('../../shared/helpers/functions', () => ({
   delay: jest.fn().mockResolvedValue(undefined),
 }));
 
@@ -53,7 +53,8 @@ describe('Order flow integration (PENDING → DELIVERED)', () => {
   let eventBus: { publish: jest.Mock };
   const logger = new Logger('IntegrationTest');
 
-  const makeJob = <T>(data: T): Job<T> => ({ data, id: 'job-integration' } as any);
+  const makeJob = <T>(data: T): Job<T> =>
+    ({ data, id: 'job-integration' }) as any;
 
   beforeEach(async () => {
     orderStore = {};
@@ -62,9 +63,11 @@ describe('Order flow integration (PENDING → DELIVERED)', () => {
 
     // Repository mock: reflects state in orderStore
     const orderRepository = {
-      findOne: jest.fn().mockImplementation(({ where: { id } }) =>
-        Promise.resolve(orderStore[id] ?? null),
-      ),
+      findOne: jest
+        .fn()
+        .mockImplementation(({ where: { id } }) =>
+          Promise.resolve(orderStore[id] ?? null),
+        ),
       update: jest.fn().mockImplementation((id, partial) => {
         if (orderStore[id]) {
           Object.assign(orderStore[id], partial);
@@ -83,9 +86,11 @@ describe('Order flow integration (PENDING → DELIVERED)', () => {
 
     // CacheService mock: uses cacheStore for idempotency
     const cacheServiceMock = {
-      get: jest.fn().mockImplementation((key: string) =>
-        Promise.resolve(cacheStore[key] ?? null),
-      ),
+      get: jest
+        .fn()
+        .mockImplementation((key: string) =>
+          Promise.resolve(cacheStore[key] ?? null),
+        ),
       set: jest.fn().mockImplementation((key: string, value: string) => {
         cacheStore[key] = value;
         return Promise.resolve();
@@ -184,10 +189,13 @@ describe('Order flow integration (PENDING → DELIVERED)', () => {
     await processStrategy.execute(job, logger);
 
     // Repository updated only once
-    const updateMock = (processStrategy as any).orderRepository.update as jest.Mock;
+    const updateMock = (processStrategy as any).orderRepository
+      .update as jest.Mock;
     expect(updateMock).toHaveBeenCalledTimes(1);
     // Only one SHIP_ORDER job enqueued
-    expect(enqueuedJobs.filter((j) => j.name === OrderJob.SHIP_ORDER)).toHaveLength(1);
+    expect(
+      enqueuedJobs.filter((j) => j.name === OrderJob.SHIP_ORDER),
+    ).toHaveLength(1);
   });
 
   it('should publish one notification per strategy step', async () => {

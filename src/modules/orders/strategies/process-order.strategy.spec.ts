@@ -12,7 +12,7 @@ import { CacheService } from '../../cache/cache.service';
 import { EVENT_BUS } from '../../events/constants/event-bus.token';
 import { ProcessOrderJobData, ShipOrderJobData } from '../misc/order-job-data';
 
-jest.mock('../../common/helpers/helpers', () => ({
+jest.mock('../../../shared/helpers/functions', () => ({
   delay: jest.fn().mockResolvedValue(undefined),
 }));
 
@@ -31,7 +31,7 @@ describe('ProcessOrderStrategy', () => {
   } as unknown as Logger;
 
   const makeJob = (data: ProcessOrderJobData): Job<ProcessOrderJobData> =>
-    ({ data, id: 'job-1' } as any);
+    ({ data, id: 'job-1' }) as any;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -97,7 +97,8 @@ describe('ProcessOrderStrategy', () => {
         OrderJob.SHIP_ORDER,
         expect.any(ShipOrderJobData),
       );
-      const enqueuedJobData = orderQueue.add.mock.calls[0][1] as ShipOrderJobData;
+      const enqueuedJobData = orderQueue.add.mock
+        .calls[0][1] as ShipOrderJobData;
       expect(enqueuedJobData.userId).toBe('user-1');
       expect(enqueuedJobData.orderId).toBe('order-1');
     });
@@ -137,9 +138,9 @@ describe('ProcessOrderStrategy', () => {
       });
       cacheService.delete.mockResolvedValue(undefined);
 
-      await expect(strategy.execute(makeJob(badJobData), logger)).rejects.toThrow(
-        'Invalid order total',
-      );
+      await expect(
+        strategy.execute(makeJob(badJobData), logger),
+      ).rejects.toThrow('Invalid order total');
 
       expect(cacheService.delete).toHaveBeenCalledWith(
         'idempotency:order:process:order-1',

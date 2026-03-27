@@ -50,9 +50,10 @@ describe('JwtRefreshStrategy', () => {
       const result = await strategy.validate(mockReq, validPayload);
 
       expect(result).toEqual({
-        id: validPayload.sub,
+        sub: validPayload.sub,
         email: validPayload.email,
         role: validPayload.role,
+        jti: validPayload.jti,
         refreshToken: rawToken,
       });
     });

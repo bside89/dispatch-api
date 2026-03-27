@@ -12,7 +12,7 @@ import { CacheService } from '../../cache/cache.service';
 import { EVENT_BUS } from '../../events/constants/event-bus.token';
 import { DeliverOrderJobData, ShipOrderJobData } from '../misc/order-job-data';
 
-jest.mock('../../common/helpers/helpers', () => ({
+jest.mock('../../../shared/helpers/functions', () => ({
   delay: jest.fn().mockResolvedValue(undefined),
 }));
 
@@ -31,7 +31,7 @@ describe('ShipOrderStrategy', () => {
   } as unknown as Logger;
 
   const makeJob = (data: ShipOrderJobData): Job<ShipOrderJobData> =>
-    ({ data, id: 'job-2' } as any);
+    ({ data, id: 'job-2' }) as any;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -97,7 +97,8 @@ describe('ShipOrderStrategy', () => {
         OrderJob.DELIVER_ORDER,
         expect.any(DeliverOrderJobData),
       );
-      const enqueuedJobData = orderQueue.add.mock.calls[0][1] as DeliverOrderJobData;
+      const enqueuedJobData = orderQueue.add.mock
+        .calls[0][1] as DeliverOrderJobData;
       expect(enqueuedJobData.userId).toBe('user-1');
       expect(enqueuedJobData.orderId).toBe('order-1');
     });

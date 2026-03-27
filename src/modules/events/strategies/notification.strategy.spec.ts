@@ -5,7 +5,7 @@ import { Job } from 'bullmq';
 import { NotificationStrategy } from './notification.strategy';
 import { CacheService } from '../../cache/cache.service';
 
-jest.mock('../../common/helpers/helpers', () => ({
+jest.mock('../../../shared/helpers/functions', () => ({
   delay: jest.fn().mockResolvedValue(undefined),
 }));
 
@@ -28,7 +28,7 @@ describe('NotificationStrategy', () => {
     ({
       data,
       id: 'event-job-1',
-    } as any);
+    }) as any;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -66,7 +66,7 @@ describe('NotificationStrategy', () => {
       expect(cacheService.set).toHaveBeenCalledWith(
         'idempotency:event:user-1:notif-abc',
         '1',
-        3600,
+        3600 * 1000,
       );
     });
 
@@ -84,7 +84,7 @@ describe('NotificationStrategy', () => {
       cacheService.delete.mockResolvedValue(undefined);
 
       // Import the mocked delay to force it to throw
-      const { delay } = require('../../common/helpers/helpers');
+      const { delay } = require('../../../shared/helpers/functions');
       (delay as jest.Mock).mockRejectedValueOnce(
         new Error('Notification service unavailable'),
       );

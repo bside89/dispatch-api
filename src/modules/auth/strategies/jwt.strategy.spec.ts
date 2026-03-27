@@ -62,7 +62,7 @@ describe('JwtStrategy', () => {
         `blacklist:${validPayload.jti}`,
       );
       expect(result).toEqual({
-        id: validPayload.sub,
+        sub: validPayload.sub,
         email: validPayload.email,
         role: validPayload.role,
         jti: validPayload.jti,

@@ -13,7 +13,7 @@ describe('OrderProcessor', () => {
   let cacheService: jest.Mocked<CacheService>;
 
   const makeJob = (name: string, data?: any): Job =>
-    ({ id: 'job-1', name, data: data ?? {} } as any);
+    ({ id: 'job-1', name, data: data ?? {} }) as any;
 
   const mockHandler = { execute: jest.fn() };
 
@@ -54,13 +54,10 @@ describe('OrderProcessor', () => {
     expect(cacheService.setIfNotExists).toHaveBeenCalledWith(
       `lock:job:${job.id}`,
       '1',
-      30,
+      30 * 1000,
     );
     expect(factory.createHandler).toHaveBeenCalledWith(OrderJob.PROCESS_ORDER);
-    expect(mockHandler.execute).toHaveBeenCalledWith(
-      job,
-      expect.any(Logger),
-    );
+    expect(mockHandler.execute).toHaveBeenCalledWith(job, expect.any(Logger));
     expect(cacheService.delete).toHaveBeenCalledWith(`lock:job:${job.id}`);
   });
 

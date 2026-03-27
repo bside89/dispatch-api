@@ -1,19 +1,16 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { getRepositoryToken } from '@nestjs/typeorm';
-import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { getQueueToken } from '@nestjs/bullmq';
 import { OrdersService } from './orders.service';
-import { Order } from './entities/order.entity';
-import { OrderItem } from './entities/order-item.entity';
 import { OrderStatus } from './enums/order-status.enum';
 import { CacheService } from '../cache/cache.service';
 import { EVENT_BUS } from '../events/constants/event-bus.token';
+import { OrderRepository } from './repositories/order.repository';
+import { OrderItemRepository } from './repositories/order-item.repository';
 
 describe('OrderService', () => {
   let service: OrdersService;
   let orderRepository: any;
   let orderItemRepository: any;
-  let cacheManager: any;
   let cacheService: any;
   let orderQueue: any;
 
@@ -22,30 +19,20 @@ describe('OrderService', () => {
       providers: [
         OrdersService,
         {
-          provide: getRepositoryToken(Order),
+          provide: OrderRepository,
           useValue: {
-            create: jest.fn(),
+            createEntity: jest.fn(),
             save: jest.fn(),
-            findOne: jest.fn(),
-            find: jest.fn(),
-            remove: jest.fn(),
-            createQueryBuilder: jest.fn(),
+            findOneWithRelations: jest.fn(),
+            findAllWithFilters: jest.fn(),
           },
         },
         {
-          provide: getRepositoryToken(OrderItem),
+          provide: OrderItemRepository,
           useValue: {
-            create: jest.fn(),
-            save: jest.fn(),
+            createEntity: jest.fn(),
+            saveMany: jest.fn(),
             delete: jest.fn(),
-          },
-        },
-        {
-          provide: CACHE_MANAGER,
-          useValue: {
-            get: jest.fn(),
-            set: jest.fn(),
-            del: jest.fn(),
           },
         },
         {
@@ -71,9 +58,8 @@ describe('OrderService', () => {
     }).compile();
 
     service = module.get<OrdersService>(OrdersService);
-    orderRepository = module.get(getRepositoryToken(Order));
-    orderItemRepository = module.get(getRepositoryToken(OrderItem));
-    cacheManager = module.get(CACHE_MANAGER);
+    orderRepository = module.get(OrderRepository);
+    orderItemRepository = module.get(OrderItemRepository);
     cacheService = module.get<CacheService>(CacheService);
     orderQueue = module.get(getQueueToken('orders'));
   });
@@ -114,11 +100,14 @@ describe('OrderService', () => {
     it('should create an order successfully when no idempotency key exists in cache', async () => {
       // Mock cache get to return null (no existing order)
       cacheService.get.mockResolvedValue(null);
-      orderRepository.create.mockReturnValue(mockOrder);
+      orderRepository.createEntity.mockReturnValue({
+        ...mockOrder,
+        user: { id: '' },
+      });
       orderRepository.save.mockResolvedValue(mockOrder);
-      orderItemRepository.create.mockImplementation((data) => data);
-      orderItemRepository.save.mockResolvedValue([]);
-      orderRepository.findOne.mockResolvedValue(mockOrder);
+      orderItemRepository.createEntity.mockImplementation((data) => data);
+      orderItemRepository.saveMany.mockResolvedValue([]);
+      orderRepository.findOneWithRelations.mockResolvedValue(mockOrder);
       cacheService.set.mockResolvedValue(undefined);
       cacheService.delete.mockResolvedValue(undefined);
 
@@ -137,9 +126,9 @@ describe('OrderService', () => {
         mockOrder,
         86400000, // IDEMPOTENCY_TTL in milliseconds
       );
-      expect(orderRepository.create).toHaveBeenCalled();
+      expect(orderRepository.createEntity).toHaveBeenCalled();
       expect(orderRepository.save).toHaveBeenCalled();
-      expect(orderItemRepository.save).toHaveBeenCalled();
+      expect(orderItemRepository.saveMany).toHaveBeenCalled();
       // Queue job name is the OrderJob enum value, not a kebab-case string
       expect(orderQueue.add).toHaveBeenCalledWith('PROCESS_ORDER', {
         orderId: mockOrder.id,
@@ -170,7 +159,7 @@ describe('OrderService', () => {
       expect(cacheService.get).toHaveBeenCalledWith(
         `idempotency:${idempotencyKey}`,
       );
-      expect(orderRepository.create).not.toHaveBeenCalled();
+      expect(orderRepository.createEntity).not.toHaveBeenCalled();
       expect(orderRepository.save).not.toHaveBeenCalled();
     });
   });
@@ -191,7 +180,7 @@ describe('OrderService', () => {
 
       expect(result).toEqual(mockOrder);
       expect(cacheService.get).toHaveBeenCalledWith(`order:${orderId}`);
-      expect(orderRepository.findOne).not.toHaveBeenCalled();
+      expect(orderRepository.findOneWithRelations).not.toHaveBeenCalled();
     });
 
     it('should fetch order from database and cache it if not in cache', async () => {
@@ -204,16 +193,16 @@ describe('OrderService', () => {
       };
 
       cacheService.get.mockResolvedValue(null);
-      orderRepository.findOne.mockResolvedValue(mockOrder);
+      orderRepository.findOneWithRelations.mockResolvedValue(mockOrder);
       cacheService.set.mockResolvedValue(undefined);
 
       const result = await service.findOne(orderId);
 
       expect(result).toEqual(mockOrder);
-      expect(orderRepository.findOne).toHaveBeenCalledWith({
-        where: { id: orderId },
-        relations: ['user', 'items'],
-      });
+      expect(orderRepository.findOneWithRelations).toHaveBeenCalledWith(
+        { id: orderId },
+        ['user', 'items'],
+      );
       expect(cacheService.set).toHaveBeenCalledWith(
         `order:${orderId}`,
         mockOrder,

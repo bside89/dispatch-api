@@ -11,7 +11,7 @@ import { CacheService } from '../../cache/cache.service';
 import { EVENT_BUS } from '../../events/constants/event-bus.token';
 import { CancelOrderJobData } from '../misc/order-job-data';
 
-jest.mock('../../common/helpers/helpers', () => ({
+jest.mock('../../../shared/helpers/functions', () => ({
   delay: jest.fn().mockResolvedValue(undefined),
 }));
 
@@ -30,7 +30,7 @@ describe('CancelOrderStrategy', () => {
   } as unknown as Logger;
 
   const makeJob = (data: CancelOrderJobData): Job<CancelOrderJobData> =>
-    ({ data, id: 'job-cancel' } as any);
+    ({ data, id: 'job-cancel' }) as any;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
