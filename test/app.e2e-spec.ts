@@ -2,7 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import * as request from 'supertest';
 import { AppModule } from '../src/app.module';
-import { OrderStatus } from '../src/modules/order/enums/order-status.enum';
+import { OrderStatus } from '../src/modules/orders/enums/order-status.enum';
 
 describe('OrderController (e2e)', () => {
   let app: INestApplication;
@@ -21,7 +21,7 @@ describe('OrderController (e2e)', () => {
         forbidNonWhitelisted: true,
       }),
     );
-    
+
     await app.init();
   });
 
@@ -113,9 +113,7 @@ describe('OrderController (e2e)', () => {
 
     it('should return 404 for non-existent order', () => {
       const fakeId = '123e4567-e89b-12d3-a456-426614174000';
-      return request(app.getHttpServer())
-        .get(`/orders/${fakeId}`)
-        .expect(404);
+      return request(app.getHttpServer()).get(`/orders/${fakeId}`).expect(404);
     });
   });
 

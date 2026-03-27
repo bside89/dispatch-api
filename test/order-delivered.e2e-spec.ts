@@ -13,25 +13,22 @@
  */
 
 import { Test, TestingModule } from '@nestjs/testing';
-import {
-  INestApplication,
-  ValidationPipe,
-} from '@nestjs/common';
+import { INestApplication, ValidationPipe } from '@nestjs/common';
 import * as request from 'supertest';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { getQueueToken } from '@nestjs/bullmq';
 import { Logger } from '@nestjs/common';
 
 import { AppModule } from '../src/app.module';
-import { Order } from '../src/modules/order/entities/order.entity';
-import { OrderItem } from '../src/modules/order/entities/order-item.entity';
-import { User } from '../src/modules/user/entities/user.entity';
-import { OrderStatus } from '../src/modules/order/enums/order-status.enum';
-import { ProcessOrderStrategy } from '../src/modules/order/strategies/process-order.strategy';
-import { ShipOrderStrategy } from '../src/modules/order/strategies/ship-order.strategy';
-import { DeliverOrderStrategy } from '../src/modules/order/strategies/deliver-order.strategy';
+import { Order } from '../src/modules/orders/entities/order.entity';
+import { OrderItem } from '../src/modules/orders/entities/order-item.entity';
+import { User } from '../src/modules/users/entities/user.entity';
+import { OrderStatus } from '../src/modules/orders/enums/order-status.enum';
+import { ProcessOrderStrategy } from '../src/modules/orders/strategies/process-order.strategy';
+import { ShipOrderStrategy } from '../src/modules/orders/strategies/ship-order.strategy';
+import { DeliverOrderStrategy } from '../src/modules/orders/strategies/deliver-order.strategy';
 import { CacheService } from '../src/modules/cache/cache.service';
-import { OrderJob } from '../src/modules/order/enums/order-job.enum';
+import { OrderJob } from '../src/modules/orders/enums/order-job.enum';
 import * as argon2 from 'argon2';
 
 // Skip real delays inside strategies
@@ -135,7 +132,9 @@ describe('POST /orders → DELIVERED (e2e)', () => {
 
   function buildCacheService() {
     return {
-      get: jest.fn().mockImplementation(async (key: string) => cacheStore[key] ?? null),
+      get: jest
+        .fn()
+        .mockImplementation(async (key: string) => cacheStore[key] ?? null),
       set: jest.fn().mockImplementation(async (key: string, value: any) => {
         cacheStore[key] = value;
       }),
@@ -143,11 +142,13 @@ describe('POST /orders → DELIVERED (e2e)', () => {
         delete cacheStore[key];
       }),
       deletePattern: jest.fn().mockResolvedValue(undefined),
-      setIfNotExists: jest.fn().mockImplementation(async (key: string, value: any) => {
-        if (cacheStore[key]) return false;
-        cacheStore[key] = value;
-        return true;
-      }),
+      setIfNotExists: jest
+        .fn()
+        .mockImplementation(async (key: string, value: any) => {
+          if (cacheStore[key]) return false;
+          cacheStore[key] = value;
+          return true;
+        }),
     };
   }
 
@@ -226,8 +227,9 @@ describe('POST /orders → DELIVERED (e2e)', () => {
     expect(userId).toBeDefined();
 
     // Ensure the user repository has a hashed password so login works
-    const userRepo = app
-      .get(getRepositoryToken(User)) as ReturnType<typeof buildUserRepository>;
+    const userRepo = app.get(getRepositoryToken(User)) as ReturnType<
+      typeof buildUserRepository
+    >;
 
     // Hash password as the service would have done (UserService.create calls AuthService.hashPasswordOrToken)
     const hash = await argon2.hash('Password1!', {
@@ -269,7 +271,9 @@ describe('POST /orders → DELIVERED (e2e)', () => {
     expect(createOrderRes.body.status).toBe(OrderStatus.PENDING);
 
     // A PROCESS_ORDER job should have been enqueued
-    expect(enqueuedJobs.some((j) => j.name === OrderJob.PROCESS_ORDER)).toBe(true);
+    expect(enqueuedJobs.some((j) => j.name === OrderJob.PROCESS_ORDER)).toBe(
+      true,
+    );
 
     // ── 4. Drive the strategy chain ──────────────────────────────────────────
 
@@ -279,7 +283,9 @@ describe('POST /orders → DELIVERED (e2e)', () => {
 
     // Make sure cacheStore is clean for strategy idempotency checks
     // (idempotency keys are per-order, not per session)
-    const processJob = enqueuedJobs.find((j) => j.name === OrderJob.PROCESS_ORDER)!;
+    const processJob = enqueuedJobs.find(
+      (j) => j.name === OrderJob.PROCESS_ORDER,
+    )!;
     await processStrategy.execute(
       { data: processJob.data, id: 'j-process' } as any,
       logger,
@@ -292,7 +298,9 @@ describe('POST /orders → DELIVERED (e2e)', () => {
       logger,
     );
 
-    const deliverJob = enqueuedJobs.find((j) => j.name === OrderJob.DELIVER_ORDER)!;
+    const deliverJob = enqueuedJobs.find(
+      (j) => j.name === OrderJob.DELIVER_ORDER,
+    )!;
     expect(deliverJob).toBeDefined();
     await deliverStrategy.execute(
       { data: deliverJob.data, id: 'j-deliver' } as any,

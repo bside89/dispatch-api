@@ -2,7 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { getQueueToken } from '@nestjs/bullmq';
-import { OrderService } from './order.service';
+import { OrdersService } from './orders.service';
 import { Order } from './entities/order.entity';
 import { OrderItem } from './entities/order-item.entity';
 import { OrderStatus } from './enums/order-status.enum';
@@ -10,7 +10,7 @@ import { CacheService } from '../cache/cache.service';
 import { EVENT_BUS } from '../events/constants/event-bus.token';
 
 describe('OrderService', () => {
-  let service: OrderService;
+  let service: OrdersService;
   let orderRepository: any;
   let orderItemRepository: any;
   let cacheManager: any;
@@ -20,7 +20,7 @@ describe('OrderService', () => {
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
-        OrderService,
+        OrdersService,
         {
           provide: getRepositoryToken(Order),
           useValue: {
@@ -70,7 +70,7 @@ describe('OrderService', () => {
       ],
     }).compile();
 
-    service = module.get<OrderService>(OrderService);
+    service = module.get<OrdersService>(OrdersService);
     orderRepository = module.get(getRepositoryToken(Order));
     orderItemRepository = module.get(getRepositoryToken(OrderItem));
     cacheManager = module.get(CACHE_MANAGER);

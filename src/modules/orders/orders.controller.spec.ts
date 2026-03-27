@@ -1,21 +1,21 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { BadRequestException } from '@nestjs/common';
-import { OrderController } from './order.controller';
-import { OrderService } from './order.service';
+import { OrdersController } from './orders.controller';
+import { OrdersService } from './orders.service';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { OrderStatus } from './enums/order-status.enum';
 import { OrderQueryDto } from './dto/order-query.dto';
 
 describe('OrderController', () => {
-  let controller: OrderController;
-  let service: OrderService;
+  let controller: OrdersController;
+  let service: OrdersService;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
-      controllers: [OrderController],
+      controllers: [OrdersController],
       providers: [
         {
-          provide: OrderService,
+          provide: OrdersService,
           useValue: {
             create: jest.fn(),
             findAll: jest.fn(),
@@ -29,8 +29,8 @@ describe('OrderController', () => {
       ],
     }).compile();
 
-    controller = module.get<OrderController>(OrderController);
-    service = module.get<OrderService>(OrderService);
+    controller = module.get<OrdersController>(OrdersController);
+    service = module.get<OrdersService>(OrdersService);
   });
 
   afterEach(() => {

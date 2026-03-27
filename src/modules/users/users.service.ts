@@ -17,8 +17,8 @@ import { UserResponseDto } from './dto/user-response.dto';
 import { AuthService } from '../auth/auth.service';
 
 @Injectable()
-export class UserService {
-  private readonly logger = new Logger(UserService.name);
+export class UsersService {
+  private readonly logger = new Logger(UsersService.name);
   private readonly IDEMPOTENCY_PREFIX = 'user_idempotency';
   private readonly IDEMPOTENCY_TTL = 86400 * 1000; // 24 hours
 

@@ -18,8 +18,8 @@ import { EventBus } from '../events/interfaces/event-bus.interface';
 import { NotifyUserJobData } from '../events/misc/events-job-data';
 
 @Injectable()
-export class OrderService {
-  private readonly logger = new Logger(OrderService.name);
+export class OrdersService {
+  private readonly logger = new Logger(OrdersService.name);
   private readonly CACHE_PREFIX = 'order';
   private readonly IDEMPOTENCY_PREFIX = 'idempotency';
   private readonly CACHE_TTL = 300 * 1000; // 5 minutes - for individual orders

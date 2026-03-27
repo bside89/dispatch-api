@@ -13,7 +13,6 @@ import {
   HttpStatus,
   BadRequestException,
   Logger,
-  UseGuards,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -30,7 +29,7 @@ import {
   ApiConflictResponse,
   ApiSecurity,
 } from '@nestjs/swagger';
-import { UserService } from './user.service';
+import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { UpdateLoginDto } from './dto/update-login.dto';
@@ -43,10 +42,10 @@ import { UserRole } from './enums/user-role.enum';
 @Controller({ path: 'v1/users', version: '1' })
 @ApiTags('users')
 @ApiSecurity('bearer')
-export class UserController {
-  private readonly logger = new Logger(UserController.name);
+export class UsersController {
+  private readonly logger = new Logger(UsersController.name);
 
-  constructor(private readonly userService: UserService) {}
+  constructor(private readonly usersService: UsersService) {}
 
   @Post()
   @Public()
@@ -88,7 +87,7 @@ export class UserController {
     this.logger.log(
       `POST /users - Creating user with email: ${createUserDto.email} and idempotency key: ${idempotencyKey}`,
     );
-    return this.userService.create(createUserDto, idempotencyKey);
+    return this.usersService.create(createUserDto, idempotencyKey);
   }
 
   @Get()
@@ -127,7 +126,7 @@ export class UserController {
   })
   async findAll(@Query() query: UserQueryDto): Promise<UserResponseDto[]> {
     this.logger.log('GET /users - Retrieving all users');
-    return this.userService.findAll(query);
+    return this.usersService.findAll(query);
   }
 
   @Get(':id')
@@ -155,7 +154,7 @@ export class UserController {
     @Param('id', ParseUUIDPipe) id: string,
   ): Promise<UserResponseDto> {
     this.logger.log(`GET /users/${id} - Retrieving user`);
-    return this.userService.findOne(id);
+    return this.usersService.findOne(id);
   }
 
   @Patch(':id')
@@ -192,7 +191,7 @@ export class UserController {
     @Body() updateUserDto: UpdateUserDto,
   ): Promise<UserResponseDto> {
     this.logger.log(`PATCH /users/${id} - Updating user`);
-    return this.userService.update(id, updateUserDto);
+    return this.usersService.update(id, updateUserDto);
   }
 
   @Patch(':id/login')
@@ -232,7 +231,7 @@ export class UserController {
     this.logger.log(
       `PATCH /users/${id}/login - Updating user login credentials`,
     );
-    return this.userService.updateLogin(id, updateLoginDto);
+    return this.usersService.updateLogin(id, updateLoginDto);
   }
 
   @Delete(':id')
@@ -260,6 +259,6 @@ export class UserController {
   })
   async remove(@Param('id', ParseUUIDPipe) id: string): Promise<void> {
     this.logger.log(`DELETE /users/${id} - Deleting user`);
-    return this.userService.remove(id);
+    return this.usersService.remove(id);
   }
 }

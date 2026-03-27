@@ -9,8 +9,8 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { BullModule } from '@nestjs/bullmq';
 import { typeOrmConfig } from './config/typeorm.config';
 import { bullmqConfig } from './config/bullmq.config';
-import { OrderModule } from './modules/order/order.module';
-import { UserModule } from './modules/user/user.module';
+import { OrdersModule } from './modules/orders/orders.module';
+import { UsersModule } from './modules/users/users.module';
 import { CacheModule } from './modules/cache/cache.module';
 import { BullBoardModule } from '@bull-board/nestjs';
 import { ExpressAdapter } from '@bull-board/express';
@@ -87,9 +87,9 @@ import { LoggerModule } from 'nestjs-pino';
 
     // Feature modules
     AuthModule,
-    OrderModule,
+    OrdersModule,
     EventsModule,
-    UserModule,
+    UsersModule,
   ],
   controllers: [AppController, AdminController],
   providers: [

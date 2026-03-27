@@ -1,9 +1,9 @@
 import { ConfigService } from '@nestjs/config';
 import { TypeOrmModuleOptions } from '@nestjs/typeorm';
 import { DataSource, DataSourceOptions } from 'typeorm';
-import { Order } from '../modules/order/entities/order.entity';
-import { OrderItem } from '../modules/order/entities/order-item.entity';
-import { User } from '../modules/user/entities/user.entity';
+import { Order } from '../modules/orders/entities/order.entity';
+import { OrderItem } from '../modules/orders/entities/order-item.entity';
+import { User } from '../modules/users/entities/user.entity';
 
 export const typeOrmConfig = (
   configService: ConfigService,

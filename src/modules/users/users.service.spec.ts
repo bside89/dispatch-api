@@ -6,7 +6,7 @@ import {
   NotFoundException,
   BadRequestException,
 } from '@nestjs/common';
-import { UserService } from './user.service';
+import { UsersService } from './users.service';
 import { User } from './entities/user.entity';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
@@ -16,7 +16,7 @@ import { CacheService } from '../cache/cache.service';
 import { AuthService } from '../auth/auth.service';
 
 describe('UserService', () => {
-  let service: UserService;
+  let service: UsersService;
   let userRepository: Repository<User>;
   let cacheService: CacheService;
 
@@ -54,7 +54,7 @@ describe('UserService', () => {
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
-        UserService,
+        UsersService,
         {
           provide: getRepositoryToken(User),
           useFactory: mockUserRepositoryFactory,
@@ -66,14 +66,16 @@ describe('UserService', () => {
         {
           provide: AuthService,
           useValue: {
-            hashPasswordOrToken: jest.fn().mockImplementation((v) => Promise.resolve(`hashed_${v}`)),
+            hashPasswordOrToken: jest
+              .fn()
+              .mockImplementation((v) => Promise.resolve(`hashed_${v}`)),
             verifyPasswordOrToken: jest.fn().mockResolvedValue(true),
           },
         },
       ],
     }).compile();
 
-    service = module.get<UserService>(UserService);
+    service = module.get<UsersService>(UsersService);
     userRepository = module.get<Repository<User>>(getRepositoryToken(User));
     cacheService = module.get<CacheService>(CacheService);
   });

@@ -1,8 +1,8 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { BullModule } from '@nestjs/bullmq';
-import { OrderController } from './order.controller';
-import { OrderService } from './order.service';
+import { OrdersController } from './orders.controller';
+import { OrdersService } from './orders.service';
 import { Order } from './entities/order.entity';
 import { OrderItem } from './entities/order-item.entity';
 import { CacheModule } from '../cache/cache.module';
@@ -26,9 +26,9 @@ import { bullmqDefaultJobOptions } from '../../config/bullmq.config';
     }),
     CacheModule,
   ],
-  controllers: [OrderController],
+  controllers: [OrdersController],
   providers: [
-    OrderService,
+    OrdersService,
     OrderProcessor,
     OrderJobHandlerFactory,
     ProcessOrderStrategy,
@@ -37,6 +37,6 @@ import { bullmqDefaultJobOptions } from '../../config/bullmq.config';
     CancelOrderStrategy,
     NotificationStrategy,
   ],
-  exports: [OrderService],
+  exports: [OrdersService],
 })
-export class OrderModule {}
+export class OrdersModule {}

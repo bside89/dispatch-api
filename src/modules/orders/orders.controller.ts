@@ -28,23 +28,23 @@ import {
   ApiOkResponse,
   ApiSecurity,
 } from '@nestjs/swagger';
-import { OrderService } from './order.service';
+import { OrdersService } from './orders.service';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { UpdateOrderDto } from './dto/update-order.dto';
 import { OrderQueryDto } from './dto/order-query.dto';
 import { OrderResponseDto } from './dto/order-response.dto';
 import { Order } from './entities/order.entity';
 import { OrderStatus } from './enums/order-status.enum';
-import { UserRole } from '../user/enums/user-role.enum';
+import { UserRole } from '../users/enums/user-role.enum';
 import { Roles } from '../auth/decorators/roles.decorator';
 
 @Controller({ path: 'v1/orders', version: '1' })
 @ApiTags('orders')
 @ApiSecurity('bearer')
-export class OrderController {
-  private readonly logger = new Logger(OrderController.name);
+export class OrdersController {
+  private readonly logger = new Logger(OrdersController.name);
 
-  constructor(private readonly orderService: OrderService) {}
+  constructor(private readonly ordersService: OrdersService) {}
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
@@ -84,7 +84,7 @@ export class OrderController {
       `POST /orders - Creating order for user: ${req.user.id} with idempotency key: ${idempotencyKey}`,
     );
 
-    return this.orderService.create(
+    return this.ordersService.create(
       createOrderDto,
       req.user.id,
       idempotencyKey,
@@ -135,7 +135,7 @@ export class OrderController {
     this.logger.log(
       `GET /orders - Fetching orders with filters: ${JSON.stringify(queryDto)}`,
     );
-    return this.orderService.findAll(queryDto);
+    return this.ordersService.findAll(queryDto);
   }
 
   @Get('user/:userId')
@@ -153,7 +153,7 @@ export class OrderController {
   })
   async findByUserId(@Param('userId') userId: string): Promise<Order[]> {
     this.logger.log(`GET /orders/user/${userId} - Fetching orders for user`);
-    return this.orderService.findByUserId(userId);
+    return this.ordersService.findByUserId(userId);
   }
 
   @Get(':id')
@@ -174,7 +174,7 @@ export class OrderController {
   })
   async findOne(@Param('id', ParseUUIDPipe) id: string): Promise<Order> {
     this.logger.log(`GET /orders/${id} - Fetching order`);
-    return this.orderService.findOne(id);
+    return this.ordersService.findOne(id);
   }
 
   @Patch(':id')
@@ -205,7 +205,7 @@ export class OrderController {
     @Body() updateOrderDto: UpdateOrderDto,
   ): Promise<Order> {
     this.logger.log(`PATCH /orders/${id} - Updating order`);
-    return this.orderService.update(id, updateOrderDto);
+    return this.ordersService.update(id, updateOrderDto);
   }
 
   @Patch(':id/status')
@@ -248,7 +248,7 @@ export class OrderController {
     this.logger.log(
       `PATCH /orders/${id}/status - Updating status to: ${status}`,
     );
-    return this.orderService.updateStatus(id, status);
+    return this.ordersService.updateStatus(id, status);
   }
 
   @Delete(':id')
@@ -271,6 +271,6 @@ export class OrderController {
   })
   async remove(@Param('id', ParseUUIDPipe) id: string): Promise<Order> {
     this.logger.log(`DELETE /orders/${id} - Deleting order`);
-    return this.orderService.remove(id);
+    return this.ordersService.remove(id);
   }
 }
