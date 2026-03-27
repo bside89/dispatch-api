@@ -7,17 +7,24 @@
 
 ---
 
-## 🚀 TL;DR
+## 💡 Overview
 
-API de pedidos construída com NestJS utilizando arquitetura orientada a eventos (dentro de um monólito), filas com BullMQ e padrões Strategy + Factory.
+A production-inspired Order Management API built with NestJS, designed to demonstrate scalable backend architecture using asynchronous processing, event-driven design, and industry-standard patterns.
 
-- Processamento assíncrono com filas
-- Event Bus desacoplado
-- Idempotência e controle de concorrência
-- Logs estruturados com correlationId
-- Observabilidade com Grafana + Loki
+This project simulates a real-world order lifecycle, focusing on performance, resilience, and observability.
 
-👉 Projeto focado em demonstrar arquitetura escalável e boas práticas de backend.
+---
+
+## 🚀 Why this project matters
+
+Modern backend systems require:
+
+- Handling high throughput asynchronously
+- Decoupling services for scalability
+- Observability across distributed flows
+- Safe retries without duplication
+
+This project demonstrates how to achieve all of the above **without the complexity of microservices**.
 
 ---
 
@@ -27,14 +34,15 @@ API de pedidos construída com NestJS utilizando arquitetura orientada a eventos
 docker-compose up --build
 ```
 
-Acesse:
+Access:
 
 - API: http://localhost:3000
+- Bull Board: http://localhost:3000/queues-board
 - Grafana: http://localhost:3001
 
 ---
 
-## 🧠 Arquitetura
+## 🧠 Architecture Overview
 
 ```
 Client → API (NestJS)
@@ -52,78 +60,71 @@ Client → API (NestJS)
 
 ---
 
-## 🤔 Decisões de Arquitetura
+## 🧩 Architecture Highlights
 
-- BullMQ + Redis
-  → processamento assíncrono e resiliência
-- Strategy Pattern
-  → facilita extensão de fluxos sem alterar código existente
-- Factory Pattern
-  → criação dinâmica de handlers
-- Event Bus
-  → desacopla efeitos colaterais (notificações, logs, etc.)
-- Idempotência
-  → evita duplicidade em cenários de retry
+- **Event-driven within a monolith**  
+  Achieves decoupling without operational overhead
 
----
+- **Queue-based processing (BullMQ)**  
+  Enables retries, backoff strategies, and scalability
 
-## 📊 Observabilidade
+- **Strategy + Factory patterns**  
+  Flexible and extensible workflow handling
 
-- Logs estruturados com Pino (JSON)
-- Correlation ID para rastreamento de requisições
-- Integração com Promtail + Loki
-- Visualização via Grafana
+- **Idempotent job execution**  
+  Guarantees safe retries and consistency
 
-Permite rastrear o fluxo completo de um pedido entre múltiplos jobs e eventos.
+- **Centralized logging with correlationId**  
+  Full traceability across async flows
 
 ---
 
-## 🎯 O que este projeto demonstra
+## 🔄 Order Processing Flow
 
-- Arquitetura escalável com filas
-- Separação de responsabilidades
-- Processamento assíncrono
-- Boas práticas de backend
-- Observabilidade e tracing
-- Design patterns aplicados na prática
+1. Order is created via API
+2. Job is added to queue
+3. Worker processes using strategy
+4. Events are emitted
+5. Side effects are triggered (notifications, logs)
 
 ---
 
-## 🏗️ Arquitetura (Detalhada)
+## 📊 Observability & Monitoring
 
-Este projeto utiliza um estilo event-driven dentro de um monólito, garantindo:
+- Structured logging with Pino (JSON)
+- Correlation ID for end-to-end tracing
+- Log aggregation via Promtail + Loki
+- Visualization with Grafana
 
-- Desacoplamento entre fluxos
-- Facilidade de evolução
-- Menor complexidade operacional que microserviços
+✔ Track a single order across multiple async steps  
+✔ Debug failures in distributed flows
 
 ---
 
 ## ⚙️ Features
 
-- Criação e processamento de pedidos
-- Pipeline assíncrono com múltiplos estágios
-- Encadeamento de jobs (process → ship → deliver)
-- Sistema de notificações desacoplado
-- Idempotência em jobs e eventos
-- Suporte a múltiplos dispositivos (auth)
-- Refresh token com hash
-- Logout com invalidação de sessão
+- Order creation and lifecycle processing
+- Multi-stage async pipeline (process → ship → deliver)
+- Job chaining and orchestration
+- Decoupled notification system
+- Idempotency for jobs and events
+- Authentication with multi-device support
+- Refresh token hashing
+- Secure logout (session invalidation)
 
 ---
 
-## ⚖️ Trade-offs
+## ⚖️ Engineering Trade-offs
 
-- Monólito vs Microservices
-  → Escolhido monólito para reduzir complexidade operacional
-- BullMQ vs Kafka
-  → BullMQ é mais simples e suficiente para o escopo atual
-- Event-driven parcial
-  → Aplicado apenas onde agrega valor (jobs e notificações)
+| Decision                    | Reason                                |
+| --------------------------- | ------------------------------------- |
+| Monolith over Microservices | Reduced operational complexity        |
+| BullMQ over Kafka           | Simpler setup, sufficient for scale   |
+| Partial Event-Driven        | Applied only where it adds real value |
 
 ---
 
-## 📦 Stack
+## 📦 Tech Stack
 
 - NestJS
 - BullMQ + Redis
@@ -134,11 +135,27 @@ Este projeto utiliza um estilo event-driven dentro de um monólito, garantindo:
 
 ---
 
-## 📌 Observações
+## 🧪 Production Considerations
 
-Projeto focado em demonstrar conhecimento avançado de backend, incluindo:
+This project includes patterns commonly used in production systems:
 
-- Design patterns
-- Processamento assíncrono
-- Arquitetura desacoplada
-- Observabilidade
+- Retry strategies with backoff
+- Failure isolation via queues
+- Observability-first design
+- Scalable processing pipelines
+
+---
+
+## 📌 What this demonstrates
+
+- Real-world backend architecture
+- Clean code and separation of concerns
+- Practical use of design patterns
+- Async workflows and resilience
+- Monitoring and debugging strategies
+
+---
+
+## 📬 Final Notes
+
+This project was built to showcase backend engineering skills at a professional level, focusing on scalability, maintainability, and real-world applicability.
