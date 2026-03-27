@@ -30,4 +30,14 @@ export class UserResponseDto {
     example: '2024-01-01T12:00:00Z',
   })
   updatedAt: Date;
+
+  static fromEntity(user: any): UserResponseDto {
+    const dto = new UserResponseDto();
+    dto.id = user.id;
+    dto.name = user.name;
+    dto.email = user.email;
+    dto.createdAt = user.createdAt;
+    dto.updatedAt = user.updatedAt;
+    return dto;
+  }
 }

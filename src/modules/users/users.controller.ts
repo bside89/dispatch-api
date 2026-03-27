@@ -34,10 +34,11 @@ import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { UpdateLoginDto } from './dto/update-login.dto';
 import { UserQueryDto } from './dto/user-query.dto';
-import { UserResponseDto } from './dto/user-response.dto';
 import { Public } from '../auth/decorators/public.decorator';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { UserRole } from './enums/user-role.enum';
+import { PaginatedResultDto } from '@/shared/dto/paginated-result.dto';
+import { UserResponseDto } from './dto/user-response.dto';
 
 @Controller({ path: 'v1/users', version: '1' })
 @ApiTags('users')
@@ -84,7 +85,7 @@ export class UsersController {
       throw new BadRequestException('Idempotency-Key header is required');
     }
 
-    this.logger.log(
+    this.logger.debug(
       `POST /users - Creating user with email: ${createUserDto.email} and idempotency key: ${idempotencyKey}`,
     );
     return this.usersService.create(createUserDto, idempotencyKey);
@@ -98,7 +99,7 @@ export class UsersController {
   })
   @ApiOkResponse({
     description: 'List of users retrieved successfully',
-    type: [UserResponseDto],
+    type: PaginatedResultDto<UserResponseDto>,
   })
   @ApiQuery({
     name: 'name',
@@ -124,8 +125,10 @@ export class UsersController {
     description: 'Number of users to skip',
     type: Number,
   })
-  async findAll(@Query() query: UserQueryDto): Promise<UserResponseDto[]> {
-    this.logger.log('GET /users - Retrieving all users');
+  async findAll(
+    @Query() query: UserQueryDto,
+  ): Promise<PaginatedResultDto<UserResponseDto>> {
+    this.logger.debug('GET /users - Retrieving all users');
     return this.usersService.findAll(query);
   }
 
@@ -153,7 +156,7 @@ export class UsersController {
   async findOne(
     @Param('id', ParseUUIDPipe) id: string,
   ): Promise<UserResponseDto> {
-    this.logger.log(`GET /users/${id} - Retrieving user`);
+    this.logger.debug(`GET /users/${id} - Retrieving user`);
     return this.usersService.findOne(id);
   }
 
@@ -190,7 +193,7 @@ export class UsersController {
     @Param('id', ParseUUIDPipe) id: string,
     @Body() updateUserDto: UpdateUserDto,
   ): Promise<UserResponseDto> {
-    this.logger.log(`PATCH /users/${id} - Updating user`);
+    this.logger.debug(`PATCH /users/${id} - Updating user`);
     return this.usersService.update(id, updateUserDto);
   }
 
@@ -228,7 +231,7 @@ export class UsersController {
     @Param('id', ParseUUIDPipe) id: string,
     @Body() updateLoginDto: UpdateLoginDto,
   ): Promise<UserResponseDto> {
-    this.logger.log(
+    this.logger.debug(
       `PATCH /users/${id}/login - Updating user login credentials`,
     );
     return this.usersService.updateLogin(id, updateLoginDto);
@@ -258,7 +261,7 @@ export class UsersController {
     description: 'Invalid UUID format',
   })
   async remove(@Param('id', ParseUUIDPipe) id: string): Promise<void> {
-    this.logger.log(`DELETE /users/${id} - Deleting user`);
+    this.logger.debug(`DELETE /users/${id} - Deleting user`);
     return this.usersService.remove(id);
   }
 }

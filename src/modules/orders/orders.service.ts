@@ -1,14 +1,10 @@
 import { Injectable, NotFoundException, Logger, Inject } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import { Order } from './entities/order.entity';
-import { OrderItem } from './entities/order-item.entity';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { UpdateOrderDto } from './dto/update-order.dto';
 import { OrderQueryDto } from './dto/order-query.dto';
-import { OrderResponseDto } from './dto/order-response.dto';
 import { OrderStatus } from './enums/order-status.enum';
 import { OrderJob } from './enums/order-job.enum';
 import { CacheService } from '../cache/cache.service';
@@ -16,6 +12,10 @@ import { CancelOrderJobData, ProcessOrderJobData } from './misc/order-job-data';
 import { EVENT_BUS } from '../events/constants/event-bus.token';
 import { EventBus } from '../events/interfaces/event-bus.interface';
 import { NotifyUserJobData } from '../events/misc/events-job-data';
+import { OrderRepository } from './repositories/order.repository';
+import { OrderItemRepository } from './repositories/order-item.repository';
+import { User } from '../users/entities/user.entity';
+import { PaginatedResultDto } from '@/shared/dto/paginated-result.dto';
 
 @Injectable()
 export class OrdersService {
@@ -27,16 +27,14 @@ export class OrdersService {
   private readonly IDEMPOTENCY_TTL = 86400 * 1000; // 24 hours
 
   constructor(
-    @InjectRepository(Order)
-    private readonly orderRepository: Repository<Order>,
-    @InjectRepository(OrderItem)
-    private readonly orderItemRepository: Repository<OrderItem>,
     @InjectQueue('orders')
     private readonly orderQueue: Queue,
     @Inject(EVENT_BUS)
     private readonly eventBus: EventBus,
 
     private readonly cacheService: CacheService,
+    private readonly orderRepository: OrderRepository,
+    private readonly orderItemRepository: OrderItemRepository,
   ) {}
 
   async create(
@@ -50,7 +48,6 @@ export class OrdersService {
     const existingOrder = await this.cacheService.get<Order>(
       idempotencyKeyFormatted,
     );
-
     if (existingOrder) {
       this.logger.log(
         `Returning existing order for idempotency key: ${idempotencyKey}, Order ID: ${existingOrder.id}`,
@@ -69,31 +66,32 @@ export class OrdersService {
     );
 
     // Create order entity
-    const order = this.orderRepository.create({
-      user: { id: userId },
+    const order = this.orderRepository.createEntity({
+      user: new User(),
       total,
       status: OrderStatus.PENDING,
     });
+    order.user.id = userId;
 
     // Save order first to get the ID
     const savedOrder = await this.orderRepository.save(order);
 
     // Create order items
     const orderItems = createOrderDto.items.map((item) =>
-      this.orderItemRepository.create({
+      this.orderItemRepository.createEntity({
         ...item,
         orderId: savedOrder.id,
       }),
     );
 
     // Save order items
-    await this.orderItemRepository.save(orderItems);
+    await this.orderItemRepository.saveMany(orderItems);
 
     // Fetch complete order with items
-    const completeOrder = await this.orderRepository.findOne({
-      where: { id: savedOrder.id },
-      relations: ['items'],
-    });
+    const completeOrder = await this.orderRepository.findOneWithRelations(
+      { id: savedOrder.id },
+      ['items'],
+    );
 
     // Add job to processing queue
     await this.orderQueue.add(
@@ -118,85 +116,41 @@ export class OrdersService {
     return completeOrder;
   }
 
-  async findAll(queryDto: OrderQueryDto): Promise<OrderResponseDto> {
-    const {
-      userId,
-      status,
-      startDate,
-      endDate,
-      page = 1,
-      limit = 10,
-    } = queryDto;
-
+  async findAll(queryDto: OrderQueryDto): Promise<PaginatedResultDto<Order>> {
+    // Check cache first
     const cacheKey = `${this.CACHE_PREFIX}:list:${JSON.stringify(queryDto)}`;
     const cachedResult =
-      await this.cacheService.get<OrderResponseDto>(cacheKey);
-
+      await this.cacheService.get<PaginatedResultDto<Order>>(cacheKey);
     if (cachedResult) {
       this.logger.log(`Returning cached orders list`);
       return cachedResult;
     }
 
-    const queryBuilder = this.orderRepository
-      .createQueryBuilder('order')
-      .leftJoinAndSelect('order.items', 'items')
-      .orderBy('order.createdAt', 'DESC');
-
-    // Apply filters
-    if (userId) {
-      queryBuilder.andWhere('order.userId = :userId', { userId });
-    }
-
-    if (status) {
-      queryBuilder.andWhere('order.status = :status', { status });
-    }
-
-    if (startDate && endDate) {
-      queryBuilder.andWhere('order.createdAt BETWEEN :startDate AND :endDate', {
-        startDate,
-        endDate,
-      });
-    }
-
-    // Get total count
-    const total = await queryBuilder.getCount();
-
-    // Apply pagination
-    const skip = (page - 1) * limit;
-    queryBuilder.skip(skip).take(limit);
-
-    const orders = await queryBuilder.getMany();
-
-    const result: OrderResponseDto = {
-      total,
-      page,
-      limit,
-      totalPages: Math.ceil(total / limit),
-      data: orders,
-    };
+    const result = await this.orderRepository.findAllWithFilters(queryDto);
 
     // Cache the result with shorter TTL for lists
     await this.cacheService.set(cacheKey, result, this.LIST_CACHE_TTL);
 
     this.logger.log(
-      `Found ${orders.length} orders (page ${page}/${result.totalPages})`,
+      `Found ${result.data.length} orders (page ${queryDto.page}/${result.totalPages})`,
     );
+
     return result;
   }
 
   async findOne(id: string): Promise<Order> {
+    // Check cache first
     const cacheKey = `${this.CACHE_PREFIX}:${id}`;
     const cachedOrder = await this.cacheService.get<Order>(cacheKey);
-
     if (cachedOrder) {
       this.logger.log(`Returning cached order: ${id}`);
       return cachedOrder;
     }
 
-    const order = await this.orderRepository.findOne({
-      where: { id },
-      relations: ['user', 'items'],
-    });
+    const order = await this.orderRepository.findOneWithRelations({ id }, [
+      'user',
+      'items',
+    ]);
 
     if (!order) {
       throw new NotFoundException(`Order with ID ${id} not found`);
@@ -211,6 +165,11 @@ export class OrdersService {
 
   async update(id: string, updateOrderDto: UpdateOrderDto): Promise<Order> {
     const order = await this.findOne(id);
+    const oldStatus = order.status;
+
+    if (!order) {
+      throw new NotFoundException(`Order with ID ${id} not found`);
+    }
 
     // Update order properties
     Object.assign(order, updateOrderDto);
@@ -220,13 +179,13 @@ export class OrdersService {
       await this.orderItemRepository.delete({ orderId: id });
 
       const orderItems = updateOrderDto.items.map((item) =>
-        this.orderItemRepository.create({
+        this.orderItemRepository.createEntity({
           ...item,
           orderId: id,
         }),
       );
 
-      await this.orderItemRepository.save(orderItems);
+      await this.orderItemRepository.saveMany(orderItems);
       order.items = orderItems;
 
       // Recalculate total
@@ -236,8 +195,10 @@ export class OrdersService {
       );
     }
 
+    await this.orderRepository.save(order);
+
     // Notify status change if status is updated
-    if (updateOrderDto.status && updateOrderDto.status !== order.status) {
+    if (updateOrderDto.status && updateOrderDto.status !== oldStatus) {
       await this.eventBus.publish(
         new NotifyUserJobData(
           order.user.id,
@@ -258,41 +219,25 @@ export class OrdersService {
   async remove(id: string): Promise<Order> {
     const order = await this.findOne(id);
 
-    // Add cancellation job to queue
-    await this.orderQueue.add(
-      OrderJob.CANCEL_ORDER,
-      new CancelOrderJobData(id, order.user.id),
-    );
+    if (
+      order.status === OrderStatus.PENDING ||
+      order.status === OrderStatus.CONFIRMED
+    ) {
+      // Add cancellation job to queue
+      await this.orderQueue.add(
+        OrderJob.CANCEL_ORDER,
+        new CancelOrderJobData(id, order.user.id),
+      );
+    }
 
-    await this.orderRepository.remove(order);
+    await this.orderRepository.delete(order.id);
 
     // Clear cache
     await this.clearOrderCache(order.user.id, id);
 
     this.logger.log(`Order deleted: ${id}`);
+
     return order;
-  }
-
-  async findByUserId(userId: string): Promise<Order[]> {
-    const cacheKey = `${this.CACHE_PREFIX}:user:${userId}`;
-    const cachedOrders = await this.cacheService.get<Order[]>(cacheKey);
-
-    if (cachedOrders) {
-      this.logger.log(`Returning cached orders for user: ${userId}`);
-      return cachedOrders;
-    }
-
-    const orders = await this.orderRepository.find({
-      where: { user: { id: userId } },
-      relations: ['items'],
-      order: { createdAt: 'DESC' },
-    });
-
-    // Cache the orders with shorter TTL (it's a list)
-    await this.cacheService.set(cacheKey, orders, this.LIST_CACHE_TTL);
-
-    this.logger.log(`Found ${orders.length} orders for user: ${userId}`);
-    return orders;
   }
 
   async updateStatus(id: string, status: OrderStatus): Promise<Order> {

@@ -5,16 +5,16 @@ import {
   BadRequestException,
   Logger,
 } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Like } from 'typeorm';
 import { CacheService } from '../cache/cache.service';
-import { User } from './entities/user.entity';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { UpdateLoginDto } from './dto/update-login.dto';
 import { UserQueryDto } from './dto/user-query.dto';
+import { UserRepository } from './repositories/user.repository';
+import { PaginatedResultDto } from '@/shared/dto/paginated-result.dto';
+import { User } from './entities/user.entity';
 import { UserResponseDto } from './dto/user-response.dto';
-import { AuthService } from '../auth/auth.service';
+import { HashUtils } from '@/shared/utils/hash.utils';
 
 @Injectable()
 export class UsersService {
@@ -23,181 +23,117 @@ export class UsersService {
   private readonly IDEMPOTENCY_TTL = 86400 * 1000; // 24 hours
 
   constructor(
-    @InjectRepository(User)
-    private readonly userRepository: Repository<User>,
-
     private readonly cacheService: CacheService,
-    private readonly authService: AuthService,
+    private readonly userRepository: UserRepository,
   ) {}
 
   async create(
     createUserDto: CreateUserDto,
     idempotencyKey: string,
   ): Promise<UserResponseDto> {
-    const idempotencyKeyFormatted = `${this.IDEMPOTENCY_PREFIX}:${idempotencyKey}`;
-
     // Check if this idempotency key already exists
-    const existingUser = await this.cacheService.get<UserResponseDto>(
+    const idempotencyKeyFormatted = `${this.IDEMPOTENCY_PREFIX}:${idempotencyKey}`;
+    const existingUser = await this.cacheService.get<User>(
       idempotencyKeyFormatted,
     );
-
     if (existingUser) {
-      this.logger.log(
+      this.logger.debug(
         `Returning existing user for idempotency key: ${idempotencyKey}, User ID: ${existingUser.id}`,
       );
-      return existingUser;
+      return UserResponseDto.fromEntity(existingUser);
     }
 
-    this.logger.log(
-      `Creating new user with idempotency key: ${idempotencyKey}`,
-    );
-
     // Check if email already exists
-    const existingEmailUser = await this.userRepository.findOne({
-      where: { email: createUserDto.email },
+    const existingEmailUser = await this.userRepository.findOneWhere({
+      email: createUserDto.email,
     });
-
     if (existingEmailUser) {
       throw new ConflictException('Email already exists');
     }
 
-    const user = this.userRepository.create({
+    this.logger.debug(
+      `Creating new user with idempotency key: ${idempotencyKey}`,
+    );
+
+    const user = this.userRepository.createEntity({
       name: createUserDto.name,
       email: createUserDto.email,
-      password: await this.authService.hashPasswordOrToken(
-        createUserDto.password,
-      ),
+      password: await HashUtils.hash(createUserDto.password),
     });
 
     const savedUser = await this.userRepository.save(user);
-    const userResponse = this.mapToResponseDto(savedUser);
 
     // Cache the created user with idempotency key
     await this.cacheService.set(
       idempotencyKeyFormatted,
-      userResponse,
+      savedUser,
       this.IDEMPOTENCY_TTL,
     );
 
-    this.logger.log(
+    this.logger.debug(
       `User created and cached with idempotency key: ${idempotencyKey}, User ID: ${savedUser.id}`,
     );
 
-    return userResponse;
+    return UserResponseDto.fromEntity(savedUser);
   }
 
-  async findAll(query: UserQueryDto): Promise<UserResponseDto[]> {
-    this.logger.log('Retrieving all users');
+  async findAll(
+    query: UserQueryDto,
+  ): Promise<PaginatedResultDto<UserResponseDto>> {
+    this.logger.debug('Retrieving all users');
 
-    const queryBuilder = this.userRepository.createQueryBuilder('user');
+    const result = await this.userRepository.findAllWithFilters(query);
 
-    // Apply filters
-    if (query.name) {
-      queryBuilder.andWhere('user.name ILIKE :name', {
-        name: `%${query.name}%`,
-      });
-    }
+    this.logger.debug(`Retrieved ${result.data.length} users`);
 
-    if (query.email) {
-      queryBuilder.andWhere('user.email ILIKE :email', {
-        email: `%${query.email}%`,
-      });
-    }
-
-    // Apply pagination
-    if (query.limit) {
-      queryBuilder.limit(Math.min(query.limit, 100));
-    } else {
-      queryBuilder.limit(20); // Default limit
-    }
-
-    if (query.offset) {
-      queryBuilder.offset(query.offset);
-    }
-
-    // Order by creation date
-    queryBuilder.orderBy('user.createdAt', 'DESC');
-
-    const users = await queryBuilder.getMany();
-    this.logger.log(`Retrieved ${users.length} users`);
-    const result = users.map((user) => this.mapToResponseDto(user));
-
-    return result;
+    return {
+      ...result,
+      data: result.data.map(UserResponseDto.fromEntity),
+    };
   }
 
   async findOne(id: string, retrieveToken = false): Promise<UserResponseDto> {
-    this.logger.log(`Retrieving user with ID: ${id}`);
+    this.logger.debug(`Retrieving user with ID: ${id}`);
 
-    const user = await this.userRepository.findOne({
-      where: { id },
-    });
+    const user = await this.userRepository.findById(id);
 
     if (!user) {
       throw new NotFoundException(`User with ID ${id} not found`);
     }
 
-    this.logger.log(`User found: ${user.email}`);
-    return this.mapToResponseDto(user);
-  }
+    this.logger.debug(`User found: ${user.email}`);
 
-  async findOneComplete(id: string): Promise<User> {
-    this.logger.log(`Retrieving complete user with ID: ${id}`);
-
-    const user = await this.userRepository.findOne({
-      where: { id },
-      select: [
-        'id',
-        'name',
-        'email',
-        'password',
-        'role',
-        'refreshToken',
-        'createdAt',
-        'updatedAt',
-      ],
-    });
-
-    if (!user) {
-      throw new NotFoundException(`User with ID ${id} not found`);
-    }
-
-    this.logger.log(`Complete user found: ${user.email}`);
-    return user;
+    return UserResponseDto.fromEntity(user);
   }
 
   async findByEmail(email: string): Promise<UserResponseDto> {
-    this.logger.log(`Finding user by email: ${email}`);
+    this.logger.debug(`Finding user by email: ${email}`);
 
-    const user = await this.userRepository.findOne({
-      where: { email },
-    });
-
+    const user = await this.userRepository.findOneWhere({ email });
     if (!user) {
       throw new NotFoundException(`User with email ${email} not found`);
     }
 
-    this.logger.log(`User found with email: ${email}`);
-    return this.mapToResponseDto(user);
+    this.logger.debug(`User found with email: ${email}`);
+
+    return UserResponseDto.fromEntity(user);
   }
 
   async update(
     id: string,
     updateUserDto: UpdateUserDto,
   ): Promise<UserResponseDto> {
-    this.logger.log(`Updating user with ID: ${id}`);
+    this.logger.debug(`Updating user with ID: ${id}`);
 
-    const user = await this.userRepository.findOne({
-      where: { id },
-    });
-
+    const user = await this.userRepository.findById(id);
     if (!user) {
       throw new NotFoundException(`User with ID ${id} not found`);
     }
 
     // Check if email already exists (if email is being updated)
     if (updateUserDto.email && updateUserDto.email !== user.email) {
-      const existingUser = await this.userRepository.findOne({
-        where: { email: updateUserDto.email },
+      const existingUser = await this.userRepository.findOneWhere({
+        email: updateUserDto.email,
       });
 
       if (existingUser) {
@@ -207,23 +143,27 @@ export class UsersService {
 
     // Update user fields
     Object.assign(user, updateUserDto);
-
     const updatedUser = await this.userRepository.save(user);
-    this.logger.log(`User updated successfully: ${updatedUser.email}`);
 
-    return this.mapToResponseDto(updatedUser);
+    this.logger.debug(`User updated successfully: ${updatedUser.email}`);
+
+    return UserResponseDto.fromEntity(updatedUser);
   }
 
   async updateLogin(
     id: string,
     updateLoginDto: UpdateLoginDto,
   ): Promise<UserResponseDto> {
-    this.logger.log(`Updating login for user with ID: ${id}`);
+    this.logger.debug(`Updating login for user with ID: ${id}`);
 
-    const user = await this.userRepository.findOne({
-      where: { id },
-      select: ['id', 'name', 'email', 'password', 'createdAt', 'updatedAt'],
-    });
+    const user = await this.userRepository.findById(id, [
+      'id',
+      'name',
+      'email',
+      'password',
+      'createdAt',
+      'updatedAt',
+    ]);
 
     if (!user) {
       throw new NotFoundException(`User with ID ${id} not found`);
@@ -239,7 +179,7 @@ export class UsersService {
 
       // Verify current password
       if (
-        !(await this.authService.verifyPasswordOrToken(
+        !(await HashUtils.compare(
           user.password,
           updateLoginDto.currentPassword,
         ))
@@ -248,15 +188,13 @@ export class UsersService {
       }
 
       // Hash new password with argon2
-      user.password = await this.authService.hashPasswordOrToken(
-        updateLoginDto.newPassword,
-      );
+      user.password = await HashUtils.hash(updateLoginDto.newPassword);
     }
 
     // Update email if provided
     if (updateLoginDto.email && updateLoginDto.email !== user.email) {
-      const existingUser = await this.userRepository.findOne({
-        where: { email: updateLoginDto.email },
+      const existingUser = await this.userRepository.findOneWhere({
+        email: updateLoginDto.email,
       });
 
       if (existingUser) {
@@ -267,15 +205,15 @@ export class UsersService {
     }
 
     const updatedUser = await this.userRepository.save(user);
-    this.logger.log(
+    this.logger.debug(
       `Login updated successfully for user: ${updatedUser.email}`,
     );
 
-    return this.mapToResponseDto(updatedUser);
+    return UserResponseDto.fromEntity(updatedUser);
   }
 
   async remove(id: string): Promise<void> {
-    this.logger.log(`Deleting user with ID: ${id}`);
+    this.logger.debug(`Deleting user with ID: ${id}`);
 
     const result = await this.userRepository.delete(id);
 
@@ -283,16 +221,6 @@ export class UsersService {
       throw new NotFoundException(`User with ID ${id} not found`);
     }
 
-    this.logger.log(`User with ID ${id} deleted successfully`);
-  }
-
-  private mapToResponseDto(user: User): UserResponseDto {
-    return {
-      id: user.id,
-      name: user.name,
-      email: user.email,
-      createdAt: user.createdAt,
-      updatedAt: user.updatedAt,
-    };
+    this.logger.debug(`User with ID ${id} deleted successfully`);
   }
 }

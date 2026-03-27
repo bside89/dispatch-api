@@ -85,7 +85,7 @@ describe('JwtRefreshStrategy', () => {
         sub: 'another-user-id',
       });
 
-      expect(result.id).toBe('another-user-id');
+      expect(result.sub).toBe('another-user-id');
     });
   });
 });

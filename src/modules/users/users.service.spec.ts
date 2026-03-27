@@ -39,7 +39,7 @@ describe('UserService', () => {
     createQueryBuilder: jest.fn(() => ({
       andWhere: jest.fn().mockReturnThis(),
       limit: jest.fn().mockReturnThis(),
-      offset: jest.fn().mockReturnThis(),
+      page: jest.fn().mockReturnThis(),
       orderBy: jest.fn().mockReturnThis(),
       getMany: jest.fn(),
     })),
@@ -176,14 +176,14 @@ describe('UserService', () => {
     const queryDto: UserQueryDto = {
       name: 'João',
       limit: 10,
-      offset: 0,
+      page: 1,
     };
 
     it('should return all users successfully', async () => {
       const mockQueryBuilder = {
         andWhere: jest.fn().mockReturnThis(),
         limit: jest.fn().mockReturnThis(),
-        offset: jest.fn().mockReturnThis(),
+        page: jest.fn().mockReturnThis(),
         orderBy: jest.fn().mockReturnThis(),
         getMany: jest.fn().mockResolvedValue([mockUser]),
       };

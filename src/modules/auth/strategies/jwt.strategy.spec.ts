@@ -86,7 +86,7 @@ describe('JwtStrategy', () => {
 
       const result = await strategy.validate(mockReq, payload);
 
-      expect(result.id).toBe('specific-user-id');
+      expect(result.sub).toBe('specific-user-id');
     });
   });
 });

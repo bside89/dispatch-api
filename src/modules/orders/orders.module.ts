@@ -16,6 +16,8 @@ import { ShipOrderStrategy } from './strategies/ship-order.strategy';
 import { DeliverOrderStrategy } from './strategies/deliver-order.strategy';
 import { OrderProcessor } from './processors/order.processor';
 import { bullmqDefaultJobOptions } from '../../config/bullmq.config';
+import { OrderRepository } from './repositories/order.repository';
+import { OrderItemRepository } from './repositories/order-item.repository';
 
 @Module({
   imports: [
@@ -29,6 +31,8 @@ import { bullmqDefaultJobOptions } from '../../config/bullmq.config';
   controllers: [OrdersController],
   providers: [
     OrdersService,
+    OrderRepository,
+    OrderItemRepository,
     OrderProcessor,
     OrderJobHandlerFactory,
     ProcessOrderStrategy,
@@ -37,6 +41,6 @@ import { bullmqDefaultJobOptions } from '../../config/bullmq.config';
     CancelOrderStrategy,
     NotificationStrategy,
   ],
-  exports: [OrdersService],
+  exports: [OrdersService, OrderRepository, OrderItemRepository],
 })
 export class OrdersModule {}

@@ -5,7 +5,7 @@ import { OrderStatus } from '../enums/order-status.enum';
 import { OrderJob } from '../enums/order-job.enum';
 import { ProcessOrderJobData, ShipOrderJobData } from '../misc/order-job-data';
 import { NotifyUserJobData } from '../../events/misc/events-job-data';
-import { delay } from '../../common/helpers/helpers';
+import { delay } from '../../../shared/helpers/functions';
 
 @Injectable()
 export class ProcessOrderStrategy extends BaseOrderJobStrategy<ProcessOrderJobData> {

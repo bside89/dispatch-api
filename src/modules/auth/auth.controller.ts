@@ -4,6 +4,8 @@ import { LoginDto } from './dto/login.dto';
 import { ApiSecurity, ApiTags } from '@nestjs/swagger';
 import { Public } from './decorators/public.decorator';
 import { JwtRefreshAuthGuard } from './guards/jwt-refresh.guard';
+import { GetUser } from '@/shared/decorators/get-user.decorator';
+import { JwtPayload } from './interfaces/jwt-payload.interface';
 
 @Controller({ path: 'v1/auth', version: '1' })
 @ApiTags('auth')
@@ -22,24 +24,12 @@ export class AuthController {
   @Post('refresh')
   @Public()
   @UseGuards(JwtRefreshAuthGuard)
-  refresh(@Req() req) {
-    return this.authService.refresh(req.user);
+  refresh(@GetUser() user: JwtPayload) {
+    return this.authService.refresh(user);
   }
 
   @Post('logout')
-  logout(@Req() req) {
-    return this.authService.logout(req.user);
+  logout(@GetUser() user: JwtPayload) {
+    return this.authService.logout(user);
   }
-
-  // Comentado, usado apenas para testar o logger
-  // @Post('test')
-  // @Public()
-  // test() {
-  //   this.logger.verbose({ foo: 'bar' }, 'baz %s', 'qux');
-  //   this.logger.debug('foo %s %o', 'bar', { baz: 'qux' });
-  //   this.logger.log('foo');
-  //   this.logger.warn('foo %s', 'bar');
-  //   this.logger.error('foo %s', 'bar');
-  //   return { message: 'This is a test route' };
-  // }
 }

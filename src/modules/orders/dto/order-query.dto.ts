@@ -1,21 +1,15 @@
-import {
-  IsOptional,
-  IsString,
-  IsEnum,
-  IsDateString,
-  IsUUID,
-} from 'class-validator';
-import { Transform } from 'class-transformer';
+import { IsOptional, IsEnum, IsDateString, IsUUID } from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { OrderStatus } from '../enums/order-status.enum';
+import { BaseQueryDto } from '@/shared/dto/base-query.dto';
 
-export class OrderQueryDto {
+export class OrderQueryDto extends BaseQueryDto {
   @ApiPropertyOptional({
     description: 'User ID to filter orders',
     example: '550e8400-e29b-41d4-a716-446655440001',
   })
   @IsOptional()
-  @IsString()
+  @IsUUID()
   userId?: string;
 
   @ApiPropertyOptional({
@@ -42,22 +36,4 @@ export class OrderQueryDto {
   @IsOptional()
   @IsDateString()
   endDate?: string;
-
-  @ApiPropertyOptional({
-    description: 'Page number for pagination',
-    example: 1,
-    default: 1,
-  })
-  @IsOptional()
-  @Transform(({ value }) => parseInt(value))
-  page?: number = 1;
-
-  @ApiPropertyOptional({
-    description: 'Number of items per page',
-    example: 10,
-    default: 10,
-  })
-  @IsOptional()
-  @Transform(({ value }) => parseInt(value))
-  limit?: number = 10;
 }

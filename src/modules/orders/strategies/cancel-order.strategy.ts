@@ -3,7 +3,7 @@ import { Job } from 'bullmq';
 import { BaseOrderJobStrategy } from './base-order-job.strategy';
 import { OrderStatus } from '../enums/order-status.enum';
 import { CancelOrderJobData } from '../misc/order-job-data';
-import { delay } from '../../common/helpers/helpers';
+import { delay } from '../../../shared/helpers/functions';
 import { NotifyUserJobData } from '../../events/misc/events-job-data';
 
 @Injectable()

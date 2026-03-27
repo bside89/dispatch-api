@@ -4,7 +4,7 @@ import { OrderStatus } from '../enums/order-status.enum';
 import { BaseOrderJobStrategy } from './base-order-job.strategy';
 import { OrderJob } from '../enums/order-job.enum';
 import { DeliverOrderJobData, ShipOrderJobData } from '../misc/order-job-data';
-import { delay } from '../../common/helpers/helpers';
+import { delay } from '../../../shared/helpers/functions';
 import { NotifyUserJobData } from '../../events/misc/events-job-data';
 
 @Injectable()

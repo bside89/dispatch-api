@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Job } from 'bullmq';
 import { CacheService } from '../../cache/cache.service';
-import { delay } from '../../common/helpers/helpers';
+import { delay } from '../../../shared/helpers/functions';
 
 @Injectable()
 export class NotificationStrategy {

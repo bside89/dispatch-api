@@ -32,11 +32,13 @@ import { OrdersService } from './orders.service';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { UpdateOrderDto } from './dto/update-order.dto';
 import { OrderQueryDto } from './dto/order-query.dto';
-import { OrderResponseDto } from './dto/order-response.dto';
 import { Order } from './entities/order.entity';
 import { OrderStatus } from './enums/order-status.enum';
 import { UserRole } from '../users/enums/user-role.enum';
 import { Roles } from '../auth/decorators/roles.decorator';
+import { PaginatedResultDto } from '@/shared/dto/paginated-result.dto';
+import { JwtPayload } from '../auth/interfaces/jwt-payload.interface';
+import { GetUser } from '@/shared/decorators/get-user.decorator';
 
 @Controller({ path: 'v1/orders', version: '1' })
 @ApiTags('orders')
@@ -74,21 +76,17 @@ export class OrdersController {
   async create(
     @Body() createOrderDto: CreateOrderDto,
     @Headers('idempotency-key') idempotencyKey: string,
-    @Req() req,
+    @GetUser() user: JwtPayload,
   ): Promise<Order> {
     if (!idempotencyKey) {
       throw new BadRequestException('Idempotency-Key header is required');
     }
 
     this.logger.log(
-      `POST /orders - Creating order for user: ${req.user.id} with idempotency key: ${idempotencyKey}`,
+      `POST /orders - Creating order for user: ${user.sub} with idempotency key: ${idempotencyKey}`,
     );
 
-    return this.ordersService.create(
-      createOrderDto,
-      req.user.id,
-      idempotencyKey,
-    );
+    return this.ordersService.create(createOrderDto, user.sub, idempotencyKey);
   }
 
   @Get()
@@ -98,7 +96,7 @@ export class OrdersController {
   })
   @ApiOkResponse({
     description: 'Orders successfully retrieved',
-    type: OrderResponseDto,
+    type: PaginatedResultDto<Order>,
   })
   @ApiQuery({
     name: 'userId',
@@ -131,29 +129,13 @@ export class OrdersController {
     required: false,
     description: 'Items per page (default: 10)',
   })
-  async findAll(@Query() queryDto: OrderQueryDto): Promise<OrderResponseDto> {
+  async findAll(
+    @Query() queryDto: OrderQueryDto,
+  ): Promise<PaginatedResultDto<Order>> {
     this.logger.log(
       `GET /orders - Fetching orders with filters: ${JSON.stringify(queryDto)}`,
     );
     return this.ordersService.findAll(queryDto);
-  }
-
-  @Get('user/:userId')
-  @ApiOperation({
-    summary: 'Get orders by user ID',
-    description: 'Retrieve all orders for a specific user',
-  })
-  @ApiParam({
-    name: 'userId',
-    description: 'User unique identifier',
-  })
-  @ApiOkResponse({
-    description: 'User orders successfully retrieved',
-    type: [Order],
-  })
-  async findByUserId(@Param('userId') userId: string): Promise<Order[]> {
-    this.logger.log(`GET /orders/user/${userId} - Fetching orders for user`);
-    return this.ordersService.findByUserId(userId);
   }
 
   @Get(':id')
