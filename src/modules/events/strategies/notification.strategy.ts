@@ -13,7 +13,7 @@ export class NotificationStrategy {
     const key = `idempotency:event:${userId}:${notificationId}`;
 
     if (await this.cacheService.get(key)) return;
-    await this.cacheService.set(key, '1', 3600);
+    await this.cacheService.set(key, '1', 3600 * 1000); // 1 hour TTL
 
     try {
       await this.handleNotification(userId, message, logger);
@@ -30,8 +30,8 @@ export class NotificationStrategy {
   ) {
     await delay(1000);
 
-    logger.debug(`Notification sent to user ${userId}:`);
+    logger.log(`Notification sent to user ${userId}:`);
 
-    logger.debug(message);
+    logger.log(message);
   }
 }

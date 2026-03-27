@@ -22,9 +22,7 @@ export class CancelOrderStrategy extends BaseOrderJobStrategy<CancelOrderJobData
         OrderStatus.REFUNDED,
       ])
     ) {
-      logger.debug(
-        `Order ${orderId} is already in CANCELLED or REFUNDED status`,
-      );
+      logger.log(`Order ${orderId} is already in CANCELLED or REFUNDED status`);
       return;
     }
 
@@ -55,11 +53,11 @@ export class CancelOrderStrategy extends BaseOrderJobStrategy<CancelOrderJobData
 
   private async releaseInventory(orderId: string, logger: Logger) {
     await delay(800);
-    logger.debug(`Inventory released`);
+    logger.log(`Inventory released`);
   }
 
   private async processRefund(orderId: string, logger: Logger) {
     await delay(2000);
-    logger.debug(`Refund processed`);
+    logger.log(`Refund processed`);
   }
 }

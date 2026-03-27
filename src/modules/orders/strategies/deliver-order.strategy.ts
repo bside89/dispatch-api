@@ -17,7 +17,7 @@ export class DeliverOrderStrategy extends BaseOrderJobStrategy<DeliverOrderJobDa
     await this.setKey(key);
 
     if (await this.isAlreadyInStatus(orderId, OrderStatus.DELIVERED)) {
-      logger.debug(`Order ${orderId} is already in DELIVERED status`);
+      logger.log(`Order ${orderId} is already in DELIVERED status`);
       return;
     }
 
@@ -47,6 +47,6 @@ export class DeliverOrderStrategy extends BaseOrderJobStrategy<DeliverOrderJobDa
 
   private async simulateDelivery(logger: Logger) {
     await delay(3000);
-    logger.debug('Delivery OK');
+    logger.log('Delivery OK');
   }
 }

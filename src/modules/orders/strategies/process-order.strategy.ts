@@ -18,7 +18,7 @@ export class ProcessOrderStrategy extends BaseOrderJobStrategy<ProcessOrderJobDa
     await this.setKey(key);
 
     if (await this.isAlreadyInStatus(orderId, OrderStatus.PROCESSED)) {
-      logger.debug(`Order ${orderId} is already in PROCESSING status`);
+      logger.log(`Order ${orderId} is already in PROCESSING status`);
       return;
     }
 
@@ -57,16 +57,16 @@ export class ProcessOrderStrategy extends BaseOrderJobStrategy<ProcessOrderJobDa
   private async validateOrder(data: ProcessOrderJobData, logger: Logger) {
     await delay(1000);
     if (data.total <= 0) throw new Error('Invalid order total');
-    logger.debug(`Validation OK`);
+    logger.log(`Validation OK`);
   }
 
   private async processPayment(data: ProcessOrderJobData, logger: Logger) {
     await delay(2000);
-    logger.debug(`Payment OK`);
+    logger.log(`Payment OK`);
   }
 
   private async reserveInventory(data: ProcessOrderJobData, logger: Logger) {
     await delay(1500);
-    logger.debug(`Inventory OK`);
+    logger.log(`Inventory OK`);
   }
 }

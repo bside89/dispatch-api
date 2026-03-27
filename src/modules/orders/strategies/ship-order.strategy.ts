@@ -18,7 +18,7 @@ export class ShipOrderStrategy extends BaseOrderJobStrategy<ShipOrderJobData> {
     await this.setKey(key);
 
     if (await this.isAlreadyInStatus(orderId, OrderStatus.SHIPPED)) {
-      logger.debug(`Order ${orderId} is already in SHIPPED status`);
+      logger.log(`Order ${orderId} is already in SHIPPED status`);
       return;
     }
 
@@ -52,6 +52,6 @@ export class ShipOrderStrategy extends BaseOrderJobStrategy<ShipOrderJobData> {
 
   private async simulateShipping(logger: Logger) {
     await delay(2000);
-    logger.debug('Shipping OK');
+    logger.log('Shipping OK');
   }
 }

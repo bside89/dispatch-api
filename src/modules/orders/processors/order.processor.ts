@@ -19,7 +19,11 @@ export class OrderProcessor extends WorkerHost {
   async process(job: Job): Promise<void> {
     const lockKey = `lock:job:${job.id}`;
 
-    const lock = await this.cacheService.setIfNotExists(lockKey, '1', 30);
+    const lock = await this.cacheService.setIfNotExists(
+      lockKey,
+      '1',
+      30 * 1000,
+    ); // 30 seconds TTL for the lock
     if (!lock) {
       this.logger.warn(`Job ${job.id} already running`);
       return;

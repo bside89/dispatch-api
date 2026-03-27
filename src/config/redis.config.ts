@@ -11,6 +11,6 @@ export const redisConfig = (
         `redis://${configService.get('REDIS_HOST') || 'localhost'}:${configService.get('REDIS_PORT') || 6379}`,
     ),
   ],
-  ttl: configService.get('CACHE_TTL') || 300,
+  ttl: configService.get('CACHE_TTL') || 300 * 1000, // Default TTL of 5 minutes
   isGlobal: true,
 });

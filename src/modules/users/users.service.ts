@@ -37,7 +37,7 @@ export class UsersService {
       idempotencyKeyFormatted,
     );
     if (existingUser) {
-      this.logger.debug(
+      this.logger.log(
         `Returning existing user for idempotency key: ${idempotencyKey}, User ID: ${existingUser.id}`,
       );
       return UserResponseDto.fromEntity(existingUser);
@@ -51,7 +51,7 @@ export class UsersService {
       throw new ConflictException('Email already exists');
     }
 
-    this.logger.debug(
+    this.logger.log(
       `Creating new user with idempotency key: ${idempotencyKey}`,
     );
 
@@ -70,7 +70,7 @@ export class UsersService {
       this.IDEMPOTENCY_TTL,
     );
 
-    this.logger.debug(
+    this.logger.log(
       `User created and cached with idempotency key: ${idempotencyKey}, User ID: ${savedUser.id}`,
     );
 
@@ -80,11 +80,11 @@ export class UsersService {
   async findAll(
     query: UserQueryDto,
   ): Promise<PaginatedResultDto<UserResponseDto>> {
-    this.logger.debug('Retrieving all users');
+    this.logger.log('Retrieving all users');
 
     const result = await this.userRepository.findAllWithFilters(query);
 
-    this.logger.debug(`Retrieved ${result.data.length} users`);
+    this.logger.log(`Retrieved ${result.data.length} users`);
 
     return {
       ...result,
@@ -93,7 +93,7 @@ export class UsersService {
   }
 
   async findOne(id: string, retrieveToken = false): Promise<UserResponseDto> {
-    this.logger.debug(`Retrieving user with ID: ${id}`);
+    this.logger.log(`Retrieving user with ID: ${id}`);
 
     const user = await this.userRepository.findById(id);
 
@@ -101,20 +101,20 @@ export class UsersService {
       throw new NotFoundException(`User with ID ${id} not found`);
     }
 
-    this.logger.debug(`User found: ${user.email}`);
+    this.logger.log(`User found: ${user.email}`);
 
     return UserResponseDto.fromEntity(user);
   }
 
   async findByEmail(email: string): Promise<UserResponseDto> {
-    this.logger.debug(`Finding user by email: ${email}`);
+    this.logger.log(`Finding user by email: ${email}`);
 
     const user = await this.userRepository.findOneWhere({ email });
     if (!user) {
       throw new NotFoundException(`User with email ${email} not found`);
     }
 
-    this.logger.debug(`User found with email: ${email}`);
+    this.logger.log(`User found with email: ${email}`);
 
     return UserResponseDto.fromEntity(user);
   }
@@ -123,7 +123,7 @@ export class UsersService {
     id: string,
     updateUserDto: UpdateUserDto,
   ): Promise<UserResponseDto> {
-    this.logger.debug(`Updating user with ID: ${id}`);
+    this.logger.log(`Updating user with ID: ${id}`);
 
     const user = await this.userRepository.findById(id);
     if (!user) {
@@ -145,7 +145,7 @@ export class UsersService {
     Object.assign(user, updateUserDto);
     const updatedUser = await this.userRepository.save(user);
 
-    this.logger.debug(`User updated successfully: ${updatedUser.email}`);
+    this.logger.log(`User updated successfully: ${updatedUser.email}`);
 
     return UserResponseDto.fromEntity(updatedUser);
   }
@@ -154,7 +154,7 @@ export class UsersService {
     id: string,
     updateLoginDto: UpdateLoginDto,
   ): Promise<UserResponseDto> {
-    this.logger.debug(`Updating login for user with ID: ${id}`);
+    this.logger.log(`Updating login for user with ID: ${id}`);
 
     const user = await this.userRepository.findById(id, [
       'id',
@@ -205,7 +205,7 @@ export class UsersService {
     }
 
     const updatedUser = await this.userRepository.save(user);
-    this.logger.debug(
+    this.logger.log(
       `Login updated successfully for user: ${updatedUser.email}`,
     );
 
@@ -213,7 +213,7 @@ export class UsersService {
   }
 
   async remove(id: string): Promise<void> {
-    this.logger.debug(`Deleting user with ID: ${id}`);
+    this.logger.log(`Deleting user with ID: ${id}`);
 
     const result = await this.userRepository.delete(id);
 
@@ -221,6 +221,6 @@ export class UsersService {
       throw new NotFoundException(`User with ID ${id} not found`);
     }
 
-    this.logger.debug(`User with ID ${id} deleted successfully`);
+    this.logger.log(`User with ID ${id} deleted successfully`);
   }
 }

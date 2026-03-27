@@ -3,6 +3,7 @@ import { OrderItem } from '../entities/order-item.entity';
 import { OrderStatus } from '../enums/order-status.enum';
 import { UserResponseDto } from '@/modules/users/dto/user-response.dto';
 import { Order } from '../entities/order.entity';
+import { OrderItemResponseDto } from './order-item-response.dto';
 
 export class OrderResponseDto {
   @ApiProperty({
@@ -44,9 +45,9 @@ export class OrderResponseDto {
 
   @ApiProperty({
     description: 'Order items',
-    type: () => [OrderItem],
+    type: () => [OrderItemResponseDto],
   })
-  items: OrderItem[];
+  items: OrderItemResponseDto[];
 
   static fromEntity(order: Order): OrderResponseDto {
     const dto = new OrderResponseDto();
@@ -56,7 +57,7 @@ export class OrderResponseDto {
     dto.total = order.total;
     dto.createdAt = order.createdAt;
     dto.updatedAt = order.updatedAt;
-    dto.items = order.items;
+    dto.items = order.items.map(OrderItemResponseDto.fromEntity);
     return dto;
   }
 }
