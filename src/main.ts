@@ -75,10 +75,8 @@ async function bootstrap() {
   const authMiddleware = new BasicAuthMiddleware(configService);
 
   // Protect versioned AdminController routes and Bull Board
-  app.use('/v1/admin', (req, res, next) =>
-    authMiddleware.use(req, res, next),
-  );
-  app.use('/queues-board', (req, res, next) =>
+  app.use('/v1/admin', (req, res, next) => authMiddleware.use(req, res, next));
+  app.use('/bull-board', (req, res, next) =>
     authMiddleware.use(req, res, next),
   );
 
@@ -97,7 +95,7 @@ async function bootstrap() {
     'Bootstrap',
   );
   logger.log(
-    `🔐 Bull Board dashboard available at: http://localhost:${port}/queues-board (requires authentication)`,
+    `🔐 Bull Board dashboard available at: http://localhost:${port}/bull-board (requires authentication)`,
     'Bootstrap',
   );
   logger.log(
@@ -110,7 +108,7 @@ async function bootstrap() {
     `📚 Swagger documentation available at: http://localhost:${port}/api/docs`,
   );
   console.log(
-    `🔐 Bull Board dashboard available at: http://localhost:${port}/queues-board (requires authentication)`,
+    `🔐 Bull Board dashboard available at: http://localhost:${port}/bull-board (requires authentication)`,
   );
   console.log(
     `📊 Grafana dashboard available at: http://localhost:${grafanaPort} (requires authentication)`,

@@ -68,7 +68,7 @@ import { LoggerModule } from 'nestjs-pino';
     // Bull Board (for monitoring queues)
     // forRoot MUST come before forFeature so BULL_BOARD_TOKEN is registered first
     BullBoardModule.forRoot({
-      route: '/queues-board',
+      route: '/bull-board',
       adapter: ExpressAdapter,
     }),
     BullBoardModule.forFeature(

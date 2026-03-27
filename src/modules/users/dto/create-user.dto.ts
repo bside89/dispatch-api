@@ -31,7 +31,7 @@ export class CreateUserDto {
 
   @ApiProperty({
     description: 'User password',
-    example: 'mySecurePassword123',
+    example: 'password123',
     minLength: 6,
     maxLength: 100,
   })

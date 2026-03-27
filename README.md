@@ -37,7 +37,7 @@ docker-compose up --build
 Access:
 
 - API: http://localhost:3000
-- Bull Board: http://localhost:3000/queues-board
+- Bull Board: http://localhost:3000/bull-board
 - Grafana: http://localhost:3001
 
 ---

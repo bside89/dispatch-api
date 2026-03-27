@@ -3,8 +3,8 @@ import { randomUUID } from 'crypto';
 import { IncomingMessage, ServerResponse } from 'http';
 import { Params } from 'nestjs-pino';
 
-export const loggerConfig = (configService: ConfigService): Params  => {
-  const isProduction = configService.get('NODE_ENV') === 'production';
+export const loggerConfig = (configService: ConfigService): Params => {
+  const isProduction = configService.get('APP_ENV') === 'production';
 
   return {
     pinoHttp: {
