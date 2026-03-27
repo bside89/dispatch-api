@@ -22,7 +22,7 @@ export const typeOrmConfig = (
 });
 
 // For migration commands
-export const dataSource = new DataSource({
+const dataSource = new DataSource({
   type: 'postgres',
   host: process.env.DB_HOST || 'localhost',
   port: parseInt(process.env.DB_PORT || '5432'),
