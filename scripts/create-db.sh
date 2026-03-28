@@ -1,43 +1,35 @@
 #!/bin/bash
 
-# Simple Database Creation Script
+DB_NAME="order_flow"
 
-echo "🔍 Creating order_processing database..."
-
-# Get the postgres container ID
 POSTGRES_CONTAINER=$(docker ps --filter "ancestor=postgres:15" --format "{{.ID}}" | head -1)
-
 if [ -z "$POSTGRES_CONTAINER" ]; then
-    echo "❌ PostgreSQL container not found! Run 'docker-compose up -d' first."
+    echo "PostgreSQL container not found."
     exit 1
 fi
+echo "Found PostgreSQL container: $POSTGRES_CONTAINER"
 
-echo "📦 Found PostgreSQL container: $POSTGRES_CONTAINER"
-
-# Create the database
-echo "🔧 Creating database..."
+echo "Creating database..."
 docker exec -i $POSTGRES_CONTAINER psql -U postgres -c "
-    SELECT 'Database order_processing already exists' 
-    WHERE EXISTS (SELECT FROM pg_database WHERE datname = 'order_processing')
+    SELECT 'Database $DB_NAME already exists' 
+    WHERE EXISTS (SELECT FROM pg_database WHERE datname = '$DB_NAME')
     UNION ALL
-    SELECT 'Creating database order_processing...' 
-    WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'order_processing');
+    SELECT 'Creating database $DB_NAME...' 
+    WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = '$DB_NAME');
 "
 
 docker exec -i $POSTGRES_CONTAINER psql -U postgres -c "
-    SELECT 'CREATE DATABASE order_processing' 
-    WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'order_processing')
+    SELECT 'CREATE DATABASE $DB_NAME' 
+    WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = '$DB_NAME')
     \\gexec
 "
 
-# Verify
-echo "✅ Verifying database exists..."
-docker exec -i $POSTGRES_CONTAINER psql -U postgres -c "\\l" | grep order_processing
+echo "Verifying database exists..."
+docker exec -i $POSTGRES_CONTAINER psql -U postgres -c "\\l" | grep $DB_NAME
 
 if [ $? -eq 0 ]; then
-    echo "🎉 Database 'order_processing' is ready!"
-    echo "You can now run: npm run start:dev"
+    echo "Database '$DB_NAME' is ready."
 else
-    echo "❌ Failed to create database"
+    echo "Failed to create database."
     exit 1
 fi

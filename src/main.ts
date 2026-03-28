@@ -87,31 +87,31 @@ async function bootstrap() {
   const logger = app.get(Logger);
 
   logger.log(
-    `🚀 Application is running on: http://localhost:${port}`,
+    `Application is running on: http://localhost:${port}`,
     'Bootstrap',
   );
   logger.log(
-    `📚 Swagger documentation available at: http://localhost:${port}/api/docs`,
+    `Swagger documentation available at: http://localhost:${port}/api/docs`,
     'Bootstrap',
   );
   logger.log(
-    `🔐 Bull Board dashboard available at: http://localhost:${port}/bull-board (requires authentication)`,
+    `Bull Board dashboard available at: http://localhost:${port}/bull-board (requires authentication)`,
     'Bootstrap',
   );
   logger.log(
-    `📊 Grafana dashboard available at: http://localhost:${grafanaPort} (requires authentication)`,
+    `Grafana dashboard available at: http://localhost:${grafanaPort} (requires authentication)`,
     'Bootstrap',
   );
 
-  console.log(`🚀 Application is running on: http://localhost:${port}`);
+  console.log(`Application is running on: http://localhost:${port}`);
   console.log(
-    `📚 Swagger documentation available at: http://localhost:${port}/api/docs`,
+    `Swagger documentation available at: http://localhost:${port}/api/docs`,
   );
   console.log(
-    `🔐 Bull Board dashboard available at: http://localhost:${port}/bull-board (requires authentication)`,
+    `Bull Board dashboard available at: http://localhost:${port}/bull-board (requires authentication)`,
   );
   console.log(
-    `📊 Grafana dashboard available at: http://localhost:${grafanaPort} (requires authentication)`,
+    `Grafana dashboard available at: http://localhost:${grafanaPort} (requires authentication)`,
   );
 }
 

@@ -82,7 +82,7 @@ export class OrdersController {
       throw new BadRequestException('Idempotency-Key header is required');
     }
 
-    this.logger.log(
+    this.logger.debug(
       `POST /orders - Creating order for user: ${user.sub} with idempotency key: ${idempotencyKey}`,
     );
 
@@ -132,7 +132,7 @@ export class OrdersController {
   async findAll(
     @Query() queryDto: OrderQueryDto,
   ): Promise<PaginatedResultDto<Order>> {
-    this.logger.log(
+    this.logger.debug(
       `GET /orders - Fetching orders with filters: ${JSON.stringify(queryDto)}`,
     );
     return this.ordersService.findAll(queryDto);
@@ -155,7 +155,7 @@ export class OrdersController {
     description: 'Order not found',
   })
   async findOne(@Param('id', ParseUUIDPipe) id: string): Promise<Order> {
-    this.logger.log(`GET /orders/${id} - Fetching order`);
+    this.logger.debug(`GET /orders/${id} - Fetching order`);
     return this.ordersService.findOne(id);
   }
 
@@ -186,7 +186,7 @@ export class OrdersController {
     @Param('id', ParseUUIDPipe) id: string,
     @Body() updateOrderDto: UpdateOrderDto,
   ): Promise<Order> {
-    this.logger.log(`PATCH /orders/${id} - Updating order`);
+    this.logger.debug(`PATCH /orders/${id} - Updating order`);
     return this.ordersService.update(id, updateOrderDto);
   }
 
@@ -227,7 +227,7 @@ export class OrdersController {
     @Param('id', ParseUUIDPipe) id: string,
     @Body('status') status: OrderStatus,
   ): Promise<Order> {
-    this.logger.log(
+    this.logger.debug(
       `PATCH /orders/${id}/status - Updating status to: ${status}`,
     );
     return this.ordersService.updateStatus(id, status);
@@ -252,7 +252,7 @@ export class OrdersController {
     description: 'Order not found',
   })
   async remove(@Param('id', ParseUUIDPipe) id: string): Promise<Order> {
-    this.logger.log(`DELETE /orders/${id} - Deleting order`);
+    this.logger.debug(`DELETE /orders/${id} - Deleting order`);
     return this.ordersService.remove(id);
   }
 }

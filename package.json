@@ -24,7 +24,6 @@
     "migration:show:": "npm run typeorm -- migration:show -d src/config/typeorm.config.ts",
     "migration:run": "npm run typeorm -- migration:run -d src/config/typeorm.config.ts",
     "migration:revert": "npm run typeorm -- migration:revert -d src/config/typeorm.config.ts",
-    "setup": "chmod +x scripts/*.sh && scripts/setup.sh",
     "dev": "chmod +x scripts/dev.sh && scripts/dev.sh",
     "dev:local": "npm run docker:up && npm run start:dev",
     "debug": "chmod +x scripts/debug.sh && scripts/debug.sh",
@@ -36,7 +35,6 @@
     "docker:up": "docker compose up -d",
     "docker:down": "docker compose down",
     "docker:build": "docker compose build --no-cache",
-    "docker:reset": "docker compose down -v && docker compose up --build -d",
     "docker:logs": "docker compose logs -f",
     "docker:status": "docker compose ps"
   },

@@ -58,9 +58,9 @@ This script will automatically create your `.env` file from the example and star
 
 **3.** Access:
 
-- API: http://localhost:3000
-- Bull Board: http://localhost:3000/bull-board
-- Grafana: http://localhost:3001
+API: http://localhost:3000
+Bull Board: http://localhost:3000/bull-board
+Grafana: http://localhost:3001
 
 ---
 

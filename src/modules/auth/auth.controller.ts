@@ -18,6 +18,9 @@ export class AuthController {
   @Post('login')
   @Public()
   login(@Body() dto: LoginDto) {
+    this.logger.debug(
+      `POST /auth/login - Attempting login for email: ${dto.email}`,
+    );
     return this.authService.login(dto.email, dto.password);
   }
 
@@ -25,11 +28,15 @@ export class AuthController {
   @Public()
   @UseGuards(JwtRefreshAuthGuard)
   refresh(@GetUser() user: JwtPayload) {
+    this.logger.debug(
+      `POST /auth/refresh - Refreshing token for user: ${user.email}`,
+    );
     return this.authService.refresh(user);
   }
 
   @Post('logout')
   logout(@GetUser() user: JwtPayload) {
+    this.logger.debug(`POST /auth/logout - Logging out user: ${user.email}`);
     return this.authService.logout(user);
   }
 }
