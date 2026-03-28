@@ -33,12 +33,12 @@
     "reset": "chmod +x scripts/reset.sh && scripts/reset.sh",
     "fix-db": "chmod +x scripts/fix-db.sh && scripts/fix-db.sh",
     "create-db": "chmod +x scripts/create-db.sh && scripts/create-db.sh",
-    "docker:up": "docker-compose up -d",
-    "docker:down": "docker-compose down",
-    "docker:build": "docker-compose build --no-cache",
+    "docker:up": "docker compose up -d",
+    "docker:down": "docker compose down",
+    "docker:build": "docker compose build --no-cache",
     "docker:reset": "docker compose down -v && docker compose up --build -d",
-    "docker:logs": "docker-compose logs -f",
-    "docker:status": "docker-compose ps"
+    "docker:logs": "docker compose logs -f",
+    "docker:status": "docker compose ps"
   },
   "dependencies": {
     "@bull-board/api": "^6.20.6",

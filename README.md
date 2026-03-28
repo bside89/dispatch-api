@@ -1,4 +1,4 @@
-# 🚀 Order Flow API
+# Order Flow API
 
 ![Node](https://img.shields.io/badge/node-20+-green)
 ![NestJS](https://img.shields.io/badge/nestjs-backend-red)
@@ -7,7 +7,7 @@
 
 ---
 
-## 💡 Overview
+## Overview
 
 A production-inspired Order Management API built with NestJS, designed to demonstrate scalable backend architecture using asynchronous processing, event-driven design, and industry-standard patterns.
 
@@ -15,7 +15,7 @@ This project simulates a real-world order lifecycle, focusing on performance, re
 
 ---
 
-## 🚀 Why this project matters
+## Why this project matters
 
 Modern backend systems require:
 
@@ -28,17 +28,35 @@ This project demonstrates how to achieve all of the above **without the complexi
 
 ---
 
-## ⚡ Quick Start
+## Quick Start
 
-**Create a .env.docker file** (you can copy the .env.example one available in the code)
+**Prerequisites**
 
-In the Terminal, type:
+Before starting, make sure you have the following installed:
+
+- **Docker & Docker Compose**: To orchestrate the containers.
+- **Git**: To clone the repository.
+
+**Getting Started**
+
+**1.** Clone the repository:
 
 ```bash
-docker-compose up --build
+git clone https://github.com/bside89/order-flow-api
+cd order-flow-api
 ```
 
-Access:
+**2.** Run the installation script:
+
+```bash
+chmod +x install.sh && ./install.sh
+```
+
+This script will automatically create your `.env` file from the example and start the services using `docker-compose up --build`.
+
+> **Note:** If you prefer to run manually, ensure you copy `.env.example` to `.env.docker` before running `docker-compose up --build`.
+
+**3.** Access:
 
 - API: http://localhost:3000
 - Bull Board: http://localhost:3000/bull-board
@@ -46,7 +64,7 @@ Access:
 
 ---
 
-## 🧠 Architecture Overview
+## Architecture Overview
 
 ```
 Client → API (NestJS)
@@ -64,7 +82,7 @@ Client → API (NestJS)
 
 ---
 
-## 🧩 Architecture Highlights
+## Architecture Highlights
 
 - **Event-driven within a monolith**  
   Achieves decoupling without operational overhead
@@ -83,7 +101,7 @@ Client → API (NestJS)
 
 ---
 
-## 🔄 Order Processing Flow
+## Order Processing Flow
 
 1. Order is created via API
 2. Job is added to queue
@@ -93,7 +111,7 @@ Client → API (NestJS)
 
 ---
 
-## 📊 Observability & Monitoring
+## Observability & Monitoring
 
 - Structured logging with Pino (JSON)
 - Correlation ID for end-to-end tracing
@@ -105,7 +123,7 @@ Client → API (NestJS)
 
 ---
 
-## ⚙️ Features
+## Features
 
 - Order creation and lifecycle processing
 - Multi-stage async pipeline (process → ship → deliver)
@@ -118,7 +136,7 @@ Client → API (NestJS)
 
 ---
 
-## ⚖️ Engineering Trade-offs
+## Engineering Trade-offs
 
 | Decision                    | Reason                                |
 | --------------------------- | ------------------------------------- |
@@ -128,7 +146,7 @@ Client → API (NestJS)
 
 ---
 
-## 📦 Tech Stack
+## Tech Stack
 
 - NestJS
 - BullMQ + Redis
@@ -139,7 +157,7 @@ Client → API (NestJS)
 
 ---
 
-## 🧪 Production Considerations
+## Production Considerations
 
 This project includes patterns commonly used in production systems:
 
@@ -150,7 +168,7 @@ This project includes patterns commonly used in production systems:
 
 ---
 
-## 📌 What this demonstrates
+## What this demonstrates
 
 - Real-world backend architecture
 - Clean code and separation of concerns
@@ -160,6 +178,6 @@ This project includes patterns commonly used in production systems:
 
 ---
 
-## 📬 Final Notes
+## Final Notes
 
 This project was built to showcase backend engineering skills at a professional level, focusing on scalability, maintainability, and real-world applicability.
