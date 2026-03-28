@@ -59,7 +59,9 @@ This script will automatically create your `.env` file from the example and star
 **3.** Access:
 
 API: http://localhost:3000
+
 Bull Board: http://localhost:3000/bull-board
+
 Grafana: http://localhost:3001
 
 ---
@@ -117,9 +119,8 @@ Client → API (NestJS)
 - Correlation ID for end-to-end tracing
 - Log aggregation via Promtail + Loki
 - Visualization with Grafana
-
-✔ Track a single order across multiple async steps  
-✔ Debug failures in distributed flows
+- Track a single order across multiple async steps  
+- Debug failures in distributed flows
 
 ---
 
