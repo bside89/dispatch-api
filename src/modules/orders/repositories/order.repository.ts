@@ -17,12 +17,13 @@ export class OrderRepository extends BaseRepository<Order> {
   async findAllWithFilters(
     query: Partial<OrderQueryDto>,
   ): Promise<PaginatedResultDto<Order>> {
-    const queryBuilder = this.repository
-      .createQueryBuilder('order')
+    const manager = this.getManager();
+
+    const queryBuilder = manager
+      .createQueryBuilder(Order, 'order')
       .leftJoinAndSelect('order.items', 'items')
       .orderBy('order.createdAt', 'DESC');
 
-    // Apply filters
     if (query.userId) {
       queryBuilder.andWhere('order.userId = :userId', {
         userId: query.userId,

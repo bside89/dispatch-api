@@ -7,15 +7,22 @@ import { JwtPayload } from './interfaces/jwt-payload.interface';
 import { CacheService } from '../cache/cache.service';
 import { UserRepository } from '../users/repositories/user.repository';
 import { HashUtils } from '@/shared/utils/hash.utils';
+import { Transactional } from '@/shared/decorators/transactional.decorator';
+import { CACHE_CONFIG } from '@/shared/constants/cache.constant';
+import { DataSource } from 'typeorm';
+import { BaseService } from '@/shared/services/base.service';
 
 @Injectable()
-export class AuthService {
+export class AuthService extends BaseService {
   constructor(
     private readonly jwtService: JwtService,
     private readonly cacheService: CacheService,
     private readonly configService: ConfigService,
     private readonly userRepository: UserRepository,
-  ) {}
+    protected readonly dataSource: DataSource,
+  ) {
+    super(dataSource, AuthService.name);
+  }
 
   async login(email: string, password: string): Promise<LoginResponseDto> {
     const user = await this.userRepository.findOneWhere({ email }, [
@@ -64,22 +71,22 @@ export class AuthService {
     const tokens = await this.generateTokens(user);
 
     // Update the stored refresh token to the new one
-    // (optional, can keep the same refresh token until it expires)
     await this.saveRefreshToken(user.id, tokens.refreshToken);
 
     return tokens;
   }
 
+  @Transactional()
   async logout(payload: JwtPayload): Promise<void> {
-    // Invalidate the JWT by storing its jti in the cache with a short expiration
-    await this.cacheService.set(
-      `blacklist:${payload.jti}`,
-      true,
-      15 * 60 * 1000,
-    ); // 15 minutes
     await this.userRepository.update(payload.sub, {
       refreshToken: null,
     });
+
+    await this.cacheService.set(
+      `blacklist:${payload.jti}`,
+      true,
+      CACHE_CONFIG.AUTH_BLACKLIST_TTL,
+    );
   }
 
   private async generateTokens(user: User): Promise<LoginResponseDto> {
@@ -87,16 +94,14 @@ export class AuthService {
       sub: user.id,
       email: user.email,
       role: user.role,
-      jti: crypto.randomUUID(), // Generate a random JWT ID for token revocation
+      jti: crypto.randomUUID(),
     };
 
-    // Generate access token with short expiration and refresh token with longer expiration
     const accessTokenExpiry =
       this.configService.get<string>('JWT_ACCESS_EXPIRES_IN') || '15m';
     const refreshTokenExpiry =
       this.configService.get<string>('JWT_REFRESH_EXPIRES_IN') || '7d';
 
-    // Sign the tokens with different secrets for added security
     const accessToken = this.jwtService.sign(payload, {
       secret: this.configService.get<string>('JWT_ACCESS_SECRET'),
       expiresIn: accessTokenExpiry as any,
@@ -118,7 +123,6 @@ export class AuthService {
     userId: string,
     refreshToken: string,
   ): Promise<void> {
-    // Store hashed refresh token in the database for security
     const hash = await HashUtils.hash(refreshToken);
     await this.userRepository.update(userId, { refreshToken: hash });
   }

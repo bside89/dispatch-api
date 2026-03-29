@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Job } from 'bullmq';
 import { CacheService } from '../../cache/cache.service';
 import { delay } from '../../../shared/helpers/functions';
+import { CACHE_CONFIG } from '@/shared/constants/cache.constant';
 
 @Injectable()
 export class NotificationStrategy {
@@ -13,7 +14,7 @@ export class NotificationStrategy {
     const key = `idempotency:event:${userId}:${notificationId}`;
 
     if (await this.cacheService.get(key)) return;
-    await this.cacheService.set(key, '1', 3600 * 1000); // 1 hour TTL
+    await this.cacheService.set(key, '1', CACHE_CONFIG.JOB_STRATEGY_TTL);
 
     try {
       await this.handleNotification(userId, message, logger);

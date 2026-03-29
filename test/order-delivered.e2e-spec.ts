@@ -277,7 +277,7 @@ describe('POST /orders → DELIVERED (e2e)', () => {
       })
       .expect(201);
 
-    const userId = registerRes.body.id;
+    const userId = registerRes.body.data.id;
     expect(userId).toBeDefined();
 
     // Hash password as the service would have done (UserService.create calls HashUtils.hash)
@@ -309,15 +309,15 @@ describe('POST /orders → DELIVERED (e2e)', () => {
       .set('idempotency-key', 'idem-order-e2e-1')
       .send({
         items: [
-          { productId: 'prod-1', quantity: 2, price: 49.99 },
-          { productId: 'prod-2', quantity: 1, price: 99.99 },
+          { productId: 'prod-1', quantity: 2, price: 4999 },
+          { productId: 'prod-2', quantity: 1, price: 9999 },
         ],
       })
       .expect(201);
 
-    const orderId = createOrderRes.body.id;
+    const orderId = createOrderRes.body.data.id;
     expect(orderId).toBeDefined();
-    expect(createOrderRes.body.status).toBe(OrderStatus.PENDING);
+    expect(createOrderRes.body.data.status).toBe(OrderStatus.PENDING);
 
     // A PROCESS_ORDER job should have been enqueued
     expect(enqueuedJobs.some((j) => j.name === OrderJob.PROCESS_ORDER)).toBe(
@@ -363,7 +363,7 @@ describe('POST /orders → DELIVERED (e2e)', () => {
       .set('Authorization', `Bearer ${accessToken}`)
       .expect(200);
 
-    expect(getOrderRes.body.id).toBe(orderId);
-    expect(getOrderRes.body.status).toBe(OrderStatus.DELIVERED);
+    expect(getOrderRes.body.data.id).toBe(orderId);
+    expect(getOrderRes.body.data.status).toBe(OrderStatus.DELIVERED);
   });
 });

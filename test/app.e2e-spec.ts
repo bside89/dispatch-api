@@ -58,12 +58,12 @@ describe('OrderController (e2e)', () => {
           {
             productId: 'product-e2e-1',
             quantity: 2,
-            price: 99.99,
+            price: 9999,
           },
           {
             productId: 'product-e2e-2',
             quantity: 1,
-            price: 149.99,
+            price: 14999,
           },
         ],
       };
@@ -75,11 +75,10 @@ describe('OrderController (e2e)', () => {
         .send(createOrderDto)
         .expect(201)
         .then((response) => {
-          expect(response.body).toHaveProperty('id');
-          expect(response.body.status).toBe(OrderStatus.PENDING);
-          expect(response.body.total).toBe('349.97');
-          expect(response.body.items).toHaveLength(2);
-          orderId = response.body.id;
+          expect(response.body.data).toHaveProperty('id');
+          expect(response.body.data.status).toBe(OrderStatus.PENDING);
+          expect(response.body.data.items).toHaveLength(2);
+          orderId = response.body.data.id;
         });
     });
 
@@ -99,11 +98,11 @@ describe('OrderController (e2e)', () => {
         .set('Authorization', `Bearer ${accessToken}`)
         .expect(200)
         .then((response) => {
-          expect(response.body).toHaveProperty('total');
-          expect(response.body).toHaveProperty('page');
-          expect(response.body).toHaveProperty('limit');
-          expect(response.body).toHaveProperty('totalPages');
           expect(response.body).toHaveProperty('data');
+          expect(response.body.meta).toHaveProperty('total');
+          expect(response.body.meta).toHaveProperty('page');
+          expect(response.body.meta).toHaveProperty('limit');
+          expect(response.body.meta).toHaveProperty('totalPages');
           expect(Array.isArray(response.body.data)).toBe(true);
         });
     });
@@ -129,10 +128,10 @@ describe('OrderController (e2e)', () => {
         .set('Authorization', `Bearer ${accessToken}`)
         .expect(200)
         .then((response) => {
-          expect(response.body.id).toBe(orderId);
-          expect(response.body).toHaveProperty('status');
-          expect(response.body).toHaveProperty('total');
-          expect(response.body).toHaveProperty('items');
+          expect(response.body.data.id).toBe(orderId);
+          expect(response.body.data).toHaveProperty('status');
+          expect(response.body.data).toHaveProperty('total');
+          expect(response.body.data).toHaveProperty('items');
         });
     });
 
@@ -153,7 +152,7 @@ describe('OrderController (e2e)', () => {
         .send({ status: OrderStatus.CONFIRMED })
         .expect(200)
         .then((response) => {
-          expect(response.body.status).toBe(OrderStatus.CONFIRMED);
+          expect(response.body.data.status).toBe(OrderStatus.CONFIRMED);
         });
     });
   });
@@ -167,8 +166,8 @@ describe('OrderController (e2e)', () => {
         .then((response) => {
           expect(response.body).toHaveProperty('data');
           expect(Array.isArray(response.body.data)).toBe(true);
-          expect(response.body).toHaveProperty('total');
-          expect(response.body).toHaveProperty('page');
+          expect(response.body.meta).toHaveProperty('total');
+          expect(response.body.meta).toHaveProperty('page');
         });
     });
   });

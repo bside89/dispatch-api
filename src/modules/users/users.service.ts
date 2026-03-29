@@ -3,7 +3,6 @@ import {
   NotFoundException,
   ConflictException,
   BadRequestException,
-  Logger,
 } from '@nestjs/common';
 import { CacheService } from '../cache/cache.service';
 import { CreateUserDto } from './dto/create-user.dto';
@@ -12,38 +11,43 @@ import { UpdateLoginDto } from './dto/update-login.dto';
 import { UserQueryDto } from './dto/user-query.dto';
 import { UserRepository } from './repositories/user.repository';
 import { PaginatedResultDto } from '@/shared/dto/paginated-result.dto';
-import { User } from './entities/user.entity';
 import { UserResponseDto } from './dto/user-response.dto';
 import { HashUtils } from '@/shared/utils/hash.utils';
+import { BaseService } from '@/shared/services/base.service';
+import { DataSource } from 'typeorm';
+import { Transactional } from '@/shared/decorators/transactional.decorator';
+import { CACHE_CONFIG } from '@/shared/constants/cache.constant';
 
 @Injectable()
-export class UsersService {
-  private readonly logger = new Logger(UsersService.name);
-  private readonly IDEMPOTENCY_PREFIX = 'user_idempotency';
-  private readonly IDEMPOTENCY_TTL = 86400 * 1000; // 24 hours
+export class UsersService extends BaseService {
+  private readonly IDEMPOTENCY_PREFIX = 'user-idempotency';
+  private readonly CACHE_PREFIX = 'user';
 
   constructor(
     private readonly cacheService: CacheService,
     private readonly userRepository: UserRepository,
-  ) {}
+    protected readonly dataSource: DataSource,
+  ) {
+    super(dataSource, UsersService.name);
+  }
 
+  @Transactional()
   async create(
     createUserDto: CreateUserDto,
     idempotencyKey: string,
   ): Promise<UserResponseDto> {
-    // Check if this idempotency key already exists
     const idempotencyKeyFormatted = `${this.IDEMPOTENCY_PREFIX}:${idempotencyKey}`;
-    const existingUser = await this.cacheService.get<User>(
-      idempotencyKeyFormatted,
+    const existingUser = await this.runAndIgnoreError(
+      () => this.cacheService.get<UserResponseDto>(idempotencyKeyFormatted),
+      'create - cache retrieval',
     );
     if (existingUser) {
-      this.logger.log(
+      this.logger.debug(
         `Returning existing user for idempotency key: ${idempotencyKey}, User ID: ${existingUser.id}`,
       );
-      return UserResponseDto.fromEntity(existingUser);
+      return existingUser;
     }
 
-    // Check if email already exists
     const existingEmailUser = await this.userRepository.findOneWhere({
       email: createUserDto.email,
     });
@@ -51,7 +55,7 @@ export class UsersService {
       throw new ConflictException('Email already exists');
     }
 
-    this.logger.log(
+    this.logger.debug(
       `Creating new user with idempotency key: ${idempotencyKey}`,
     );
 
@@ -63,28 +67,43 @@ export class UsersService {
 
     const savedUser = await this.userRepository.save(user);
 
-    // Cache the created user with idempotency key
+    const userMapped = UserResponseDto.fromEntity(savedUser);
+
     await this.cacheService.set(
       idempotencyKeyFormatted,
-      savedUser,
-      this.IDEMPOTENCY_TTL,
+      userMapped,
+      CACHE_CONFIG.IDEMPOTENCY_TTL,
     );
 
-    this.logger.log(
+    this.logger.debug(
       `User created and cached with idempotency key: ${idempotencyKey}, User ID: ${savedUser.id}`,
     );
 
-    return UserResponseDto.fromEntity(savedUser);
+    return userMapped;
   }
 
   async findAll(
     query: UserQueryDto,
   ): Promise<PaginatedResultDto<UserResponseDto>> {
-    this.logger.log('Retrieving all users');
+    const cacheKey = `${this.CACHE_PREFIX}:list:${JSON.stringify(query)}`;
+    const cachedResult = await this.runAndIgnoreError(
+      () =>
+        this.cacheService.get<PaginatedResultDto<UserResponseDto>>(cacheKey),
+      `fetching users list from cache with key: ${cacheKey}`,
+    );
+    if (cachedResult) {
+      this.logger.debug(`Returning cached users list`);
+      return cachedResult;
+    }
 
     const result = await this.userRepository.findAllWithFilters(query);
 
-    this.logger.log(`Retrieved ${result.data.length} users`);
+    await this.runAndIgnoreError(
+      () => this.cacheService.set(cacheKey, result, CACHE_CONFIG.LIST_TTL),
+      `caching users list with key: ${cacheKey}`,
+    );
+
+    this.logger.debug(`Retrieved ${result.data.length} users`);
 
     return {
       ...result,
@@ -92,8 +111,8 @@ export class UsersService {
     };
   }
 
-  async findOne(id: string, retrieveToken = false): Promise<UserResponseDto> {
-    this.logger.log(`Retrieving user with ID: ${id}`);
+  async findOne(id: string): Promise<UserResponseDto> {
+    this.logger.debug(`Retrieving user with ID: ${id}`);
 
     const user = await this.userRepository.findById(id);
 
@@ -101,20 +120,20 @@ export class UsersService {
       throw new NotFoundException(`User with ID ${id} not found`);
     }
 
-    this.logger.log(`User found: ${user.email}`);
+    this.logger.debug(`User found: ${user.email}`);
 
     return UserResponseDto.fromEntity(user);
   }
 
   async findByEmail(email: string): Promise<UserResponseDto> {
-    this.logger.log(`Finding user by email: ${email}`);
+    this.logger.debug(`Finding user by email: ${email}`);
 
     const user = await this.userRepository.findOneWhere({ email });
     if (!user) {
       throw new NotFoundException(`User with email ${email} not found`);
     }
 
-    this.logger.log(`User found with email: ${email}`);
+    this.logger.debug(`User found with email: ${email}`);
 
     return UserResponseDto.fromEntity(user);
   }
@@ -123,7 +142,7 @@ export class UsersService {
     id: string,
     updateUserDto: UpdateUserDto,
   ): Promise<UserResponseDto> {
-    this.logger.log(`Updating user with ID: ${id}`);
+    this.logger.debug(`Updating user with ID: ${id}`);
 
     const user = await this.userRepository.findById(id);
     if (!user) {
@@ -141,11 +160,10 @@ export class UsersService {
       }
     }
 
-    // Update user fields
     Object.assign(user, updateUserDto);
     const updatedUser = await this.userRepository.save(user);
 
-    this.logger.log(`User updated successfully: ${updatedUser.email}`);
+    this.logger.debug(`User updated successfully: ${updatedUser.email}`);
 
     return UserResponseDto.fromEntity(updatedUser);
   }
@@ -154,7 +172,7 @@ export class UsersService {
     id: string,
     updateLoginDto: UpdateLoginDto,
   ): Promise<UserResponseDto> {
-    this.logger.log(`Updating login for user with ID: ${id}`);
+    this.logger.debug(`Updating login for user with ID: ${id}`);
 
     const user = await this.userRepository.findById(id, [
       'id',
@@ -164,7 +182,6 @@ export class UsersService {
       'createdAt',
       'updatedAt',
     ]);
-
     if (!user) {
       throw new NotFoundException(`User with ID ${id} not found`);
     }
@@ -186,34 +203,32 @@ export class UsersService {
       ) {
         throw new BadRequestException('Current password is incorrect');
       }
-
-      // Hash new password with argon2
       user.password = await HashUtils.hash(updateLoginDto.newPassword);
     }
 
-    // Update email if provided
     if (updateLoginDto.email && updateLoginDto.email !== user.email) {
       const existingUser = await this.userRepository.findOneWhere({
         email: updateLoginDto.email,
       });
-
       if (existingUser) {
         throw new ConflictException('Email already exists');
       }
-
       user.email = updateLoginDto.email;
     }
 
     const updatedUser = await this.userRepository.save(user);
-    this.logger.log(
-      `Login updated successfully for user: ${updatedUser.email}`,
+
+    const userMapped = UserResponseDto.fromEntity(updatedUser);
+
+    this.logger.debug(
+      `Login updated successfully for user: ${userMapped.email}`,
     );
 
-    return UserResponseDto.fromEntity(updatedUser);
+    return userMapped;
   }
 
   async remove(id: string): Promise<void> {
-    this.logger.log(`Deleting user with ID: ${id}`);
+    this.logger.debug(`Deleting user with ID: ${id}`);
 
     const result = await this.userRepository.delete(id);
 
@@ -221,6 +236,6 @@ export class UsersService {
       throw new NotFoundException(`User with ID ${id} not found`);
     }
 
-    this.logger.log(`User with ID ${id} deleted successfully`);
+    this.logger.debug(`User with ID ${id} deleted successfully`);
   }
 }

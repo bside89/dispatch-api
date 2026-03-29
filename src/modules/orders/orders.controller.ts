@@ -12,8 +12,6 @@ import {
   HttpCode,
   HttpStatus,
   BadRequestException,
-  Logger,
-  Req,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -39,14 +37,18 @@ import { Roles } from '../auth/decorators/roles.decorator';
 import { PaginatedResultDto } from '@/shared/dto/paginated-result.dto';
 import { JwtPayload } from '../auth/interfaces/jwt-payload.interface';
 import { GetUser } from '@/shared/decorators/get-user.decorator';
+import { OrderResponseDto } from './dto/order-response.dto';
+import { BaseController } from '@/shared/controllers/base.controller';
+import { SuccessResponseDto } from '@/shared/dto/success-response.dto';
+import { ErrorResponseDto } from '@/shared/dto/error-response.dto';
 
 @Controller({ path: 'v1/orders', version: '1' })
 @ApiTags('orders')
 @ApiSecurity('bearer')
-export class OrdersController {
-  private readonly logger = new Logger(OrdersController.name);
-
-  constructor(private readonly ordersService: OrdersService) {}
+export class OrdersController extends BaseController {
+  constructor(private readonly ordersService: OrdersService) {
+    super(OrdersController.name);
+  }
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
@@ -64,7 +66,7 @@ export class OrdersController {
   })
   @ApiCreatedResponse({
     description: 'Order successfully created',
-    type: Order,
+    type: SuccessResponseDto<OrderResponseDto>,
   })
   @ApiBadRequestResponse({
     description: 'Invalid input data or missing Idempotency-Key header',
@@ -77,7 +79,7 @@ export class OrdersController {
     @Body() createOrderDto: CreateOrderDto,
     @Headers('idempotency-key') idempotencyKey: string,
     @GetUser() user: JwtPayload,
-  ): Promise<Order> {
+  ) {
     if (!idempotencyKey) {
       throw new BadRequestException('Idempotency-Key header is required');
     }
@@ -86,7 +88,13 @@ export class OrdersController {
       `POST /orders - Creating order for user: ${user.sub} with idempotency key: ${idempotencyKey}`,
     );
 
-    return this.ordersService.create(createOrderDto, user.sub, idempotencyKey);
+    const result = await this.ordersService.create(
+      createOrderDto,
+      user.sub,
+      idempotencyKey,
+    );
+
+    return this.success(result, 'Order created successfully');
   }
 
   @Get()
@@ -96,7 +104,7 @@ export class OrdersController {
   })
   @ApiOkResponse({
     description: 'Orders successfully retrieved',
-    type: PaginatedResultDto<Order>,
+    type: PaginatedResultDto<OrderResponseDto>,
   })
   @ApiQuery({
     name: 'userId',
@@ -129,13 +137,14 @@ export class OrdersController {
     required: false,
     description: 'Items per page (default: 10)',
   })
-  async findAll(
-    @Query() queryDto: OrderQueryDto,
-  ): Promise<PaginatedResultDto<Order>> {
+  async findAll(@Query() queryDto: OrderQueryDto) {
     this.logger.debug(
       `GET /orders - Fetching orders with filters: ${JSON.stringify(queryDto)}`,
     );
-    return this.ordersService.findAll(queryDto);
+
+    const result = await this.ordersService.findAll(queryDto);
+
+    return this.paginate(result.data, result.total, result.page, result.limit);
   }
 
   @Get(':id')
@@ -149,14 +158,17 @@ export class OrdersController {
   })
   @ApiOkResponse({
     description: 'Order successfully retrieved',
-    type: Order,
+    type: SuccessResponseDto<OrderResponseDto>,
   })
   @ApiNotFoundResponse({
     description: 'Order not found',
   })
-  async findOne(@Param('id', ParseUUIDPipe) id: string): Promise<Order> {
+  async findOne(@Param('id', ParseUUIDPipe) id: string) {
     this.logger.debug(`GET /orders/${id} - Fetching order`);
-    return this.ordersService.findOne(id);
+
+    const result = await this.ordersService.findOne(id);
+
+    return this.success(result, 'Order retrieved successfully');
   }
 
   @Patch(':id')
@@ -170,7 +182,7 @@ export class OrdersController {
   })
   @ApiOkResponse({
     description: 'Order successfully updated',
-    type: Order,
+    type: SuccessResponseDto<OrderResponseDto>,
   })
   @ApiNotFoundResponse({
     description: 'Order not found',
@@ -185,9 +197,12 @@ export class OrdersController {
   async update(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() updateOrderDto: UpdateOrderDto,
-  ): Promise<Order> {
+  ) {
     this.logger.debug(`PATCH /orders/${id} - Updating order`);
-    return this.ordersService.update(id, updateOrderDto);
+
+    const result = await this.ordersService.update(id, updateOrderDto);
+
+    return this.success(result, 'Order updated successfully');
   }
 
   @Patch(':id/status')
@@ -201,7 +216,7 @@ export class OrdersController {
   })
   @ApiOkResponse({
     description: 'Order status successfully updated',
-    type: Order,
+    type: SuccessResponseDto<OrderResponseDto>,
   })
   @ApiNotFoundResponse({
     description: 'Order not found',
@@ -226,15 +241,18 @@ export class OrdersController {
   async updateStatus(
     @Param('id', ParseUUIDPipe) id: string,
     @Body('status') status: OrderStatus,
-  ): Promise<Order> {
+  ) {
     this.logger.debug(
       `PATCH /orders/${id}/status - Updating status to: ${status}`,
     );
-    return this.ordersService.updateStatus(id, status);
+
+    const result = await this.ordersService.updateStatus(id, status);
+
+    return this.success(result, 'Order status updated successfully');
   }
 
   @Delete(':id')
-  @Roles(UserRole.ADMIN) // Only allow users with the ADMIN role to delete orders
+  @Roles(UserRole.ADMIN)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Delete an order',
@@ -246,13 +264,21 @@ export class OrdersController {
   })
   @ApiOkResponse({
     description: 'Order successfully deleted',
-    type: Order,
+    type: SuccessResponseDto<OrderResponseDto>,
   })
   @ApiNotFoundResponse({
     description: 'Order not found',
+    type: ErrorResponseDto,
   })
-  async remove(@Param('id', ParseUUIDPipe) id: string): Promise<Order> {
+  @ApiBadRequestResponse({
+    description: 'Invalid UUID format',
+    type: ErrorResponseDto,
+  })
+  async remove(@Param('id', ParseUUIDPipe) id: string) {
     this.logger.debug(`DELETE /orders/${id} - Deleting order`);
-    return this.ordersService.remove(id);
+
+    const result = await this.ordersService.remove(id);
+
+    return this.success(result, 'Order deleted successfully');
   }
 }

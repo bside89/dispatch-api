@@ -27,8 +27,8 @@ export class OrderItemResponseDto {
   quantity: number;
 
   @ApiProperty({
-    description: 'Price per unit',
-    example: 149.99,
+    description: 'Price per unit (in cents)',
+    example: 14999,
   })
   price: number;
 

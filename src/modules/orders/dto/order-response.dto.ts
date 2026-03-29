@@ -1,4 +1,4 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { OrderItem } from '../entities/order-item.entity';
 import { OrderStatus } from '../enums/order-status.enum';
 import { UserResponseDto } from '@/modules/users/dto/user-response.dto';
@@ -12,11 +12,11 @@ export class OrderResponseDto {
   })
   id: string;
 
-  @ApiProperty({
+  @ApiPropertyOptional({
     description: 'User who placed the order',
     type: () => UserResponseDto,
   })
-  user: UserResponseDto;
+  user?: UserResponseDto;
 
   @ApiProperty({
     description: 'Order status',
@@ -26,8 +26,8 @@ export class OrderResponseDto {
   status: string;
 
   @ApiProperty({
-    description: 'Order total amount',
-    example: 299.99,
+    description: 'Order total amount (in cents)',
+    example: 29999,
   })
   total: number;
 
@@ -43,21 +43,25 @@ export class OrderResponseDto {
   })
   updatedAt: Date;
 
-  @ApiProperty({
+  @ApiPropertyOptional({
     description: 'Order items',
     type: () => [OrderItemResponseDto],
   })
-  items: OrderItemResponseDto[];
+  items?: OrderItemResponseDto[];
 
   static fromEntity(order: Order): OrderResponseDto {
     const dto = new OrderResponseDto();
     dto.id = order.id;
-    dto.user = UserResponseDto.fromEntity(order.user);
+    if (order.user) {
+      dto.user = UserResponseDto.fromEntity(order.user);
+    }
     dto.status = order.status;
     dto.total = order.total;
     dto.createdAt = order.createdAt;
     dto.updatedAt = order.updatedAt;
-    dto.items = order.items.map(OrderItemResponseDto.fromEntity);
+    if (order.items) {
+      dto.items = order.items.map(OrderItemResponseDto.fromEntity);
+    }
     return dto;
   }
 }

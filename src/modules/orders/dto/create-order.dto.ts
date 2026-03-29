@@ -8,34 +8,7 @@ import {
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiProperty } from '@nestjs/swagger';
-
-export class CreateOrderItemDto {
-  @ApiProperty({
-    description: 'Product unique identifier',
-    example: 'product-123',
-  })
-  @IsString()
-  @IsNotEmpty()
-  productId: string;
-
-  @ApiProperty({
-    description: 'Quantity of the product',
-    example: 2,
-    minimum: 1,
-  })
-  @IsNumber()
-  @IsPositive()
-  quantity: number;
-
-  @ApiProperty({
-    description: 'Price per unit',
-    example: 149.99,
-    minimum: 0.01,
-  })
-  @IsNumber()
-  @IsPositive()
-  price: number;
-}
+import { CreateOrderItemDto } from './create-order-item.dto';
 
 export class CreateOrderDto {
   @ApiProperty({

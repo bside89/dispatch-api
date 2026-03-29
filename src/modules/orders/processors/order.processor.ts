@@ -1,19 +1,18 @@
-import { Processor, WorkerHost } from '@nestjs/bullmq';
-import { Logger } from '@nestjs/common';
+import { Processor } from '@nestjs/bullmq';
 import { Job } from 'bullmq';
 import { OrderJobHandlerFactory } from '../factories/order-job-handler.factory';
 
 import { CacheService } from '../../cache/cache.service';
+import { BaseProcessor } from '@/shared/processors/base.processor';
+import { CACHE_CONFIG } from '@/shared/constants/cache.constant';
 
 @Processor('orders')
-export class OrderProcessor extends WorkerHost {
-  private readonly logger = new Logger(OrderProcessor.name);
-
+export class OrderProcessor extends BaseProcessor {
   constructor(
     private readonly factory: OrderJobHandlerFactory,
     private readonly cacheService: CacheService,
   ) {
-    super();
+    super(OrderProcessor.name);
   }
 
   async process(job: Job): Promise<void> {
@@ -22,8 +21,8 @@ export class OrderProcessor extends WorkerHost {
     const lock = await this.cacheService.setIfNotExists(
       lockKey,
       '1',
-      30 * 1000,
-    ); // 30 seconds TTL for the lock
+      CACHE_CONFIG.SERVICE_LOCK_TTL,
+    );
     if (!lock) {
       this.logger.warn(`Job ${job.id} already running`);
       return;

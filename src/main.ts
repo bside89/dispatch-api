@@ -6,6 +6,7 @@ import { ConfigService } from '@nestjs/config';
 import { BasicAuthMiddleware } from './middleware/basic-auth.middleware';
 import helmet from 'helmet';
 import { Logger } from 'nestjs-pino';
+import { AllExceptionsFilter } from './shared/filters/http-exception.filter';
 
 // Fix for crypto module issue in TypeORM
 if (typeof (global as any).crypto === 'undefined') {
@@ -17,6 +18,9 @@ async function bootstrap() {
     bufferLogs: true,
   });
   const configService = app.get(ConfigService);
+
+  // Global exception filter
+  app.useGlobalFilters(new AllExceptionsFilter());
 
   // Use the Pino logger from the app context BEFORE any other configuration
   app.useLogger(app.get(Logger));

@@ -9,26 +9,26 @@
 
 ## Overview
 
-A production-inspired Order Management API built with NestJS, designed to demonstrate scalable backend architecture using asynchronous processing, event-driven design, and industry-standard patterns.
+I built this Order Management API with NestJS to show my approach to backend architecture, specifically focusing on asynchronous processing and event-driven design.
 
-This project simulates a real-world order lifecycle, focusing on performance, resilience, and observability.
-
----
-
-## Why this project matters
-
-Modern backend systems require:
-
-- Handling high throughput asynchronously
-- Decoupling services for scalability
-- Observability across distributed flows
-- Safe retries without duplication
-
-This project demonstrates how to achieve all of the above **without the complexity of microservices**.
+Instead of writing a simple CRUD app, I wanted to simulate a messy, real-world order lifecycle where performance, resilience, and knowing exactly what failed actually matter.
 
 ---
 
-## Quick Start
+## Why I built this
+
+Most backend systems eventually hit the same problems:
+
+- Processing things asynchronously without losing data
+- Decoupling logic so parts of the app can scale
+- Tracking down a bug across multiple distributed flows
+- Retrying failed jobs safely without duplicating records
+
+It's common to reach for microservices to solve these, but that brings a lot of operational baggage. I wanted to see how far I could push these patterns **while keeping the monolith**.
+
+---
+
+## Quick start
 
 **Prerequisites**
 
@@ -66,7 +66,7 @@ Grafana: http://localhost:3001
 
 ---
 
-## Architecture Overview
+## Architecture overview
 
 ```
 Client → API (NestJS)
@@ -84,26 +84,26 @@ Client → API (NestJS)
 
 ---
 
-## Architecture Highlights
+## Architecture highlights
 
 - **Event-driven within a monolith**  
-  Achieves decoupling without operational overhead
+  You get the decoupling benefits without the headache of managing multiple deployments.
 
 - **Queue-based processing (BullMQ)**  
-  Enables retries, backoff strategies, and scalability
+  I used BullMQ to handle retries and backoff strategies, making the system way more resilient.
 
 - **Strategy + Factory patterns**  
-  Flexible and extensible workflow handling
+  Keeps the workflow handling flexible. It's easy to plug in a new strategy without breaking existing code.
 
 - **Idempotent job execution**  
-  Guarantees safe retries and consistency
+  Because retrying a failed payment twice by accident is a developer's worst nightmare.
 
 - **Centralized logging with correlationId**  
-  Full traceability across async flows
+  I added this so I could actually trace an async request from start to finish.
 
 ---
 
-## Order Processing Flow
+## Order processing flow
 
 1. Order is created via API
 2. Job is added to queue
@@ -137,7 +137,7 @@ Client → API (NestJS)
 
 ---
 
-## Engineering Trade-offs
+## Engineering trade-offs
 
 | Decision                    | Reason                                |
 | --------------------------- | ------------------------------------- |
@@ -158,7 +158,7 @@ Client → API (NestJS)
 
 ---
 
-## Production Considerations
+## Production considerations
 
 This project includes patterns commonly used in production systems:
 
@@ -179,6 +179,6 @@ This project includes patterns commonly used in production systems:
 
 ---
 
-## Final Notes
+## Final thoughts
 
-This project was built to showcase backend engineering skills at a professional level, focusing on scalability, maintainability, and real-world applicability.
+I built this codebase primarily to experiment with tools and patterns I use in production setups. Feel free to explore the code, and if you spot any areas to push the architecture even further, let me know.

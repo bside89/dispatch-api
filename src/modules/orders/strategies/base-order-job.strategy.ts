@@ -8,6 +8,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { InjectQueue } from '@nestjs/bullmq';
 import { EventBus } from '../../events/interfaces/event-bus.interface';
 import { EVENT_BUS } from '../../events/constants/event-bus.token';
+import { CACHE_CONFIG } from '@/shared/constants/cache.constant';
 
 export abstract class BaseOrderJobStrategy<T = any> {
   constructor(
@@ -45,7 +46,10 @@ export abstract class BaseOrderJobStrategy<T = any> {
     return !!(await this.cacheService.get(key));
   }
 
-  protected async setKey(key: string, ttl = 3600): Promise<void> {
+  protected async setKey(
+    key: string,
+    ttl = CACHE_CONFIG.JOB_STRATEGY_TTL,
+  ): Promise<void> {
     await this.cacheService.set(key, '1', ttl);
   }
 

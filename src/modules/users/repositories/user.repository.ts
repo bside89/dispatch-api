@@ -18,9 +18,10 @@ export class UserRepository extends BaseRepository<User> {
   async findAllWithFilters(
     query: Partial<UserQueryDto>,
   ): Promise<PaginatedResultDto<User>> {
-    const queryBuilder = this.createQueryBuilder('user');
+    const manager = this.getManager();
 
-    // Apply filters
+    const queryBuilder = manager.createQueryBuilder(User, 'user');
+
     if (query.name) {
       queryBuilder.andWhere('user.name ILIKE :name', {
         name: `%${query.name}%`,

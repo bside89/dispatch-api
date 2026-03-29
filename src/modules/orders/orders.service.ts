@@ -1,7 +1,6 @@
-import { Injectable, NotFoundException, Logger, Inject } from '@nestjs/common';
+import { Injectable, NotFoundException, Inject } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
-import { Order } from './entities/order.entity';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { UpdateOrderDto } from './dto/update-order.dto';
 import { OrderQueryDto } from './dto/order-query.dto';
@@ -14,17 +13,17 @@ import { EventBus } from '../events/interfaces/event-bus.interface';
 import { NotifyUserJobData } from '../events/misc/events-job-data';
 import { OrderRepository } from './repositories/order.repository';
 import { OrderItemRepository } from './repositories/order-item.repository';
-import { User } from '../users/entities/user.entity';
 import { PaginatedResultDto } from '@/shared/dto/paginated-result.dto';
+import { BaseService } from '@/shared/services/base.service';
+import { DataSource } from 'typeorm';
+import { Transactional } from '@/shared/decorators/transactional.decorator';
+import { OrderResponseDto } from './dto/order-response.dto';
+import { CACHE_CONFIG } from '@/shared/constants/cache.constant';
 
 @Injectable()
-export class OrdersService {
-  private readonly logger = new Logger(OrdersService.name);
+export class OrdersService extends BaseService {
   private readonly CACHE_PREFIX = 'order';
-  private readonly IDEMPOTENCY_PREFIX = 'idempotency';
-  private readonly CACHE_TTL = 300 * 1000; // 5 minutes - for individual orders
-  private readonly LIST_CACHE_TTL = 60 * 1000; // 1 minute - for order lists (shorter TTL)
-  private readonly IDEMPOTENCY_TTL = 86400 * 1000; // 24 hours
+  private readonly IDEMPOTENCY_PREFIX = 'order-idempotency';
 
   constructor(
     @InjectQueue('orders')
@@ -35,48 +34,45 @@ export class OrdersService {
     private readonly cacheService: CacheService,
     private readonly orderRepository: OrderRepository,
     private readonly orderItemRepository: OrderItemRepository,
-  ) {}
+    protected readonly dataSource: DataSource,
+  ) {
+    super(dataSource, OrdersService.name);
+  }
 
+  @Transactional()
   async create(
     createOrderDto: CreateOrderDto,
     userId: string,
     idempotencyKey: string,
-  ): Promise<Order> {
+  ): Promise<OrderResponseDto> {
     const idempotencyKeyFormatted = `${this.IDEMPOTENCY_PREFIX}:${idempotencyKey}`;
-
-    // Check if this idempotency key already exists
-    const existingOrder = await this.cacheService.get<Order>(
+    const existingOrder = await this.cacheService.get<OrderResponseDto>(
       idempotencyKeyFormatted,
     );
     if (existingOrder) {
-      this.logger.log(
+      this.logger.debug(
         `Returning existing order for idempotency key: ${idempotencyKey}, Order ID: ${existingOrder.id}`,
       );
       return existingOrder;
     }
 
-    this.logger.log(
+    this.logger.debug(
       `Creating new order with idempotency key: ${idempotencyKey}`,
     );
 
-    // Calculate total
     const total = createOrderDto.items.reduce(
       (sum, item) => sum + item.price * item.quantity,
       0,
     );
 
-    // Create order entity
     const order = this.orderRepository.createEntity({
-      user: new User(),
+      userId,
       total,
       status: OrderStatus.PENDING,
     });
-    order.user.id = userId;
 
-    // Save order first to get the ID
     const savedOrder = await this.orderRepository.save(order);
 
-    // Create order items
     const orderItems = createOrderDto.items.map((item) =>
       this.orderItemRepository.createEntity({
         ...item,
@@ -84,66 +80,79 @@ export class OrdersService {
       }),
     );
 
-    // Save order items
     await this.orderItemRepository.saveMany(orderItems);
 
-    // Fetch complete order with items
     const completeOrder = await this.orderRepository.findOneWithRelations(
       { id: savedOrder.id },
       ['items'],
     );
 
-    // Add job to processing queue
+    await this.clearOrderCache(userId);
+
+    const orderMapped = OrderResponseDto.fromEntity(completeOrder);
+
+    await this.cacheService.set(
+      idempotencyKeyFormatted,
+      orderMapped,
+      CACHE_CONFIG.IDEMPOTENCY_TTL,
+    );
+
+    // Add to the queue the job for processing the order
     await this.orderQueue.add(
       OrderJob.PROCESS_ORDER,
       new ProcessOrderJobData(userId, completeOrder.id, total),
     );
 
-    // Clear related cache
-    await this.clearOrderCache(userId);
-
-    // Cache the created order with idempotency key
-    await this.cacheService.set(
-      idempotencyKeyFormatted,
-      completeOrder,
-      this.IDEMPOTENCY_TTL,
-    );
-
-    this.logger.log(
+    this.logger.debug(
       `Order created and cached with idempotency key: ${idempotencyKey}, Order ID: ${completeOrder.id}`,
     );
 
-    return completeOrder;
+    return orderMapped;
   }
 
-  async findAll(queryDto: OrderQueryDto): Promise<PaginatedResultDto<Order>> {
-    // Check cache first
+  async findAll(
+    queryDto: OrderQueryDto,
+  ): Promise<PaginatedResultDto<OrderResponseDto>> {
     const cacheKey = `${this.CACHE_PREFIX}:list:${JSON.stringify(queryDto)}`;
-    const cachedResult =
-      await this.cacheService.get<PaginatedResultDto<Order>>(cacheKey);
+    const cachedResult = await this.runAndIgnoreError(
+      () =>
+        this.cacheService.get<PaginatedResultDto<OrderResponseDto>>(cacheKey),
+      `fetching orders list from cache with key: ${cacheKey}`,
+    );
     if (cachedResult) {
-      this.logger.log(`Returning cached orders list`);
+      this.logger.debug(`Returning cached orders list`);
       return cachedResult;
     }
 
     const result = await this.orderRepository.findAllWithFilters(queryDto);
 
-    // Cache the result with shorter TTL for lists
-    await this.cacheService.set(cacheKey, result, this.LIST_CACHE_TTL);
+    await this.runAndIgnoreError(
+      () => this.cacheService.set(cacheKey, result, CACHE_CONFIG.LIST_TTL),
+      `caching orders list with key: ${cacheKey}`,
+    );
 
-    this.logger.log(
+    this.logger.debug(
       `Found ${result.data.length} orders (page ${queryDto.page}/${result.totalPages})`,
     );
 
-    return result;
+    const resultMapped = new PaginatedResultDto<OrderResponseDto>(
+      result.total,
+      result.page,
+      result.limit,
+      result.data.map(OrderResponseDto.fromEntity),
+    );
+
+    return resultMapped;
   }
 
-  async findOne(id: string): Promise<Order> {
-    // Check cache first
+  async findOne(id: string): Promise<OrderResponseDto> {
     const cacheKey = `${this.CACHE_PREFIX}:${id}`;
-    const cachedOrder = await this.cacheService.get<Order>(cacheKey);
+    const cachedOrder = await this.runAndIgnoreError(
+      () => this.cacheService.get<OrderResponseDto>(cacheKey),
+      `fetching order from cache with key: ${cacheKey}`,
+    );
     if (cachedOrder) {
-      this.logger.log(`Returning cached order: ${id}`);
+      this.logger.debug(`Returning cached order: ${id}`);
       return cachedOrder;
     }
 
@@ -156,22 +165,32 @@ export class OrdersService {
       throw new NotFoundException(`Order with ID ${id} not found`);
     }
 
-    // Cache the order
-    await this.cacheService.set(cacheKey, order, this.CACHE_TTL);
+    const orderMapped = OrderResponseDto.fromEntity(order);
 
-    this.logger.log(`Found order: ${id}`);
-    return order;
+    await this.runAndIgnoreError(
+      () =>
+        this.cacheService.set(cacheKey, orderMapped, CACHE_CONFIG.DEFAULT_TTL),
+      `caching order with key: ${cacheKey}`,
+    );
+
+    this.logger.debug(`Found order: ${id}`);
+
+    return orderMapped;
   }
 
-  async update(id: string, updateOrderDto: UpdateOrderDto): Promise<Order> {
-    const order = await this.findOne(id);
-    const oldStatus = order.status;
-
+  @Transactional()
+  async update(
+    id: string,
+    updateOrderDto: UpdateOrderDto,
+  ): Promise<OrderResponseDto> {
+    const order = await this.orderRepository.findOneWithRelations({ id }, [
+      'user',
+      'items',
+    ]);
     if (!order) {
       throw new NotFoundException(`Order with ID ${id} not found`);
     }
 
-    // Update order properties
     Object.assign(order, updateOrderDto);
 
     // If items are updated, remove old items and add new ones
@@ -188,7 +207,6 @@ export class OrdersService {
       await this.orderItemRepository.saveMany(orderItems);
       order.items = orderItems;
 
-      // Recalculate total
       order.total = updateOrderDto.items.reduce(
         (sum, item) => sum + item.price * item.quantity,
         0,
@@ -197,52 +215,68 @@ export class OrdersService {
 
     await this.orderRepository.save(order);
 
-    // Notify status change if status is updated
-    if (updateOrderDto.status && updateOrderDto.status !== oldStatus) {
-      await this.eventBus.publish(
-        new NotifyUserJobData(
-          order.user.id,
-          `TO CUSTOMER: Your order with id ${order.id} status has been updated to ${updateOrderDto.status}`,
-        ),
-      );
-    }
-
-    // Clear cache
     await this.clearOrderCache(order.user.id, id);
 
-    this.logger.log(`Order updated: ${id}`);
+    this.logger.debug(`Order updated: ${id}`);
 
-    // Return complete order with items
-    return this.findOne(id);
+    return OrderResponseDto.fromEntity(order);
   }
 
-  async remove(id: string): Promise<Order> {
+  @Transactional()
+  async remove(id: string): Promise<OrderResponseDto> {
     const order = await this.findOne(id);
 
-    if (
-      order.status === OrderStatus.PENDING ||
-      order.status === OrderStatus.CONFIRMED
-    ) {
-      // Add cancellation job to queue
+    const status = order.status;
+
+    await this.orderRepository.delete(order.id);
+
+    await this.clearOrderCache(order.user.id, id);
+
+    if (status === OrderStatus.PENDING || status === OrderStatus.CONFIRMED) {
+      // Add cancellation job to the queue
       await this.orderQueue.add(
         OrderJob.CANCEL_ORDER,
         new CancelOrderJobData(id, order.user.id),
       );
     }
 
-    await this.orderRepository.delete(order.id);
-
-    // Clear cache
-    await this.clearOrderCache(order.user.id, id);
-
-    this.logger.log(`Order deleted: ${id}`);
+    this.logger.debug(`Order deleted: ${id}`);
 
     return order;
   }
 
-  async updateStatus(id: string, status: OrderStatus): Promise<Order> {
-    const updateDto: UpdateOrderDto = { status };
-    return this.update(id, updateDto);
+  @Transactional()
+  async updateStatus(
+    id: string,
+    status: OrderStatus,
+  ): Promise<OrderResponseDto> {
+    const order = await this.orderRepository.findOneWithRelations({ id }, [
+      'user',
+      'items',
+    ]);
+    const oldStatus = order.status;
+    if (!order) {
+      throw new NotFoundException(`Order with ID ${id} not found`);
+    }
+
+    order.status = status;
+    await this.orderRepository.save(order);
+
+    // Notify status change if status is updated
+    if (status !== oldStatus) {
+      await this.eventBus.publish(
+        new NotifyUserJobData(
+          order.user.id,
+          `TO CUSTOMER: Your order with id ${order.id} status has been updated to ${status}`,
+        ),
+      );
+    }
+
+    await this.clearOrderCache(order.user.id, id);
+
+    this.logger.debug(`Order status updated: ${id}`);
+
+    return OrderResponseDto.fromEntity(order);
   }
 
   private async clearOrderCache(
@@ -252,12 +286,10 @@ export class OrdersService {
     const keysToDelete: string[] = [];
     const patternsToDelete: string[] = [];
 
-    // Clear specific order if ID provided
     if (orderId) {
       keysToDelete.push(`${this.CACHE_PREFIX}:${orderId}`);
     }
 
-    // Clear user orders if user ID provided
     if (userId) {
       keysToDelete.push(`${this.CACHE_PREFIX}:user:${userId}`);
     }
@@ -266,7 +298,6 @@ export class OrdersService {
     // This clears ANY list cache regardless of pagination, filters, etc.
     patternsToDelete.push(`${this.CACHE_PREFIX}:list:*`);
 
-    // Execute deletions
     await Promise.all([
       // Delete specific keys
       ...keysToDelete.map((key) => this.cacheService.delete(key)),
@@ -276,29 +307,8 @@ export class OrdersService {
       ),
     ]);
 
-    this.logger.log(
+    this.logger.debug(
       `Cleared cache keys: ${keysToDelete.join(', ')} and patterns: ${patternsToDelete.join(', ')}`,
     );
-  }
-
-  /**
-   * Clear only user-specific cached data (for targeted invalidation)
-   */
-  private async clearUserOrderCache(userId: string): Promise<void> {
-    const keysToDelete = [`${this.CACHE_PREFIX}:user:${userId}`];
-
-    // Clear only list caches that might contain this user's orders
-    const patternsToDelete = [
-      `${this.CACHE_PREFIX}:list:*"userId":"${userId}"*`, // Lists filtered by this user
-      `${this.CACHE_PREFIX}:list:*`, // or clear all lists (safer but less efficient)
-    ];
-
-    await Promise.all([
-      ...keysToDelete.map((key) => this.cacheService.delete(key)),
-      // Use only the first pattern if you want targeted clearing, or the second for safety
-      this.cacheService.deletePattern(patternsToDelete[1]), // Using global clear for safety
-    ]);
-
-    this.logger.log(`Cleared user-specific cache for userId: ${userId}`);
   }
 }

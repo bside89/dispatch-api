@@ -12,7 +12,6 @@ import {
   HttpCode,
   HttpStatus,
   BadRequestException,
-  Logger,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -37,16 +36,18 @@ import { UserQueryDto } from './dto/user-query.dto';
 import { Public } from '../auth/decorators/public.decorator';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { UserRole } from './enums/user-role.enum';
-import { PaginatedResultDto } from '@/shared/dto/paginated-result.dto';
 import { UserResponseDto } from './dto/user-response.dto';
+import { BaseController } from '@/shared/controllers/base.controller';
+import { SuccessResponseDto } from '@/shared/dto/success-response.dto';
+import { PaginatedResponseDto } from '@/shared/dto/paginated-response.dto';
 
 @Controller({ path: 'v1/users', version: '1' })
 @ApiTags('users')
 @ApiSecurity('bearer')
-export class UsersController {
-  private readonly logger = new Logger(UsersController.name);
-
-  constructor(private readonly usersService: UsersService) {}
+export class UsersController extends BaseController {
+  constructor(private readonly usersService: UsersService) {
+    super(UsersController.name);
+  }
 
   @Post()
   @Public()
@@ -65,7 +66,7 @@ export class UsersController {
   })
   @ApiCreatedResponse({
     description: 'User created successfully',
-    type: UserResponseDto,
+    type: SuccessResponseDto<UserResponseDto>,
   })
   @ApiConflictResponse({
     description: 'Email already exists',
@@ -80,7 +81,7 @@ export class UsersController {
   async create(
     @Body() createUserDto: CreateUserDto,
     @Headers('idempotency-key') idempotencyKey?: string,
-  ): Promise<UserResponseDto> {
+  ) {
     if (!idempotencyKey) {
       throw new BadRequestException('Idempotency-Key header is required');
     }
@@ -88,7 +89,13 @@ export class UsersController {
     this.logger.debug(
       `POST /users - Creating user with email: ${createUserDto.email} and idempotency key: ${idempotencyKey}`,
     );
-    return this.usersService.create(createUserDto, idempotencyKey);
+
+    const result = await this.usersService.create(
+      createUserDto,
+      idempotencyKey,
+    );
+
+    return this.success(result, 'User created successfully');
   }
 
   @Get()
@@ -99,7 +106,7 @@ export class UsersController {
   })
   @ApiOkResponse({
     description: 'List of users retrieved successfully',
-    type: PaginatedResultDto<UserResponseDto>,
+    type: PaginatedResponseDto<UserResponseDto>,
   })
   @ApiQuery({
     name: 'name',
@@ -125,11 +132,12 @@ export class UsersController {
     description: 'Number of users to skip',
     type: Number,
   })
-  async findAll(
-    @Query() query: UserQueryDto,
-  ): Promise<PaginatedResultDto<UserResponseDto>> {
+  async findAll(@Query() query: UserQueryDto) {
     this.logger.debug('GET /users - Retrieving all users');
-    return this.usersService.findAll(query);
+
+    const result = await this.usersService.findAll(query);
+
+    return this.paginate(result.data, result.total, result.page, result.limit);
   }
 
   @Get(':id')
@@ -145,7 +153,7 @@ export class UsersController {
   })
   @ApiOkResponse({
     description: 'User found successfully',
-    type: UserResponseDto,
+    type: SuccessResponseDto<UserResponseDto>,
   })
   @ApiNotFoundResponse({
     description: 'User not found',
@@ -153,11 +161,12 @@ export class UsersController {
   @ApiBadRequestResponse({
     description: 'Invalid UUID format',
   })
-  async findOne(
-    @Param('id', ParseUUIDPipe) id: string,
-  ): Promise<UserResponseDto> {
+  async findOne(@Param('id', ParseUUIDPipe) id: string) {
     this.logger.debug(`GET /users/${id} - Retrieving user`);
-    return this.usersService.findOne(id);
+
+    const result = await this.usersService.findOne(id);
+
+    return this.success(result, 'User retrieved successfully');
   }
 
   @Patch(':id')
@@ -174,7 +183,7 @@ export class UsersController {
   })
   @ApiOkResponse({
     description: 'User updated successfully',
-    type: UserResponseDto,
+    type: SuccessResponseDto<UserResponseDto>,
   })
   @ApiNotFoundResponse({
     description: 'User not found',
@@ -192,9 +201,12 @@ export class UsersController {
   async update(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() updateUserDto: UpdateUserDto,
-  ): Promise<UserResponseDto> {
+  ) {
     this.logger.debug(`PATCH /users/${id} - Updating user`);
-    return this.usersService.update(id, updateUserDto);
+
+    const result = await this.usersService.update(id, updateUserDto);
+
+    return this.success(result, 'User updated successfully');
   }
 
   @Patch(':id/login')
@@ -211,7 +223,7 @@ export class UsersController {
   })
   @ApiOkResponse({
     description: 'Login credentials updated successfully',
-    type: UserResponseDto,
+    type: SuccessResponseDto<UserResponseDto>,
   })
   @ApiNotFoundResponse({
     description: 'User not found',
@@ -230,15 +242,18 @@ export class UsersController {
   async updateLogin(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() updateLoginDto: UpdateLoginDto,
-  ): Promise<UserResponseDto> {
+  ) {
     this.logger.debug(
       `PATCH /users/${id}/login - Updating user login credentials`,
     );
-    return this.usersService.updateLogin(id, updateLoginDto);
+
+    const result = await this.usersService.updateLogin(id, updateLoginDto);
+
+    return this.success(result, 'User login credentials updated successfully');
   }
 
   @Delete(':id')
-  @Roles(UserRole.ADMIN) // Only allow users with the ADMIN role to delete users
+  @Roles(UserRole.ADMIN)
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({
     summary: 'Delete user',
@@ -260,8 +275,11 @@ export class UsersController {
   @ApiBadRequestResponse({
     description: 'Invalid UUID format',
   })
-  async remove(@Param('id', ParseUUIDPipe) id: string): Promise<void> {
+  async remove(@Param('id', ParseUUIDPipe) id: string) {
     this.logger.debug(`DELETE /users/${id} - Deleting user`);
-    return this.usersService.remove(id);
+
+    await this.usersService.remove(id);
+
+    return this.success(null, 'User deleted successfully');
   }
 }
