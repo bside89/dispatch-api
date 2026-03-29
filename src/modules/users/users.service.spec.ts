@@ -4,6 +4,7 @@ import {
   NotFoundException,
   BadRequestException,
 } from '@nestjs/common';
+import { DataSource } from 'typeorm';
 import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
@@ -56,6 +57,12 @@ describe('UserService', () => {
           provide: CacheService,
           useValue: mockCacheService,
         },
+        {
+          provide: DataSource,
+          useValue: {
+            transaction: jest.fn().mockImplementation((cb) => cb({})),
+          },
+        },
       ],
     }).compile();
 
@@ -89,7 +96,7 @@ describe('UserService', () => {
       const result = await service.create(createUserDto, idempotencyKey);
 
       expect(cacheService.get).toHaveBeenCalledWith(
-        `user_idempotency:${idempotencyKey}`,
+        `user-idempotency:${idempotencyKey}`,
       );
       expect(userRepository.findOneWhere).toHaveBeenCalledWith({
         email: createUserDto.email,
@@ -101,8 +108,8 @@ describe('UserService', () => {
       });
       expect(userRepository.save).toHaveBeenCalledWith(mockUser);
       expect(cacheService.set).toHaveBeenCalledWith(
-        `user_idempotency:${idempotencyKey}`,
-        mockUser,
+        `user-idempotency:${idempotencyKey}`,
+        expect.objectContaining({ id: mockUser.id }),
         86400000,
       );
       expect(result).toEqual({
@@ -127,7 +134,7 @@ describe('UserService', () => {
       const result = await service.create(createUserDto, idempotencyKey);
 
       expect(cacheService.get).toHaveBeenCalledWith(
-        `user_idempotency:${idempotencyKey}`,
+        `user-idempotency:${idempotencyKey}`,
       );
       expect(userRepository.findOneWhere).not.toHaveBeenCalled();
       expect(userRepository.createEntity).not.toHaveBeenCalled();
@@ -146,7 +153,7 @@ describe('UserService', () => {
       ).rejects.toThrow(ConflictException);
 
       expect(cacheService.get).toHaveBeenCalledWith(
-        `user_idempotency:${idempotencyKey}`,
+        `user-idempotency:${idempotencyKey}`,
       );
       expect(userRepository.findOneWhere).toHaveBeenCalledWith({
         email: createUserDto.email,

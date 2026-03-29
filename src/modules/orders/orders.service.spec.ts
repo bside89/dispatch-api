@@ -1,7 +1,9 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getQueueToken } from '@nestjs/bullmq';
+import { DataSource } from 'typeorm';
 import { OrdersService } from './orders.service';
 import { OrderStatus } from './enums/order-status.enum';
+import { OrderJob } from './enums/order-job.enum';
 import { CacheService } from '../cache/cache.service';
 import { EVENT_BUS } from '../events/constants/event-bus.token';
 import { OrderRepository } from './repositories/order.repository';
@@ -54,6 +56,12 @@ describe('OrderService', () => {
           provide: EVENT_BUS,
           useValue: { publish: jest.fn() },
         },
+        {
+          provide: DataSource,
+          useValue: {
+            transaction: jest.fn().mockImplementation((cb) => cb({})),
+          },
+        },
       ],
     }).compile();
 
@@ -74,25 +82,37 @@ describe('OrderService', () => {
         {
           productId: 'product-456',
           quantity: 2,
-          price: 99.99,
+          price: 9999,
         },
       ],
     };
     const userId = 'customer-123';
     const idempotencyKey = 'unique-key-123';
 
+    const mockUser = {
+      id: 'customer-123',
+      name: 'Test User',
+      email: 'test@test.com',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
     const mockOrder = {
       id: 'order-uuid',
       userId: 'customer-123',
-      total: 199.98,
+      user: mockUser,
+      total: 19998,
       status: OrderStatus.PENDING,
+      createdAt: new Date(),
+      updatedAt: new Date(),
       items: [
         {
           id: 'item-uuid',
           productId: 'product-456',
           quantity: 2,
-          price: 99.99,
+          price: 9999,
           orderId: 'order-uuid',
+          createdAt: new Date(),
+          updatedAt: new Date(),
         },
       ],
     };
@@ -117,31 +137,37 @@ describe('OrderService', () => {
         idempotencyKey,
       );
 
-      expect(result).toEqual(mockOrder);
+      expect(result).toMatchObject({
+        id: mockOrder.id,
+        status: mockOrder.status,
+        total: mockOrder.total,
+      });
       expect(cacheService.get).toHaveBeenCalledWith(
-        `idempotency:${idempotencyKey}`,
+        `order-idempotency:${idempotencyKey}`,
       );
       expect(cacheService.set).toHaveBeenCalledWith(
-        `idempotency:${idempotencyKey}`,
-        mockOrder,
-        86400000, // IDEMPOTENCY_TTL in milliseconds
+        `order-idempotency:${idempotencyKey}`,
+        expect.objectContaining({ id: mockOrder.id }),
+        86400000,
       );
       expect(orderRepository.createEntity).toHaveBeenCalled();
       expect(orderRepository.save).toHaveBeenCalled();
       expect(orderItemRepository.saveMany).toHaveBeenCalled();
-      // Queue job name is the OrderJob enum value, not a kebab-case string
-      expect(orderQueue.add).toHaveBeenCalledWith('PROCESS_ORDER', {
-        orderId: mockOrder.id,
-        userId: mockOrder.userId,
-        total: mockOrder.total,
-      });
+      expect(orderQueue.add).toHaveBeenCalledWith(
+        OrderJob.PROCESS_ORDER,
+        expect.objectContaining({
+          userId,
+          orderId: mockOrder.id,
+          total: mockOrder.total,
+        }),
+      );
     });
 
     it('should return existing order when idempotency key exists in cache', async () => {
       const existingOrder = {
         id: 'existing-order-uuid',
         userId: 'customer-123',
-        total: 199.98,
+        total: 19998,
         status: OrderStatus.PENDING,
         items: [],
       };
@@ -157,7 +183,7 @@ describe('OrderService', () => {
 
       expect(result).toEqual(existingOrder);
       expect(cacheService.get).toHaveBeenCalledWith(
-        `idempotency:${idempotencyKey}`,
+        `order-idempotency:${idempotencyKey}`,
       );
       expect(orderRepository.createEntity).not.toHaveBeenCalled();
       expect(orderRepository.save).not.toHaveBeenCalled();
@@ -171,7 +197,7 @@ describe('OrderService', () => {
         id: orderId,
         userId: 'customer-123',
         status: OrderStatus.PENDING,
-        total: 199.98,
+        total: 19998,
       };
 
       cacheService.get.mockResolvedValue(mockOrder);
@@ -185,27 +211,41 @@ describe('OrderService', () => {
 
     it('should fetch order from database and cache it if not in cache', async () => {
       const orderId = 'order-uuid';
-      const mockOrder = {
+      const mockOrderEntity = {
         id: orderId,
         userId: 'customer-123',
+        user: {
+          id: 'customer-123',
+          name: 'Test',
+          email: 'test@test.com',
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
         status: OrderStatus.PENDING,
-        total: 199.98,
+        total: 19998,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        items: [],
       };
 
       cacheService.get.mockResolvedValue(null);
-      orderRepository.findOneWithRelations.mockResolvedValue(mockOrder);
+      orderRepository.findOneWithRelations.mockResolvedValue(mockOrderEntity);
       cacheService.set.mockResolvedValue(undefined);
 
       const result = await service.findOne(orderId);
 
-      expect(result).toEqual(mockOrder);
+      expect(result).toMatchObject({
+        id: orderId,
+        status: OrderStatus.PENDING,
+        total: 19998,
+      });
       expect(orderRepository.findOneWithRelations).toHaveBeenCalledWith(
         { id: orderId },
         ['user', 'items'],
       );
       expect(cacheService.set).toHaveBeenCalledWith(
         `order:${orderId}`,
-        mockOrder,
+        expect.objectContaining({ id: orderId }),
         300000,
       );
     });

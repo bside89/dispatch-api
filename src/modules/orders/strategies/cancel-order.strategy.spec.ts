@@ -86,7 +86,7 @@ describe('CancelOrderStrategy', () => {
       expect(cacheService.set).toHaveBeenCalledWith(
         'idempotency:order:cancel:order-1',
         '1',
-        3600,
+        3600000,
       );
       expect(orderRepository.update).toHaveBeenCalledWith('order-1', {
         status: OrderStatus.CANCELLED,

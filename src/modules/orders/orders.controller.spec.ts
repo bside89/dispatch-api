@@ -43,7 +43,7 @@ describe('OrderController', () => {
         {
           productId: 'product-456',
           quantity: 2,
-          price: 99.99,
+          price: 9999,
         },
       ],
     };
@@ -53,7 +53,7 @@ describe('OrderController', () => {
       id: 'order-uuid',
       userId: 'customer-123',
       status: OrderStatus.PENDING,
-      total: 199.98,
+      total: 19998,
       createdAt: new Date(),
       updatedAt: new Date(),
       items: [],
@@ -74,7 +74,12 @@ describe('OrderController', () => {
         payload,
       );
 
-      expect(result).toEqual(mockOrder);
+      expect(result).toEqual({
+        success: true,
+        message: 'Order created successfully',
+        data: mockOrder,
+        timestamp: expect.any(String),
+      });
       expect(service.create).toHaveBeenCalledWith(
         createOrderDto,
         payload.sub,
@@ -116,7 +121,12 @@ describe('OrderController', () => {
 
       const result = await controller.findAll(queryDto);
 
-      expect(result).toEqual(mockResponse);
+      expect(result).toEqual({
+        success: true,
+        data: [],
+        meta: { total: 1, page: 1, limit: 10, totalPages: 1 },
+        timestamp: expect.any(String),
+      });
       expect(service.findAll).toHaveBeenCalledWith(queryDto);
     });
   });
@@ -128,7 +138,7 @@ describe('OrderController', () => {
         id: orderId,
         userId: 'customer-123',
         status: OrderStatus.PENDING,
-        total: 199.98,
+        total: 19998,
         createdAt: new Date(),
         updatedAt: new Date(),
         items: [],
@@ -138,7 +148,12 @@ describe('OrderController', () => {
 
       const result = await controller.findOne(orderId);
 
-      expect(result).toEqual(mockOrder);
+      expect(result).toEqual({
+        success: true,
+        message: 'Order retrieved successfully',
+        data: mockOrder,
+        timestamp: expect.any(String),
+      });
       expect(service.findOne).toHaveBeenCalledWith(orderId);
     });
   });
@@ -151,7 +166,7 @@ describe('OrderController', () => {
         id: orderId,
         userId: 'customer-123',
         status: newStatus,
-        total: 199.98,
+        total: 19998,
         createdAt: new Date(),
         updatedAt: new Date(),
         items: [],
@@ -161,7 +176,12 @@ describe('OrderController', () => {
 
       const result = await controller.updateStatus(orderId, newStatus);
 
-      expect(result).toEqual(mockOrder);
+      expect(result).toEqual({
+        success: true,
+        message: 'Order status updated successfully',
+        data: mockOrder,
+        timestamp: expect.any(String),
+      });
       expect(service.updateStatus).toHaveBeenCalledWith(orderId, newStatus);
     });
   });

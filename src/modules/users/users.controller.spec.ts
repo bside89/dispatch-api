@@ -69,7 +69,12 @@ describe('UserController', () => {
         createUserDto,
         idempotencyKey,
       );
-      expect(result).toEqual(mockUserResponse);
+      expect(result).toEqual({
+        success: true,
+        message: 'User created successfully',
+        data: mockUserResponse,
+        timestamp: expect.any(String),
+      });
     });
 
     it('should throw BadRequestException when idempotency key is not provided', async () => {
@@ -92,13 +97,19 @@ describe('UserController', () => {
     };
 
     it('should return all users successfully', async () => {
-      const expectedResult = mockPaginatedUserResponse;
-      jest.spyOn(service, 'findAll').mockResolvedValue(expectedResult);
+      jest
+        .spyOn(service, 'findAll')
+        .mockResolvedValue(mockPaginatedUserResponse);
 
       const result = await controller.findAll(queryDto);
 
       expect(service.findAll).toHaveBeenCalledWith(queryDto);
-      expect(result).toEqual(expectedResult);
+      expect(result).toEqual({
+        success: true,
+        data: [mockUserResponse],
+        meta: { total: 1, page: 1, limit: 10, totalPages: 1 },
+        timestamp: expect.any(String),
+      });
     });
   });
 
@@ -109,7 +120,12 @@ describe('UserController', () => {
       const result = await controller.findOne(mockUserResponse.id);
 
       expect(service.findOne).toHaveBeenCalledWith(mockUserResponse.id);
-      expect(result).toEqual(mockUserResponse);
+      expect(result).toEqual({
+        success: true,
+        message: 'User retrieved successfully',
+        data: mockUserResponse,
+        timestamp: expect.any(String),
+      });
     });
   });
 
@@ -132,7 +148,12 @@ describe('UserController', () => {
         mockUserResponse.id,
         updateUserDto,
       );
-      expect(result).toEqual(expectedResult);
+      expect(result).toEqual({
+        success: true,
+        message: 'User updated successfully',
+        data: expectedResult,
+        timestamp: expect.any(String),
+      });
     });
   });
 
@@ -159,18 +180,28 @@ describe('UserController', () => {
         mockUserResponse.id,
         updateLoginDto,
       );
-      expect(result).toEqual(expectedResult);
+      expect(result).toEqual({
+        success: true,
+        message: 'User login credentials updated successfully',
+        data: expectedResult,
+        timestamp: expect.any(String),
+      });
     });
   });
 
   describe('remove', () => {
     it('should delete a user successfully', async () => {
-      jest.spyOn(service, 'remove').mockResolvedValue();
+      jest.spyOn(service, 'remove').mockResolvedValue(undefined);
 
       const result = await controller.remove(mockUserResponse.id);
 
       expect(service.remove).toHaveBeenCalledWith(mockUserResponse.id);
-      expect(result).toBeUndefined();
+      expect(result).toEqual({
+        success: true,
+        message: 'User deleted successfully',
+        data: null,
+        timestamp: expect.any(String),
+      });
     });
   });
 });
