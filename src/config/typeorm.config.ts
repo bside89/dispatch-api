@@ -1,9 +1,6 @@
 import { ConfigService } from '@nestjs/config';
 import { TypeOrmModuleOptions } from '@nestjs/typeorm';
 import { DataSource, DataSourceOptions } from 'typeorm';
-import { Order } from '../modules/orders/entities/order.entity';
-import { OrderItem } from '../modules/orders/entities/order-item.entity';
-import { User } from '../modules/users/entities/user.entity';
 
 export const typeOrmConfig = (
   configService: ConfigService,
@@ -14,7 +11,7 @@ export const typeOrmConfig = (
   username: configService.get('DB_USERNAME'),
   password: configService.get('DB_PASSWORD'),
   database: configService.get('DB_DATABASE'),
-  entities: [Order, OrderItem, User],
+  autoLoadEntities: true,
   synchronize: configService.get('DB_SYNCHRONIZE') === 'true',
   logging: configService.get('DB_LOGGING') === 'true',
   migrations: ['dist/migrations/*.js'],

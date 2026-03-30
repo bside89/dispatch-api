@@ -7,10 +7,13 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { ProcessOrderStrategy } from './process-order.strategy';
 import { Order } from '../entities/order.entity';
 import { OrderStatus } from '../enums/order-status.enum';
-import { OrderJob } from '../enums/order-job.enum';
+import { OutboxType as OrderData } from '@/shared/modules/outbox/enums/outbox-type.enum';
 import { CacheService } from '../../cache/cache.service';
 import { EVENT_BUS } from '../../events/constants/event-bus.token';
-import { ProcessOrderJobData, ShipOrderJobData } from '../misc/order-job-data';
+import {
+  ProcessOrderJobPayload,
+  ShipOrderJobPayload,
+} from '../processors/payloads/order-job.payload';
 
 jest.mock('../../../shared/helpers/functions', () => ({
   delay: jest.fn().mockResolvedValue(undefined),
@@ -30,7 +33,7 @@ describe('ProcessOrderStrategy', () => {
     error: jest.fn(),
   } as unknown as Logger;
 
-  const makeJob = (data: ProcessOrderJobData): Job<ProcessOrderJobData> =>
+  const makeJob = (data: ProcessOrderJobPayload): Job<ProcessOrderJobPayload> =>
     ({ data, id: 'job-1' }) as any;
 
   beforeEach(async () => {
@@ -66,7 +69,7 @@ describe('ProcessOrderStrategy', () => {
   afterEach(() => jest.clearAllMocks());
 
   describe('execute', () => {
-    const jobData = new ProcessOrderJobData('user-1', 'order-1', 100);
+    const jobData = new ProcessOrderJobPayload('user-1', 'order-1', 100);
 
     it('should update status to PROCESSED, notify user, and enqueue SHIP_ORDER job', async () => {
       cacheService.get.mockResolvedValue(null);
@@ -94,11 +97,11 @@ describe('ProcessOrderStrategy', () => {
       });
       expect(eventBus.publish).toHaveBeenCalledTimes(1);
       expect(orderQueue.add).toHaveBeenCalledWith(
-        OrderJob.SHIP_ORDER,
-        expect.any(ShipOrderJobData),
+        OrderData.ORDER_SHIP,
+        expect.any(ShipOrderJobPayload),
       );
       const enqueuedJobData = orderQueue.add.mock
-        .calls[0][1] as ShipOrderJobData;
+        .calls[0][1] as ShipOrderJobPayload;
       expect(enqueuedJobData.userId).toBe('user-1');
       expect(enqueuedJobData.orderId).toBe('order-1');
     });
@@ -129,7 +132,7 @@ describe('ProcessOrderStrategy', () => {
     });
 
     it('should remove idempotency key and rethrow when total is invalid', async () => {
-      const badJobData = new ProcessOrderJobData('user-1', 'order-1', 0);
+      const badJobData = new ProcessOrderJobPayload('user-1', 'order-1', 0);
       cacheService.get.mockResolvedValue(null);
       cacheService.set.mockResolvedValue(undefined);
       orderRepository.findOne.mockResolvedValue({

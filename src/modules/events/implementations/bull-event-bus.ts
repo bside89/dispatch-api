@@ -7,9 +7,7 @@ import { EventBus } from '../interfaces/event-bus.interface';
 export class BullEventBus implements EventBus {
   constructor(@InjectQueue('events') private readonly queue: Queue) {}
 
-  async publish(event: any): Promise<void> {
-    const name = event.constructor.name;
-
+  async publish(name: string, event: any): Promise<void> {
     await this.queue.add(name, event);
   }
 }

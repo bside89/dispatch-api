@@ -5,7 +5,7 @@ import { Job } from 'bullmq';
 import { OrderProcessor } from './order.processor';
 import { OrderJobHandlerFactory } from '../factories/order-job-handler.factory';
 import { CacheService } from '../../cache/cache.service';
-import { OrderJob } from '../enums/order-job.enum';
+import { OutboxType as OrderData } from '@/shared/modules/outbox/enums/outbox-type.enum';
 
 describe('OrderProcessor', () => {
   let processor: OrderProcessor;
@@ -43,7 +43,7 @@ describe('OrderProcessor', () => {
   afterEach(() => jest.clearAllMocks());
 
   it('should acquire the lock, execute the handler, and release the lock', async () => {
-    const job = makeJob(OrderJob.PROCESS_ORDER);
+    const job = makeJob(OrderData.ORDER_PROCESS);
     cacheService.setIfNotExists.mockResolvedValue(true);
     factory.createHandler.mockReturnValue(mockHandler as any);
     mockHandler.execute.mockResolvedValue(undefined);
@@ -56,13 +56,13 @@ describe('OrderProcessor', () => {
       '1',
       30 * 1000,
     );
-    expect(factory.createHandler).toHaveBeenCalledWith(OrderJob.PROCESS_ORDER);
+    expect(factory.createHandler).toHaveBeenCalledWith(OrderData.ORDER_PROCESS);
     expect(mockHandler.execute).toHaveBeenCalledWith(job, expect.any(Logger));
     expect(cacheService.delete).toHaveBeenCalledWith(`lock:job:${job.id}`);
   });
 
   it('should skip processing and not acquire the lock if job is already running', async () => {
-    const job = makeJob(OrderJob.SHIP_ORDER);
+    const job = makeJob(OrderData.ORDER_SHIP);
     cacheService.setIfNotExists.mockResolvedValue(false); // lock already held
 
     await processor.process(job);
@@ -85,7 +85,7 @@ describe('OrderProcessor', () => {
   });
 
   it('should release the lock even when the handler throws', async () => {
-    const job = makeJob(OrderJob.DELIVER_ORDER);
+    const job = makeJob(OrderData.ORDER_DELIVER);
     cacheService.setIfNotExists.mockResolvedValue(true);
     factory.createHandler.mockReturnValue(mockHandler as any);
     mockHandler.execute.mockRejectedValue(new Error('handler failed'));
@@ -98,10 +98,10 @@ describe('OrderProcessor', () => {
 
   it('should route each job type to the correct handler', async () => {
     const jobTypes = [
-      OrderJob.PROCESS_ORDER,
-      OrderJob.SHIP_ORDER,
-      OrderJob.DELIVER_ORDER,
-      OrderJob.CANCEL_ORDER,
+      OrderData.ORDER_PROCESS,
+      OrderData.ORDER_SHIP,
+      OrderData.ORDER_DELIVER,
+      OrderData.ORDER_CANCEL,
     ];
     cacheService.setIfNotExists.mockResolvedValue(true);
     factory.createHandler.mockReturnValue(mockHandler as any);

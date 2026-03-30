@@ -9,7 +9,7 @@ import { Order } from '../entities/order.entity';
 import { OrderStatus } from '../enums/order-status.enum';
 import { CacheService } from '../../cache/cache.service';
 import { EVENT_BUS } from '../../events/constants/event-bus.token';
-import { DeliverOrderJobData } from '../misc/order-job-data';
+import { DeliverOrderJobPayload } from '../processors/payloads/order-job.payload';
 
 jest.mock('../../../shared/helpers/functions', () => ({
   delay: jest.fn().mockResolvedValue(undefined),
@@ -29,7 +29,7 @@ describe('DeliverOrderStrategy', () => {
     error: jest.fn(),
   } as unknown as Logger;
 
-  const makeJob = (data: DeliverOrderJobData): Job<DeliverOrderJobData> =>
+  const makeJob = (data: DeliverOrderJobPayload): Job<DeliverOrderJobPayload> =>
     ({ data, id: 'job-3' }) as any;
 
   beforeEach(async () => {
@@ -65,7 +65,7 @@ describe('DeliverOrderStrategy', () => {
   afterEach(() => jest.clearAllMocks());
 
   describe('execute', () => {
-    const jobData = new DeliverOrderJobData('user-1', 'order-1');
+    const jobData = new DeliverOrderJobPayload('user-1', 'order-1');
 
     it('should update status to DELIVERED and notify user', async () => {
       cacheService.get.mockResolvedValue(null);

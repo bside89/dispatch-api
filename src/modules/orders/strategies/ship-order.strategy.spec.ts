@@ -7,10 +7,13 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { ShipOrderStrategy } from './ship-order.strategy';
 import { Order } from '../entities/order.entity';
 import { OrderStatus } from '../enums/order-status.enum';
-import { OrderJob } from '../enums/order-job.enum';
+import { OutboxType as OrderJob } from '@/shared/modules/outbox/enums/outbox-type.enum';
 import { CacheService } from '../../cache/cache.service';
 import { EVENT_BUS } from '../../events/constants/event-bus.token';
-import { DeliverOrderJobData, ShipOrderJobData } from '../misc/order-job-data';
+import {
+  DeliverOrderJobPayload,
+  ShipOrderJobPayload,
+} from '../processors/payloads/order-job.payload';
 
 jest.mock('../../../shared/helpers/functions', () => ({
   delay: jest.fn().mockResolvedValue(undefined),
@@ -30,7 +33,7 @@ describe('ShipOrderStrategy', () => {
     error: jest.fn(),
   } as unknown as Logger;
 
-  const makeJob = (data: ShipOrderJobData): Job<ShipOrderJobData> =>
+  const makeJob = (data: ShipOrderJobPayload): Job<ShipOrderJobPayload> =>
     ({ data, id: 'job-2' }) as any;
 
   beforeEach(async () => {
@@ -66,7 +69,7 @@ describe('ShipOrderStrategy', () => {
   afterEach(() => jest.clearAllMocks());
 
   describe('execute', () => {
-    const jobData = new ShipOrderJobData('user-1', 'order-1');
+    const jobData = new ShipOrderJobPayload('user-1', 'order-1');
 
     it('should update status to SHIPPED, notify user, and enqueue DELIVER_ORDER job', async () => {
       cacheService.get.mockResolvedValue(null);
@@ -94,11 +97,11 @@ describe('ShipOrderStrategy', () => {
       });
       expect(eventBus.publish).toHaveBeenCalledTimes(1);
       expect(orderQueue.add).toHaveBeenCalledWith(
-        OrderJob.DELIVER_ORDER,
-        expect.any(DeliverOrderJobData),
+        OrderJob.ORDER_DELIVER,
+        expect.any(DeliverOrderJobPayload),
       );
       const enqueuedJobData = orderQueue.add.mock
-        .calls[0][1] as DeliverOrderJobData;
+        .calls[0][1] as DeliverOrderJobPayload;
       expect(enqueuedJobData.userId).toBe('user-1');
       expect(enqueuedJobData.orderId).toBe('order-1');
     });

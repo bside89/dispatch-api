@@ -9,9 +9,9 @@ export class NotificationStrategy {
   constructor(private readonly cacheService: CacheService) {}
 
   async execute(job: Job, logger: Logger): Promise<void> {
-    const { userId, notificationId, message } = job.data;
+    const { jobId, userId, message } = job.data;
 
-    const key = `idempotency:event:${userId}:${notificationId}`;
+    const key = `idempotency:event:${jobId}`;
 
     if (await this.cacheService.get(key)) return;
     await this.cacheService.set(key, '1', CACHE_CONFIG.JOB_STRATEGY_TTL);

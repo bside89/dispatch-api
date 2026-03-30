@@ -1,34 +1,25 @@
-import { Inject, Logger } from '@nestjs/common';
-import { Job, Queue } from 'bullmq';
+import { Logger } from '@nestjs/common';
+import { Job } from 'bullmq';
 import { OrderStatus } from '../enums/order-status.enum';
 import { CacheService } from '../../cache/cache.service';
-import { Order } from '../entities/order.entity';
-import { Repository } from 'typeorm';
-import { InjectRepository } from '@nestjs/typeorm';
-import { InjectQueue } from '@nestjs/bullmq';
-import { EventBus } from '../../events/interfaces/event-bus.interface';
-import { EVENT_BUS } from '../../events/constants/event-bus.token';
+import { DataSource } from 'typeorm';
 import { CACHE_CONFIG } from '@/shared/constants/cache.constant';
+import { OrderRepository } from '../repositories/order.repository';
+import { OutboxService } from '@/shared/modules/outbox/outbox.service';
 
 export abstract class BaseOrderJobStrategy<T = any> {
   constructor(
-    @InjectQueue('orders')
-    protected readonly orderQueue: Queue,
-    @InjectRepository(Order)
-    protected readonly orderRepository: Repository<Order>,
-    @Inject(EVENT_BUS)
-    protected readonly eventBus: EventBus,
-
     protected readonly cacheService: CacheService,
+    protected readonly outboxService: OutboxService,
+    protected readonly orderRepository: OrderRepository,
+    protected readonly dataSource: DataSource,
   ) {}
 
   protected async isAlreadyInStatus(
     orderId: string,
     status: OrderStatus,
   ): Promise<boolean> {
-    const order = await this.orderRepository.findOne({
-      where: { id: orderId },
-    });
+    const order = await this.orderRepository.findOneWhere({ id: orderId });
     return order?.status === status;
   }
 
@@ -36,9 +27,7 @@ export abstract class BaseOrderJobStrategy<T = any> {
     orderId: string,
     statuses: OrderStatus[],
   ): Promise<boolean> {
-    const order = await this.orderRepository.findOne({
-      where: { id: orderId },
-    });
+    const order = await this.orderRepository.findOneWhere({ id: orderId });
     return order ? statuses.includes(order.status as OrderStatus) : false;
   }
 

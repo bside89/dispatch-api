@@ -1,6 +1,5 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { BullModule } from '@nestjs/bullmq';
 import { OrdersController } from './orders.controller';
 import { OrdersService } from './orders.service';
 import { Order } from './entities/order.entity';
@@ -15,19 +14,11 @@ import {
 import { ShipOrderStrategy } from './strategies/ship-order.strategy';
 import { DeliverOrderStrategy } from './strategies/deliver-order.strategy';
 import { OrderProcessor } from './processors/order.processor';
-import { bullmqDefaultJobOptions } from '../../config/bullmq.config';
 import { OrderRepository } from './repositories/order.repository';
 import { OrderItemRepository } from './repositories/order-item.repository';
 
 @Module({
-  imports: [
-    TypeOrmModule.forFeature([Order, OrderItem]),
-    BullModule.registerQueue({
-      name: 'orders',
-      defaultJobOptions: bullmqDefaultJobOptions,
-    }),
-    CacheModule,
-  ],
+  imports: [TypeOrmModule.forFeature([Order, OrderItem]), CacheModule],
   controllers: [OrdersController],
   providers: [
     OrdersService,

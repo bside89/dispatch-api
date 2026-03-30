@@ -11,6 +11,9 @@ import { Transactional } from '@/shared/decorators/transactional.decorator';
 import { CACHE_CONFIG } from '@/shared/constants/cache.constant';
 import { DataSource } from 'typeorm';
 import { BaseService } from '@/shared/services/base.service';
+import { OutboxService } from '@/shared/modules/outbox/outbox.service';
+import { NotifyUserJobData } from '../events/processors/payloads/notify-user.payload';
+import { OutboxType } from '@/shared/modules/outbox/enums/outbox-type.enum';
 
 @Injectable()
 export class AuthService extends BaseService {
@@ -20,13 +23,16 @@ export class AuthService extends BaseService {
     private readonly configService: ConfigService,
     private readonly userRepository: UserRepository,
     protected readonly dataSource: DataSource,
+    protected readonly outboxService: OutboxService,
   ) {
-    super(dataSource, AuthService.name);
+    super(dataSource, AuthService.name, outboxService);
   }
 
+  @Transactional()
   async login(email: string, password: string): Promise<LoginResponseDto> {
     const user = await this.userRepository.findOneWhere({ email }, [
       'id',
+      'name',
       'email',
       'password',
       'role',
@@ -40,6 +46,16 @@ export class AuthService extends BaseService {
     const tokens = await this.generateTokens(user);
 
     await this.saveRefreshToken(user.id, tokens.refreshToken);
+
+    // Add to the Outbox for notifying the user about the login (Event Bus)
+    await this.outboxService.add(
+      OutboxType.EVENTS_NOTIFY_USER,
+      new NotifyUserJobData(
+        user.id,
+        user.name,
+        `<To user ${user.name}>: Welcome! You have logged in successfully.`,
+      ),
+    );
 
     return tokens;
   }

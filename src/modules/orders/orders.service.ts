@@ -1,16 +1,14 @@
-import { Injectable, NotFoundException, Inject } from '@nestjs/common';
-import { InjectQueue } from '@nestjs/bullmq';
-import { Queue } from 'bullmq';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { UpdateOrderDto } from './dto/update-order.dto';
 import { OrderQueryDto } from './dto/order-query.dto';
 import { OrderStatus } from './enums/order-status.enum';
-import { OrderJob } from './enums/order-job.enum';
 import { CacheService } from '../cache/cache.service';
-import { CancelOrderJobData, ProcessOrderJobData } from './misc/order-job-data';
-import { EVENT_BUS } from '../events/constants/event-bus.token';
-import { EventBus } from '../events/interfaces/event-bus.interface';
-import { NotifyUserJobData } from '../events/misc/events-job-data';
+import {
+  CancelOrderJobPayload,
+  ProcessOrderJobPayload,
+} from './processors/payloads/order-job.payload';
+import { NotifyUserJobData } from '../events/processors/payloads/notify-user.payload';
 import { OrderRepository } from './repositories/order.repository';
 import { OrderItemRepository } from './repositories/order-item.repository';
 import { PaginatedResultDto } from '@/shared/dto/paginated-result.dto';
@@ -19,6 +17,8 @@ import { DataSource } from 'typeorm';
 import { Transactional } from '@/shared/decorators/transactional.decorator';
 import { OrderResponseDto } from './dto/order-response.dto';
 import { CACHE_CONFIG } from '@/shared/constants/cache.constant';
+import { OutboxService } from '@/shared/modules/outbox/outbox.service';
+import { OutboxType } from '@/shared/modules/outbox/enums/outbox-type.enum';
 
 @Injectable()
 export class OrdersService extends BaseService {
@@ -26,17 +26,13 @@ export class OrdersService extends BaseService {
   private readonly IDEMPOTENCY_PREFIX = 'order-idempotency';
 
   constructor(
-    @InjectQueue('orders')
-    private readonly orderQueue: Queue,
-    @Inject(EVENT_BUS)
-    private readonly eventBus: EventBus,
-
     private readonly cacheService: CacheService,
     private readonly orderRepository: OrderRepository,
     private readonly orderItemRepository: OrderItemRepository,
     protected readonly dataSource: DataSource,
+    protected readonly outboxService: OutboxService,
   ) {
-    super(dataSource, OrdersService.name);
+    super(dataSource, OrdersService.name, outboxService);
   }
 
   @Transactional()
@@ -84,7 +80,7 @@ export class OrdersService extends BaseService {
 
     const completeOrder = await this.orderRepository.findOneWithRelations(
       { id: savedOrder.id },
-      ['items'],
+      ['items', 'user'],
     );
 
     await this.clearOrderCache(userId);
@@ -97,10 +93,15 @@ export class OrdersService extends BaseService {
       CACHE_CONFIG.IDEMPOTENCY_TTL,
     );
 
-    // Add to the queue the job for processing the order
-    await this.orderQueue.add(
-      OrderJob.PROCESS_ORDER,
-      new ProcessOrderJobData(userId, completeOrder.id, total),
+    // Add to the Outbox for processing the order (job)
+    await this.outboxService.add(
+      OutboxType.ORDER_PROCESS,
+      new ProcessOrderJobPayload(
+        userId,
+        completeOrder.id,
+        total,
+        completeOrder.user.name,
+      ),
     );
 
     this.logger.debug(
@@ -233,10 +234,10 @@ export class OrdersService extends BaseService {
     await this.clearOrderCache(order.user.id, id);
 
     if (status === OrderStatus.PENDING || status === OrderStatus.CONFIRMED) {
-      // Add cancellation job to the queue
-      await this.orderQueue.add(
-        OrderJob.CANCEL_ORDER,
-        new CancelOrderJobData(id, order.user.id),
+      // Add to the Outbox for cancellation (job)
+      await this.outboxService.add(
+        OutboxType.ORDER_CANCEL,
+        new CancelOrderJobPayload(order.user.id, id, order.user.name),
       );
     }
 
@@ -262,12 +263,14 @@ export class OrdersService extends BaseService {
     order.status = status;
     await this.orderRepository.save(order);
 
-    // Notify status change if status is updated
     if (status !== oldStatus) {
-      await this.eventBus.publish(
+      // Add to the Outbot to notify the user about the status change (Event Bus)
+      await this.outboxService.add(
+        OutboxType.EVENTS_NOTIFY_USER,
         new NotifyUserJobData(
           order.user.id,
-          `TO CUSTOMER: Your order with id ${order.id} status has been updated to ${status}`,
+          order.user.name,
+          `<To user ${order.user.name}>: Your order with id ${order.id} status has been updated to ${status}`,
         ),
       );
     }

@@ -1,20 +1,18 @@
-import { Processor, WorkerHost } from '@nestjs/bullmq';
+import { Processor } from '@nestjs/bullmq';
 import { Job } from 'bullmq';
-import { NotifyUserJobData } from '../misc/events-job-data';
 import { NotificationStrategy } from '../strategies/notification.strategy';
-import { Logger } from '@nestjs/common';
+import { BaseProcessor } from '@/shared/processors/base.processor';
+import { OutboxType as JobName } from '@/shared/modules/outbox/enums/outbox-type.enum';
 
-@Processor('events')
-export class EventProcessor extends WorkerHost {
-  private readonly logger = new Logger(EventProcessor.name);
-
+@Processor('events', { maxStalledCount: 1 })
+export class EventProcessor extends BaseProcessor {
   constructor(private readonly notificationStrategy: NotificationStrategy) {
-    super();
+    super(EventProcessor.name);
   }
 
   async process(job: Job) {
     switch (job.name) {
-      case NotifyUserJobData.name:
+      case JobName.EVENTS_NOTIFY_USER:
         return this.notificationStrategy.execute(job, this.logger);
     }
   }

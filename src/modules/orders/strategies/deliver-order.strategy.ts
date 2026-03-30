@@ -2,17 +2,34 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Job } from 'bullmq';
 import { OrderStatus } from '../enums/order-status.enum';
 import { BaseOrderJobStrategy } from './base-order-job.strategy';
-import { DeliverOrderJobData } from '../misc/order-job-data';
+import { DeliverOrderJobPayload } from '../processors/payloads/order-job.payload';
 import { delay } from '../../../shared/helpers/functions';
-import { NotifyUserJobData } from '../../events/misc/events-job-data';
+import { NotifyUserJobData } from '../../events/processors/payloads/notify-user.payload';
+import { Transactional } from '@/shared/decorators/transactional.decorator';
+import { OutboxType } from '@/shared/modules/outbox/enums/outbox-type.enum';
+import { CacheService } from '../../cache/cache.service';
+import { OutboxService } from '@/shared/modules/outbox/outbox.service';
+import { OrderRepository } from '../repositories/order.repository';
+import { DataSource } from 'typeorm';
 
 @Injectable()
-export class DeliverOrderStrategy extends BaseOrderJobStrategy<DeliverOrderJobData> {
-  async execute(job: Job<DeliverOrderJobData>, logger: Logger): Promise<void> {
-    const { userId, orderId } = job.data;
+export class DeliverOrderStrategy extends BaseOrderJobStrategy<DeliverOrderJobPayload> {
+  constructor(
+    cacheService: CacheService,
+    outboxService: OutboxService,
+    orderRepository: OrderRepository,
+    dataSource: DataSource,
+  ) {
+    super(cacheService, outboxService, orderRepository, dataSource);
+  }
 
-    // Idempotency check
-    const key = `idempotency:order:deliver:${orderId}`;
+  async execute(
+    job: Job<DeliverOrderJobPayload>,
+    logger: Logger,
+  ): Promise<void> {
+    const { jobId, orderId, userId, userName } = job.data;
+
+    const key = `idempotency:order:deliver:${jobId}`;
     if (await this.hasKey(key)) return;
     await this.setKey(key);
 
@@ -21,22 +38,13 @@ export class DeliverOrderStrategy extends BaseOrderJobStrategy<DeliverOrderJobDa
       return;
     }
 
-    try {
-      logger.log(`Delivering order ${orderId}`);
+    logger.log(`Delivering order ${orderId}`);
 
+    try {
       await this.simulateDelivery(logger);
 
-      await this.orderRepository.update(orderId, {
-        status: OrderStatus.DELIVERED,
-      });
-
-      // Send notification to the event bus
-      await this.eventBus.publish(
-        new NotifyUserJobData(
-          userId,
-          `TO CUSTOMER: Your order with id ${orderId} has been delivered successfully!`,
-        ),
-      );
+      // Atomic transaction to update order status and publish events
+      await this.finalizeOrderDelivering(orderId, userId, userName);
 
       logger.log(`Order ${orderId} delivered`);
     } catch (error) {
@@ -48,5 +56,26 @@ export class DeliverOrderStrategy extends BaseOrderJobStrategy<DeliverOrderJobDa
   private async simulateDelivery(logger: Logger) {
     await delay(3000);
     logger.log('Delivery OK');
+  }
+
+  @Transactional()
+  private async finalizeOrderDelivering(
+    orderId: string,
+    userId: string,
+    userName: string,
+  ) {
+    await this.orderRepository.update(orderId, {
+      status: OrderStatus.DELIVERED,
+    });
+
+    // Add to the Outbox for sending notification to the user
+    await this.outboxService.add(
+      OutboxType.EVENTS_NOTIFY_USER,
+      new NotifyUserJobData(
+        userId,
+        userName,
+        `<To user ${userName}>: Your order with id ${orderId} has been delivered successfully!`,
+      ),
+    );
   }
 }

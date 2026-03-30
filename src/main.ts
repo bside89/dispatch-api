@@ -86,7 +86,10 @@ async function bootstrap() {
 
   const port = configService.get('APP_PORT') || 3000;
   const grafanaPort = configService.get('GRAFANA_PORT') || 3001;
+
   await app.listen(port);
+
+  app.enableShutdownHooks();
 
   const logger = app.get(Logger);
 

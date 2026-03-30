@@ -9,7 +9,7 @@ import { Order } from '../entities/order.entity';
 import { OrderStatus } from '../enums/order-status.enum';
 import { CacheService } from '../../cache/cache.service';
 import { EVENT_BUS } from '../../events/constants/event-bus.token';
-import { CancelOrderJobData } from '../misc/order-job-data';
+import { CancelOrderJobPayload } from '../processors/payloads/order-job.payload';
 
 jest.mock('../../../shared/helpers/functions', () => ({
   delay: jest.fn().mockResolvedValue(undefined),
@@ -29,7 +29,7 @@ describe('CancelOrderStrategy', () => {
     error: jest.fn(),
   } as unknown as Logger;
 
-  const makeJob = (data: CancelOrderJobData): Job<CancelOrderJobData> =>
+  const makeJob = (data: CancelOrderJobPayload): Job<CancelOrderJobPayload> =>
     ({ data, id: 'job-cancel' }) as any;
 
   beforeEach(async () => {
@@ -66,7 +66,7 @@ describe('CancelOrderStrategy', () => {
 
   describe('execute', () => {
     // Note: CancelOrderJobData(userId, orderId)
-    const jobData = new CancelOrderJobData('user-1', 'order-1');
+    const jobData = new CancelOrderJobPayload('user-1', 'order-1');
 
     it('should update status to CANCELLED and notify user', async () => {
       cacheService.get.mockResolvedValue(null);

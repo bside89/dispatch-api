@@ -2,18 +2,34 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Job } from 'bullmq';
 import { OrderStatus } from '../enums/order-status.enum';
 import { BaseOrderJobStrategy } from './base-order-job.strategy';
-import { OrderJob } from '../enums/order-job.enum';
-import { DeliverOrderJobData, ShipOrderJobData } from '../misc/order-job-data';
+import {
+  DeliverOrderJobPayload,
+  ShipOrderJobPayload,
+} from '../processors/payloads/order-job.payload';
 import { delay } from '../../../shared/helpers/functions';
-import { NotifyUserJobData } from '../../events/misc/events-job-data';
+import { NotifyUserJobData } from '../../events/processors/payloads/notify-user.payload';
+import { Transactional } from '@/shared/decorators/transactional.decorator';
+import { OutboxType } from '@/shared/modules/outbox/enums/outbox-type.enum';
+import { CacheService } from '../../cache/cache.service';
+import { OutboxService } from '@/shared/modules/outbox/outbox.service';
+import { OrderRepository } from '../repositories/order.repository';
+import { DataSource } from 'typeorm';
 
 @Injectable()
-export class ShipOrderStrategy extends BaseOrderJobStrategy<ShipOrderJobData> {
-  async execute(job: Job<ShipOrderJobData>, logger: Logger): Promise<void> {
-    const { userId, orderId } = job.data;
+export class ShipOrderStrategy extends BaseOrderJobStrategy<ShipOrderJobPayload> {
+  constructor(
+    cacheService: CacheService,
+    outboxService: OutboxService,
+    orderRepository: OrderRepository,
+    dataSource: DataSource,
+  ) {
+    super(cacheService, outboxService, orderRepository, dataSource);
+  }
 
-    // Idempotency check
-    const key = `idempotency:order:ship:${orderId}`;
+  async execute(job: Job<ShipOrderJobPayload>, logger: Logger): Promise<void> {
+    const { jobId, orderId } = job.data;
+
+    const key = `idempotency:order:ship:${jobId}`;
     if (await this.hasKey(key)) return;
     await this.setKey(key);
 
@@ -22,28 +38,15 @@ export class ShipOrderStrategy extends BaseOrderJobStrategy<ShipOrderJobData> {
       return;
     }
 
-    try {
-      logger.log(`Shipping order ${orderId}`);
+    logger.log(`Shipping order ${orderId}`);
 
+    try {
       await this.simulateShipping(logger);
 
-      await this.orderRepository.update(orderId, {
-        status: OrderStatus.SHIPPED,
-      });
+      // Atomic transaction to update order status and publish events
+      await this.finalizeOrderShipping(job.data);
 
-      // Send notification to the event bus
-      await this.eventBus.publish(
-        new NotifyUserJobData(
-          userId,
-          `TO CUSTOMER: Your order with id ${orderId} has been shipped successfully!`,
-        ),
-      );
-
-      // Trigger delivery job after shipping
-      await this.orderQueue.add(
-        OrderJob.DELIVER_ORDER,
-        new DeliverOrderJobData(userId, orderId),
-      );
+      logger.log(`Order ${orderId} moved to SHIPPED`);
     } catch (error) {
       await this.removeKey(key);
       throw error;
@@ -53,5 +56,30 @@ export class ShipOrderStrategy extends BaseOrderJobStrategy<ShipOrderJobData> {
   private async simulateShipping(logger: Logger) {
     await delay(2000);
     logger.log('Shipping OK');
+  }
+
+  @Transactional()
+  private async finalizeOrderShipping(data: ShipOrderJobPayload) {
+    const { orderId, userId, userName } = data;
+
+    await this.orderRepository.update(orderId, {
+      status: OrderStatus.SHIPPED,
+    });
+
+    // Add to the Outbox for sending notification to the user (Event Bus)
+    await this.outboxService.add(
+      OutboxType.EVENTS_NOTIFY_USER,
+      new NotifyUserJobData(
+        userId,
+        userName,
+        `<To user ${userName}>: Your order with id ${orderId} has been shipped successfully!`,
+      ),
+    );
+
+    // Add to the Outbox for delivering the order (job)
+    await this.outboxService.add(
+      OutboxType.ORDER_DELIVER,
+      new DeliverOrderJobPayload(userId, orderId, userName),
+    );
   }
 }

@@ -2,9 +2,9 @@ import { Injectable } from '@nestjs/common';
 import { ProcessOrderStrategy } from '../strategies/process-order.strategy';
 import { NotificationStrategy } from '../../events/strategies/notification.strategy';
 import { CancelOrderStrategy } from '../strategies/cancel-order.strategy';
-import { OrderJob } from '../enums/order-job.enum';
 import { ShipOrderStrategy } from '../strategies/ship-order.strategy';
 import { DeliverOrderStrategy } from '../strategies/deliver-order.strategy';
+import { OutboxType as OrderJob } from '@/shared/modules/outbox/enums/outbox-type.enum';
 
 @Injectable()
 export class OrderJobHandlerFactory {
@@ -18,11 +18,11 @@ export class OrderJobHandlerFactory {
 
   createHandler(jobType: string) {
     const map = {
-      [OrderJob.PROCESS_ORDER]: this.processOrder,
-      [OrderJob.SHIP_ORDER]: this.shipOrder,
-      [OrderJob.DELIVER_ORDER]: this.deliverOrder,
-      [OrderJob.CANCEL_ORDER]: this.cancelOrder,
-      [OrderJob.NOTIFICATION_ORDER]: this.notification,
+      [OrderJob.ORDER_PROCESS]: this.processOrder,
+      [OrderJob.ORDER_SHIP]: this.shipOrder,
+      [OrderJob.ORDER_DELIVER]: this.deliverOrder,
+      [OrderJob.ORDER_CANCEL]: this.cancelOrder,
+      [OrderJob.ORDER_NOTIFICATION]: this.notification,
     };
 
     return map[jobType] || null;

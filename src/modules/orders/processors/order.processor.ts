@@ -6,7 +6,7 @@ import { CacheService } from '../../cache/cache.service';
 import { BaseProcessor } from '@/shared/processors/base.processor';
 import { CACHE_CONFIG } from '@/shared/constants/cache.constant';
 
-@Processor('orders')
+@Processor('orders', { maxStalledCount: 1 })
 export class OrderProcessor extends BaseProcessor {
   constructor(
     private readonly factory: OrderJobHandlerFactory,

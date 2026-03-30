@@ -29,7 +29,7 @@ export class Order {
     enum: OrderStatus,
     default: OrderStatus.PENDING,
   })
-  status: string;
+  status: OrderStatus;
 
   @Column('integer')
   total: number;

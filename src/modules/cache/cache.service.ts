@@ -1,10 +1,10 @@
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable, OnModuleDestroy } from '@nestjs/common';
 import { Cache } from 'cache-manager';
 import Redis from 'ioredis';
 
 @Injectable()
-export class CacheService {
+export class CacheService implements OnModuleDestroy {
   constructor(
     @Inject(CACHE_MANAGER) private cacheManager: Cache,
     @Inject('REDIS_CLIENT') private redisClient: Redis,
@@ -31,6 +31,10 @@ export class CacheService {
 
   async delete(key: string): Promise<void> {
     await this.cacheManager.del(key);
+  }
+
+  async onModuleDestroy(): Promise<void> {
+    await this.redisClient.quit();
   }
 
   async deletePattern(listCacheKey: string): Promise<void> {

@@ -22,13 +22,13 @@ import { CacheService } from '../cache/cache.service';
 import { EVENT_BUS } from '../events/constants/event-bus.token';
 import { Order } from './entities/order.entity';
 import { OrderStatus } from './enums/order-status.enum';
-import { OrderJob } from './enums/order-job.enum';
 import {
-  ProcessOrderJobData,
-  ShipOrderJobData,
-  DeliverOrderJobData,
-  CancelOrderJobData,
-} from './misc/order-job-data';
+  ProcessOrderJobPayload,
+  ShipOrderJobPayload,
+  DeliverOrderJobPayload,
+  CancelOrderJobPayload,
+} from './processors/payloads/order-job.payload';
+import { OutboxType } from '@/shared/modules/outbox/enums/outbox-type.enum';
 
 // Skip real delays so the suite runs fast
 jest.mock('../../shared/helpers/functions', () => ({
@@ -127,28 +127,35 @@ describe('Order flow integration (PENDING → DELIVERED)', () => {
   it('should transition order from PENDING → PROCESSED → SHIPPED → DELIVERED', async () => {
     const orderId = 'order-flow-1';
     const userId = 'user-flow-1';
+    const userName = 'John Doe';
+    const total = 100;
 
     // Seed the order in PENDING state
     orderStore[orderId] = { id: orderId, status: OrderStatus.PENDING };
 
     // ── Step 1: PROCESS ──────────────────────────────────────────────────────
-    const processData = new ProcessOrderJobData(userId, orderId, 150);
+    const processData = new ProcessOrderJobPayload(
+      userId,
+      orderId,
+      total,
+      userName,
+    );
     await processStrategy.execute(makeJob(processData), logger);
 
     expect(orderStore[orderId].status).toBe(OrderStatus.PROCESSED);
     expect(enqueuedJobs).toHaveLength(1);
-    expect(enqueuedJobs[0].name).toBe(OrderJob.SHIP_ORDER);
+    expect(enqueuedJobs[0].name).toBe(OutboxType.ORDER_SHIP);
 
     // ── Step 2: SHIP ─────────────────────────────────────────────────────────
-    const shipData = enqueuedJobs[0].data as ShipOrderJobData;
+    const shipData = enqueuedJobs[0].data as ShipOrderJobPayload;
     await shipStrategy.execute(makeJob(shipData), logger);
 
     expect(orderStore[orderId].status).toBe(OrderStatus.SHIPPED);
     expect(enqueuedJobs).toHaveLength(2);
-    expect(enqueuedJobs[1].name).toBe(OrderJob.DELIVER_ORDER);
+    expect(enqueuedJobs[1].name).toBe(OutboxType.ORDER_DELIVER);
 
     // ── Step 3: DELIVER ──────────────────────────────────────────────────────
-    const deliverData = enqueuedJobs[1].data as DeliverOrderJobData;
+    const deliverData = enqueuedJobs[1].data as DeliverOrderJobPayload;
     await deliverStrategy.execute(makeJob(deliverData), logger);
 
     expect(orderStore[orderId].status).toBe(OrderStatus.DELIVERED);
@@ -165,8 +172,7 @@ describe('Order flow integration (PENDING → DELIVERED)', () => {
 
     orderStore[orderId] = { id: orderId, status: OrderStatus.PENDING };
 
-    // Cancel uses CancelOrderJobData(userId, orderId) - property names must match
-    const cancelData = new CancelOrderJobData(userId, orderId);
+    const cancelData = new CancelOrderJobPayload(userId, orderId, 'John Doe');
     await cancelStrategy.execute(makeJob(cancelData), logger);
 
     expect(orderStore[orderId].status).toBe(OrderStatus.CANCELLED);
@@ -181,7 +187,12 @@ describe('Order flow integration (PENDING → DELIVERED)', () => {
 
     orderStore[orderId] = { id: orderId, status: OrderStatus.PENDING };
 
-    const processData = new ProcessOrderJobData(userId, orderId, 200);
+    const processData = new ProcessOrderJobPayload(
+      userId,
+      orderId,
+      200,
+      'John Doe',
+    );
     const job = makeJob(processData);
 
     // Execute twice — second call must be a no-op
@@ -194,7 +205,7 @@ describe('Order flow integration (PENDING → DELIVERED)', () => {
     expect(updateMock).toHaveBeenCalledTimes(1);
     // Only one SHIP_ORDER job enqueued
     expect(
-      enqueuedJobs.filter((j) => j.name === OrderJob.SHIP_ORDER),
+      enqueuedJobs.filter((j) => j.name === OutboxType.ORDER_SHIP),
     ).toHaveLength(1);
   });
 
@@ -205,15 +216,15 @@ describe('Order flow integration (PENDING → DELIVERED)', () => {
     orderStore[orderId] = { id: orderId, status: OrderStatus.PENDING };
 
     await processStrategy.execute(
-      makeJob(new ProcessOrderJobData(userId, orderId, 50)),
+      makeJob(new ProcessOrderJobPayload(userId, orderId, 50, 'John Doe')),
       logger,
     );
     await shipStrategy.execute(
-      makeJob(new ShipOrderJobData(userId, orderId)),
+      makeJob(new ShipOrderJobPayload(userId, orderId, 'John Doe')),
       logger,
     );
     await deliverStrategy.execute(
-      makeJob(new DeliverOrderJobData(userId, orderId)),
+      makeJob(new DeliverOrderJobPayload(userId, orderId, 'John Doe')),
       logger,
     );
 

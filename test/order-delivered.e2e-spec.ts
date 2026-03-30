@@ -21,13 +21,12 @@ import { Logger } from '@nestjs/common';
 
 import { AppModule } from '../src/app.module';
 import { Order } from '../src/modules/orders/entities/order.entity';
-import { User } from '../src/modules/users/entities/user.entity';
 import { OrderStatus } from '../src/modules/orders/enums/order-status.enum';
 import { ProcessOrderStrategy } from '../src/modules/orders/strategies/process-order.strategy';
 import { ShipOrderStrategy } from '../src/modules/orders/strategies/ship-order.strategy';
 import { DeliverOrderStrategy } from '../src/modules/orders/strategies/deliver-order.strategy';
 import { CacheService } from '../src/modules/cache/cache.service';
-import { OrderJob } from '../src/modules/orders/enums/order-job.enum';
+import { OutboxType as OrderJob } from '@/shared/modules/outbox/enums/outbox-type.enum';
 import { UserRepository } from '../src/modules/users/repositories/user.repository';
 import { OrderRepository } from '../src/modules/orders/repositories/order.repository';
 import { OrderItemRepository } from '../src/modules/orders/repositories/order-item.repository';
@@ -320,7 +319,7 @@ describe('POST /orders → DELIVERED (e2e)', () => {
     expect(createOrderRes.body.data.status).toBe(OrderStatus.PENDING);
 
     // A PROCESS_ORDER job should have been enqueued
-    expect(enqueuedJobs.some((j) => j.name === OrderJob.PROCESS_ORDER)).toBe(
+    expect(enqueuedJobs.some((j) => j.name === OrderJob.ORDER_PROCESS)).toBe(
       true,
     );
 
@@ -333,14 +332,14 @@ describe('POST /orders → DELIVERED (e2e)', () => {
     // Make sure cacheStore is clean for strategy idempotency checks
     // (idempotency keys are per-order, not per session)
     const processJob = enqueuedJobs.find(
-      (j) => j.name === OrderJob.PROCESS_ORDER,
+      (j) => j.name === OrderJob.ORDER_PROCESS,
     )!;
     await processStrategy.execute(
       { data: processJob.data, id: 'j-process' } as any,
       logger,
     );
 
-    const shipJob = enqueuedJobs.find((j) => j.name === OrderJob.SHIP_ORDER)!;
+    const shipJob = enqueuedJobs.find((j) => j.name === OrderJob.ORDER_SHIP)!;
     expect(shipJob).toBeDefined();
     await shipStrategy.execute(
       { data: shipJob.data, id: 'j-ship' } as any,
@@ -348,7 +347,7 @@ describe('POST /orders → DELIVERED (e2e)', () => {
     );
 
     const deliverJob = enqueuedJobs.find(
-      (j) => j.name === OrderJob.DELIVER_ORDER,
+      (j) => j.name === OrderJob.ORDER_DELIVER,
     )!;
     expect(deliverJob).toBeDefined();
     await deliverStrategy.execute(

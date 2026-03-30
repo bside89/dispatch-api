@@ -17,6 +17,7 @@ import { BaseService } from '@/shared/services/base.service';
 import { DataSource } from 'typeorm';
 import { Transactional } from '@/shared/decorators/transactional.decorator';
 import { CACHE_CONFIG } from '@/shared/constants/cache.constant';
+import { OutboxService } from '@/shared/modules/outbox/outbox.service';
 
 @Injectable()
 export class UsersService extends BaseService {
@@ -27,8 +28,9 @@ export class UsersService extends BaseService {
     private readonly cacheService: CacheService,
     private readonly userRepository: UserRepository,
     protected readonly dataSource: DataSource,
+    protected readonly outboxService: OutboxService,
   ) {
-    super(dataSource, UsersService.name);
+    super(dataSource, UsersService.name, outboxService);
   }
 
   @Transactional()

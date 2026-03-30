@@ -25,6 +25,8 @@ import { EventsModule } from './modules/events/events.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { loggerConfig } from './config/logger.config';
 import { LoggerModule } from 'nestjs-pino';
+import { OutboxModule } from './shared/modules/outbox/outbox.module';
+import { ScheduleModule } from '@nestjs/schedule';
 
 @Module({
   imports: [
@@ -85,11 +87,15 @@ import { LoggerModule } from 'nestjs-pino';
     // Cache (Redis)
     CacheModule,
 
+    // Scheduler (for cron jobs)
+    ScheduleModule.forRoot(),
+
     // Feature modules
     AuthModule,
     OrdersModule,
-    EventsModule,
     UsersModule,
+    EventsModule,
+    OutboxModule,
   ],
   controllers: [AppController, AdminController],
   providers: [
