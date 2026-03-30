@@ -12,7 +12,7 @@ import { CACHE_CONFIG } from '@/shared/constants/cache.constant';
 import { DataSource } from 'typeorm';
 import { BaseService } from '@/shared/services/base.service';
 import { OutboxService } from '@/shared/modules/outbox/outbox.service';
-import { NotifyUserJobData } from '../events/processors/payloads/notify-user.payload';
+import { NotifyUserJobData } from '../../shared/modules/events/processors/payloads/notify-user.payload';
 import { OutboxType } from '@/shared/modules/outbox/enums/outbox-type.enum';
 
 @Injectable()

@@ -1,5 +1,5 @@
-import { EVENT_BUS } from '@/modules/events/constants/event-bus.token';
-import { EventBus } from '@/modules/events/interfaces/event-bus.interface';
+import { EVENT_BUS } from '@/shared/modules/events/constants/event-bus.token';
+import { EventBus } from '@/shared/modules/events/interfaces/event-bus.interface';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { Queue } from 'bullmq';
@@ -39,9 +39,16 @@ export class OutboxProcessor {
           await this.dispatch(msg);
 
           await this.outboxRepository.delete(msg.id);
+
+          this.logger.log(
+            `[outbox_status=success] Successfully processed outbox ${msg.id} of type ${msg.type}`,
+          );
         } catch (e) {
           // Try again in the next cycle, but log the error for debugging
-          this.logger.error(`Failed to process outbox ${msg.id}`, e);
+          this.logger.error(
+            `[outbox_status=failed] Failed to process outbox ${msg.id} of type ${msg.type}`,
+            e,
+          );
         }
       }
     } catch (e) {

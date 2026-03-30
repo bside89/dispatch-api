@@ -3,7 +3,7 @@ import { Logger } from '@nestjs/common';
 import { Job } from 'bullmq';
 
 import { NotificationStrategy } from './notification.strategy';
-import { CacheService } from '../../cache/cache.service';
+import { CacheService } from '../../../../modules/cache/cache.service';
 
 jest.mock('../../../shared/helpers/functions', () => ({
   delay: jest.fn().mockResolvedValue(undefined),

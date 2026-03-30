@@ -9,7 +9,7 @@ import { Order } from '../entities/order.entity';
 import { OrderStatus } from '../enums/order-status.enum';
 import { OutboxType as OrderData } from '@/shared/modules/outbox/enums/outbox-type.enum';
 import { CacheService } from '../../cache/cache.service';
-import { EVENT_BUS } from '../../events/constants/event-bus.token';
+import { EVENT_BUS } from '../../../shared/modules/events/constants/event-bus.token';
 import {
   ProcessOrderJobPayload,
   ShipOrderJobPayload,

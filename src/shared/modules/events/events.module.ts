@@ -3,9 +3,9 @@ import { EventProcessor } from './processors/event.processor';
 import { BullEventBus } from './implementations/bull-event-bus';
 import { EVENT_BUS } from './constants/event-bus.token';
 import { BullModule } from '@nestjs/bullmq';
-import { bullmqDefaultJobOptions } from '../../config/bullmq.config';
+import { bullmqDefaultJobOptions } from '../../../config/bullmq.config';
 import { NotificationStrategy } from './strategies/notification.strategy';
-import { CacheModule } from '../cache/cache.module';
+import { CacheModule } from '../../../modules/cache/cache.module';
 
 @Global()
 @Module({

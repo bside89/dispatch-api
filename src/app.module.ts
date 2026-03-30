@@ -21,7 +21,7 @@ import { APP_GUARD } from '@nestjs/core';
 import { JwtAuthGuard } from './modules/auth/guards/jwt.guard';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { RolesGuard } from './modules/auth/guards/roles.guard';
-import { EventsModule } from './modules/events/events.module';
+import { EventsModule } from './shared/modules/events/events.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { loggerConfig } from './config/logger.config';
 import { LoggerModule } from 'nestjs-pino';

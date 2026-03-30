@@ -4,7 +4,7 @@ import { DataSource } from 'typeorm';
 import { OrdersService } from './orders.service';
 import { OrderStatus } from './enums/order-status.enum';
 import { CacheService } from '../cache/cache.service';
-import { EVENT_BUS } from '../events/constants/event-bus.token';
+import { EVENT_BUS } from '../../shared/modules/events/constants/event-bus.token';
 import { OrderRepository } from './repositories/order.repository';
 import { OrderItemRepository } from './repositories/order-item.repository';
 import { OutboxType as OrderJob } from '@/shared/modules/outbox/enums/outbox-type.enum';

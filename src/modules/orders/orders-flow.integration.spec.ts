@@ -19,7 +19,7 @@ import { ShipOrderStrategy } from './strategies/ship-order.strategy';
 import { DeliverOrderStrategy } from './strategies/deliver-order.strategy';
 import { CancelOrderStrategy } from './strategies/cancel-order.strategy';
 import { CacheService } from '../cache/cache.service';
-import { EVENT_BUS } from '../events/constants/event-bus.token';
+import { EVENT_BUS } from '../../shared/modules/events/constants/event-bus.token';
 import { Order } from './entities/order.entity';
 import { OrderStatus } from './enums/order-status.enum';
 import {

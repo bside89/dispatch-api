@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { ProcessOrderStrategy } from '../strategies/process-order.strategy';
-import { NotificationStrategy } from '../../events/strategies/notification.strategy';
+import { NotificationStrategy } from '../../../shared/modules/events/strategies/notification.strategy';
 import { CancelOrderStrategy } from '../strategies/cancel-order.strategy';
 import { ShipOrderStrategy } from '../strategies/ship-order.strategy';
 import { DeliverOrderStrategy } from '../strategies/deliver-order.strategy';

@@ -3,7 +3,7 @@ import { Job } from 'bullmq';
 import { BaseOrderJobStrategy } from './base-order-job.strategy';
 import { OrderStatus } from '../enums/order-status.enum';
 import { CancelOrderJobPayload } from '../processors/payloads/order-job.payload';
-import { NotifyUserJobData } from '../../events/processors/payloads/notify-user.payload';
+import { NotifyUserJobData } from '../../../shared/modules/events/processors/payloads/notify-user.payload';
 import { delay } from '../../../shared/helpers/functions';
 import { Transactional } from '@/shared/decorators/transactional.decorator';
 import { OutboxType } from '@/shared/modules/outbox/enums/outbox-type.enum';
