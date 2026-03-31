@@ -5,6 +5,8 @@ import { OrderJobHandlerFactory } from '../factories/order-job-handler.factory';
 import { CacheService } from '../../cache/cache.service';
 import { BaseProcessor } from '@/shared/processors/base.processor';
 import { CACHE_CONFIG } from '@/shared/constants/cache.constant';
+import { RequestContext } from '@/shared/utils/request-context';
+import { randomUUID } from 'crypto';
 
 @Processor('orders', { maxStalledCount: 1 })
 export class OrderProcessor extends BaseProcessor {
@@ -16,29 +18,33 @@ export class OrderProcessor extends BaseProcessor {
   }
 
   async process(job: Job): Promise<void> {
-    const lockKey = `lock:job:${job.id}`;
+    const correlationId = job.data?.correlationId ?? randomUUID();
 
-    const lock = await this.cacheService.setIfNotExists(
-      lockKey,
-      '1',
-      CACHE_CONFIG.SERVICE_LOCK_TTL,
-    );
-    if (!lock) {
-      this.logger.warn(`Job ${job.id} already running`);
-      return;
-    }
+    return RequestContext.run(correlationId, async () => {
+      const lockKey = `lock:job:${job.id}`;
 
-    try {
-      const handler = this.factory.createHandler(job.name);
-
-      if (!handler) {
-        this.logger.warn(`Unknown job: ${job.name}`);
+      const lock = await this.cacheService.setIfNotExists(
+        lockKey,
+        '1',
+        CACHE_CONFIG.SERVICE_LOCK_TTL,
+      );
+      if (!lock) {
+        this.logger.warn(`Job ${job.id} already running`);
         return;
       }
 
-      await handler.execute(job, this.logger);
-    } finally {
-      await this.cacheService.delete(lockKey);
-    }
+      try {
+        const handler = this.factory.createHandler(job.name);
+
+        if (!handler) {
+          this.logger.warn(`Unknown job: ${job.name}`);
+          return;
+        }
+
+        await handler.execute(job, this.logger);
+      } finally {
+        await this.cacheService.delete(lockKey);
+      }
+    });
   }
 }

@@ -2,6 +2,7 @@ import { ConfigService } from '@nestjs/config';
 import { randomUUID } from 'crypto';
 import { IncomingMessage, ServerResponse } from 'http';
 import { Params } from 'nestjs-pino';
+import { RequestContext } from '@/shared/utils/request-context';
 
 export const loggerConfig = (configService: ConfigService): Params => {
   const isProduction = configService.get('APP_ENV') === 'production';
@@ -19,9 +20,10 @@ export const loggerConfig = (configService: ConfigService): Params => {
         return correlationId;
       },
 
-      customProps: (req: IncomingMessage) => ({
-        correlationId: req.id,
-      }),
+      mixin: () => {
+        const correlationId = RequestContext.getCorrelationId();
+        return correlationId ? { correlationId } : {};
+      },
 
       serializers: {
         req: (req: IncomingMessage) => ({

@@ -36,17 +36,21 @@ export class OutboxProcessor {
 
       for (const msg of messages) {
         try {
+          this.logger.debug(
+            `CorrelationId saved in the Outbox: ${msg.correlationId}`,
+          );
+
           await this.dispatch(msg);
 
           await this.outboxRepository.delete(msg.id);
 
           this.logger.log(
-            `[outbox_status=success] Successfully processed outbox ${msg.id} of type ${msg.type}`,
+            `Successfully processed Outbox ${msg.id} of type ${msg.type}`,
           );
         } catch (e) {
           // Try again in the next cycle, but log the error for debugging
           this.logger.error(
-            `[outbox_status=failed] Failed to process outbox ${msg.id} of type ${msg.type}`,
+            `Failed to process Outbox ${msg.id} of type ${msg.type}`,
             e,
           );
         }

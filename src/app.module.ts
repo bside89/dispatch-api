@@ -27,6 +27,8 @@ import { loggerConfig } from './config/logger.config';
 import { LoggerModule } from 'nestjs-pino';
 import { OutboxModule } from './shared/modules/outbox/outbox.module';
 import { ScheduleModule } from '@nestjs/schedule';
+import { MiddlewareConsumer, NestModule } from '@nestjs/common';
+import { CorrelationIdMiddleware } from './middleware/correlation-id.middleware';
 
 @Module({
   imports: [
@@ -118,4 +120,8 @@ import { ScheduleModule } from '@nestjs/schedule';
     },
   ],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer) {
+    consumer.apply(CorrelationIdMiddleware).forRoutes('*');
+  }
+}

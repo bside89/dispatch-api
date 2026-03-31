@@ -11,6 +11,9 @@ export class Outbox {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
+  @Column({ type: 'varchar', nullable: false })
+  correlationId: string;
+
   @Column({
     type: 'enum',
     enum: OutboxType,
