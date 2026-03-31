@@ -8,7 +8,7 @@ import {
   CancelOrderJobPayload,
   ProcessOrderJobPayload,
 } from './processors/payloads/order-job.payload';
-import { NotifyUserJobData } from '../../shared/modules/events/processors/payloads/notify-user.payload';
+import { NotifyUserJobData } from '../../shared/modules/events/payloads/notify-user.payload';
 import { OrderRepository } from './repositories/order.repository';
 import { OrderItemRepository } from './repositories/order-item.repository';
 import { PaginatedResultDto } from '@/shared/dto/paginated-result.dto';
