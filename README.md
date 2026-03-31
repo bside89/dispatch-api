@@ -111,6 +111,36 @@ Client → API (NestJS)
 4. Events are emitted
 5. Side effects are triggered (notifications, logs)
 
+Here is a diagram showing the big picture:
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Client
+    participant API as Orders Controller/Service
+    participant DB as PostgreSQL (Transaction)
+    participant Worker as Outbox Processor
+    participant Redis as BullMQ / Redis
+
+    Client->>API: POST /orders
+    activate API
+    Note over API, DB: Start SQL transaction (@Transactional)
+    API->>DB: Save new Order (Status: PENDING)
+    API->>DB: Save Outbox message (Event: ORDER_CREATED)
+    Note over DB: Atomic commit (all or nothing)
+    DB-->>API: Success
+    API-->>Client: 201 Created (with Correlation-ID)
+    deactivate API
+
+    loop Every 5 seconds (Cron Job)
+        Worker->>DB: Fetch unprocessed messages
+        DB-->>Worker: Return Event: ORDER_CREATED
+        Worker->>Redis: Push Job to processing queue
+        Redis-->>Worker: Ack (Confirmed)
+        Worker->>DB: Mark message as "PROCESSED" or Delete
+    end
+```
+
 ---
 
 ## Observability & Monitoring
