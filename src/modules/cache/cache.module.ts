@@ -32,6 +32,6 @@ import { CacheService } from './cache.service';
       inject: [ConfigService],
     },
   ],
-  exports: [CacheService],
+  exports: [CacheService, 'REDIS_CLIENT'],
 })
 export class CacheModule {}

@@ -28,6 +28,7 @@ import { OutboxModule } from './shared/modules/outbox/outbox.module';
 import { ScheduleModule } from '@nestjs/schedule';
 import { MiddlewareConsumer, NestModule } from '@nestjs/common';
 import { CorrelationIdMiddleware } from './middleware/correlation-id.middleware';
+import { TerminusModule } from '@nestjs/terminus';
 
 @Module({
   imports: [
@@ -97,6 +98,7 @@ import { CorrelationIdMiddleware } from './middleware/correlation-id.middleware'
     UsersModule,
     EventsModule,
     OutboxModule,
+    TerminusModule,
   ],
   controllers: [AppController],
   providers: [
