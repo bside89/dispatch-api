@@ -7,6 +7,7 @@ import { OutboxRepository } from '../repositories/outbox.repository';
 import { OutboxType } from '../enums/outbox-type.enum';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { Outbox } from '../entities/outbox.entity';
+import { RequestContext } from '@/shared/utils/request-context';
 
 @Injectable()
 export class OutboxProcessor {
@@ -35,25 +36,29 @@ export class OutboxProcessor {
       const messages = await this.outboxRepository.findAllByCreatedAt();
 
       for (const msg of messages) {
-        try {
-          this.logger.debug(
-            `CorrelationId saved in the Outbox: ${msg.correlationId}`,
-          );
+        const correlationId = msg.correlationId;
 
-          await this.dispatch(msg);
+        return RequestContext.run(correlationId, async () => {
+          try {
+            this.logger.debug(
+              `CorrelationId saved in the Outbox: ${correlationId}`,
+            );
 
-          await this.outboxRepository.delete(msg.id);
+            await this.dispatch(msg);
 
-          this.logger.log(
-            `Successfully processed Outbox ${msg.id} of type ${msg.type}`,
-          );
-        } catch (e) {
-          // Try again in the next cycle, but log the error for debugging
-          this.logger.error(
-            `Failed to process Outbox ${msg.id} of type ${msg.type}`,
-            e,
-          );
-        }
+            await this.outboxRepository.delete(msg.id);
+
+            this.logger.log(
+              `Successfully processed Outbox ${msg.id} of type ${msg.type}`,
+            );
+          } catch (e) {
+            // Try again in the next cycle, but log the error for debugging
+            this.logger.error(
+              `Failed to process Outbox ${msg.id} of type ${msg.type}`,
+              e,
+            );
+          }
+        });
       }
     } catch (e) {
       this.logger.error('Error during outbox processing cycle', e);
