@@ -131,9 +131,9 @@
       {
         "displayName": "integration",
         "testRegex": ".*\\.int-spec\\.ts$",
-        "rootDir": "src",
-        "globalSetup": "<rootDir>/../test/setup-integration.ts",
-        "globalTeardown": "<rootDir>/../test/teardown-integration.ts",
+        "rootDir": ".",
+        "globalSetup": "<rootDir>/test/setup-integration.ts",
+        "globalTeardown": "<rootDir>/test/teardown-integration.ts",
         "transform": {
           "^.+\\.(t|j)s$": "ts-jest"
         },
@@ -143,16 +143,16 @@
           "ts"
         ],
         "moduleNameMapper": {
-          "^@/(.*)$": "<rootDir>/$1"
+          "^@/(.*)$": "<rootDir>/src/$1"
         },
         "testEnvironment": "node"
       },
       {
         "displayName": "e2e",
         "testRegex": ".*\\.e2e-spec\\.ts$",
-        "rootDir": "src",
-        "globalSetup": "<rootDir>/../test/setup-integration.ts",
-        "globalTeardown": "<rootDir>/../test/teardown-integration.ts",
+        "rootDir": ".",
+        "globalSetup": "<rootDir>/test/setup-integration.ts",
+        "globalTeardown": "<rootDir>/test/teardown-integration.ts",
         "transform": {
           "^.+\\.(t|j)s$": "ts-jest"
         },
