@@ -22,11 +22,6 @@ export class JwtAuthGuard extends AuthGuard(JwtStrategyName.ACCESS) {
       return true;
     }
 
-    if (this.configService.get('TEST_ENV') === 'true') {
-      // In test environment, allow all requests to bypass authentication
-      return true;
-    }
-
     return super.canActivate(context);
   }
 }

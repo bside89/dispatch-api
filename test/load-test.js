@@ -14,7 +14,7 @@ const BASE_URL = __ENV.BASE_URL || 'http://localhost:3000';
 
 export const options = {
   stages: [
-    { duration: '5s', target: 10 }, // Ramp-up: scale to 10 users
+    { duration: '5s', target: 5 }, // Ramp-up: scale to 5 users
     { duration: '20s', target: 10 }, // Plateau: maintain 10 users
     { duration: '5s', target: 0 }, // Ramp-down: finish
   ],
