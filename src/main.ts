@@ -26,7 +26,7 @@ async function bootstrap() {
   app.useLogger(app.get(Logger));
 
   // Security middleware — disable CSP for Bull Board (it uses inline scripts/styles)
-  app.use('/admin/queues', helmet({ contentSecurityPolicy: false }));
+  app.use('/bull-board', helmet({ contentSecurityPolicy: false }));
   app.use(
     helmet({
       contentSecurityPolicy: {
@@ -78,8 +78,7 @@ async function bootstrap() {
   // Apply the middleware manually for the admin routes
   const authMiddleware = new BasicAuthMiddleware(configService);
 
-  // Protect versioned AdminController routes and Bull Board
-  app.use('/v1/admin', (req, res, next) => authMiddleware.use(req, res, next));
+  // Protect Bull Board
   app.use('/bull-board', (req, res, next) =>
     authMiddleware.use(req, res, next),
   );

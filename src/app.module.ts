@@ -15,7 +15,6 @@ import { CacheModule } from './modules/cache/cache.module';
 import { BullBoardModule } from '@bull-board/nestjs';
 import { ExpressAdapter } from '@bull-board/express';
 import { BullMQAdapter } from '@bull-board/api/bullMQAdapter';
-import { AdminController } from './controllers/admin.controller';
 import { AppController } from './app.controller';
 import { APP_GUARD } from '@nestjs/core';
 import { JwtAuthGuard } from './modules/auth/guards/jwt.guard';
@@ -99,7 +98,7 @@ import { CorrelationIdMiddleware } from './middleware/correlation-id.middleware'
     EventsModule,
     OutboxModule,
   ],
-  controllers: [AppController, AdminController],
+  controllers: [AppController],
   providers: [
     // Global JWT Auth Guard
     {
