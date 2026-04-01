@@ -120,24 +120,40 @@ sequenceDiagram
     participant API as Orders Controller/Service
     participant DB as PostgreSQL (Transaction)
     participant Worker as Outbox Processor
-    participant Redis as BullMQ / Redis
+    participant Queue as BullMQ (Order & Notify)
 
+    Note over Client, API: [PHASE 1: INITIALIZATION]
     Client->>API: POST /orders
     activate API
-    Note over API, DB: Start SQL transaction (@Transactional)
-    API->>DB: Save new Order (Status: PENDING)
-    API->>DB: Save Outbox message (Event: ORDER_CREATED)
-    Note over DB: Atomic commit (all or nothing)
+    Note over API, DB: Start Transaction
+    API->>DB: Save Order (Status: PENDING)
+    API->>DB: Save Outbox (Event: ORDER_CREATED)
     DB-->>API: Success
-    API-->>Client: 201 Created (with Correlation-ID)
+    API-->>Client: 201 Created (Correlation-ID)
     deactivate API
 
-    loop Every 5 seconds (Cron Job)
-        Worker->>DB: Fetch unprocessed messages
-        DB-->>Worker: Return Event: ORDER_CREATED
-        Worker->>Redis: Push Job to processing queue
-        Redis-->>Worker: Ack (Confirmed)
-        Worker->>DB: Mark message as "PROCESSED" or Delete
+    Note over DB, Queue: [PHASE 2: STATUS PROPAGATION]
+    loop Continuous Processing
+        Worker->>DB: Fetch "PENDING" Outbox events
+        DB-->>Worker: List of events (Created, Processed, etc.)
+        Worker->>Queue: Dispatch Jobs (Order Flow & Notification Queues)
+        Queue-->>Worker: Ack (Job IDs)
+        Worker->>DB: Mark Outbox messages as PROCESSED
+    end
+
+    Note over Queue, DB: [PHASE 3: STATE MACHINE STEPS]
+    rect rgb(240, 240, 240)
+        Note right of Queue: Order Queue Worker
+        Queue->>DB: Update Order to "CONFIRMED"
+        Queue->>DB: Save Outbox (Event: ORDER_CONFIRMED & SEND_NOTIFICATION)
+        
+        Note right of Queue: Next Step
+        Queue->>DB: Update Order to "SHIPPED"
+        Queue->>DB: Save Outbox (Event: ORDER_SHIPPED & SEND_NOTIFICATION)
+        
+        Note right of Queue: Final Step
+        Queue->>DB: Update Order to "DELIVERED"
+        Queue->>DB: Save Outbox (Event: ORDER_DELIVERED & SEND_NOTIFICATION)
     end
 ```
 
