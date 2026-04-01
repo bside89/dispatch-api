@@ -142,7 +142,7 @@ sequenceDiagram
     end
 
     Note over Queue, DB: [PHASE 3: STATE MACHINE STEPS]
-    rect rgb(240, 240, 240)
+    rect rgba(128, 128, 128, 0.1)
         Note right of Queue: Order Queue Worker
         Queue->>DB: Update Order to "CONFIRMED"
         Queue->>DB: Save Outbox (Event: ORDER_CONFIRMED & SEND_NOTIFICATION)
