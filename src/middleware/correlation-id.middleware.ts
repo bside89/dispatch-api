@@ -5,7 +5,11 @@ import { RequestContext } from '@/shared/utils/request-context';
 
 @Injectable()
 export class CorrelationIdMiddleware implements NestMiddleware {
-  use(req: IncomingMessage & { id?: string }, _res: ServerResponse, next: () => void) {
+  use(
+    req: IncomingMessage & { id?: string },
+    _res: ServerResponse,
+    next: () => void,
+  ) {
     // pino-http sets req.id via genReqId; fall back to headers or a fresh UUID
     const correlationId =
       req.id ||

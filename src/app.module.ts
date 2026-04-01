@@ -29,6 +29,7 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { MiddlewareConsumer, NestModule } from '@nestjs/common';
 import { CorrelationIdMiddleware } from './middleware/correlation-id.middleware';
 import { TerminusModule } from '@nestjs/terminus';
+import { throttleConfig } from './config/throttle.config';
 
 @Module({
   imports: [
@@ -46,13 +47,10 @@ import { TerminusModule } from '@nestjs/terminus';
     }),
 
     // Rate limiting
-    ThrottlerModule.forRoot({
-      throttlers: [
-        {
-          ttl: 60 * 1000, // 1 minute
-          limit: 10, // Limit to 10 requests per minute for all endpoints
-        },
-      ],
+    ThrottlerModule.forRootAsync({
+      imports: [ConfigModule],
+      useFactory: throttleConfig,
+      inject: [ConfigService],
     }),
 
     // Database

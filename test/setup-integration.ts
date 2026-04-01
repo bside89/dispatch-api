@@ -34,4 +34,3 @@ export default async () => {
   (global as any).__POSTGRES_CONTAINER__ = postgres;
   (global as any).__REDIS_CONTAINER__ = redis;
 };
-

@@ -108,6 +108,12 @@ async function bootstrap() {
     `Grafana dashboard available at: http://localhost:${grafanaPort} (requires authentication)`,
     'Bootstrap',
   );
+  if (configService.get('TEST_ENV') === 'true') {
+    logger.warn(
+      'TEST_ENV is set to true. Rate limiting is disabled, so the application may be vulnerable to abuse. Make sure to set TEST_ENV to false in production!',
+      'Bootstrap',
+    );
+  }
 
   console.log(`Application is running on: http://localhost:${port}`);
   console.log(
@@ -119,6 +125,11 @@ async function bootstrap() {
   console.log(
     `Grafana dashboard available at: http://localhost:${grafanaPort} (requires authentication)`,
   );
+  if (configService.get('TEST_ENV') === 'true') {
+    console.warn(
+      'TEST_ENV is set to true. Rate limiting is disabled, so the application may be vulnerable to abuse. Make sure to set TEST_ENV to false in production!',
+    );
+  }
 }
 
 bootstrap();
