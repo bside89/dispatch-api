@@ -12,7 +12,7 @@ if ! docker-compose ps --services --filter "status=running" | grep -q postgres; 
     docker-compose up -d postgres redis promtail loki grafana
     
     echo "⏳ Waiting for services to be ready..."
-    sleep 10
+    sleep 5
     
     # Wait for PostgreSQL
     until docker exec $(docker-compose ps -q postgres) pg_isready -U postgres > /dev/null 2>&1; do

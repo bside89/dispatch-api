@@ -101,15 +101,15 @@ Client → API (NestJS)
 - **Centralized logging with correlationId**  
   I added this so I could actually trace an async request from start to finish.
 
-- **High-Throughput Outbox Processor**  
+- **High-throughput outbox processor**  
   Uses Recursive Polling to process events in batches — throughput stays high without blocking the Event Loop.
 
-- **Database Concurrency Control**  
-  Uses `SELECT ... FOR UPDATE SKIP LOCKED` so multiple Outbox instances can run in parallel without stepping on each other.
+- **Database concurrency control**  
+  Uses `SELECT ... FOR UPDATE SKIP LOCKED` so multiple outbox instances can run in parallel without stepping on each other.
 
 ---
 
-## Performance & Scalability
+## Performance and scalability
 
 I ran k6 stress tests to find performance bottlenecks.
 
@@ -184,7 +184,7 @@ sequenceDiagram
 
 ---
 
-## Observability & Monitoring
+## Observability and monitoring
 
 - Structured logging with Pino (JSON)
 - Correlation ID for end-to-end tracing
@@ -245,6 +245,7 @@ This project includes patterns commonly used in production systems:
 - Failure isolation via queues
 - Observability-first design
 - Scalable processing pipelines
+- Transactions
 
 ---
 

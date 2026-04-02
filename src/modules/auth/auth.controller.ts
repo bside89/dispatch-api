@@ -12,7 +12,7 @@ import {
 import { Public } from './decorators/public.decorator';
 import { JwtRefreshAuthGuard } from './guards/jwt-refresh.guard';
 import { GetUser } from '@/shared/decorators/get-user.decorator';
-import { JwtPayload } from './interfaces/jwt-payload.interface';
+import type { JwtPayload } from './interfaces/jwt-payload.interface';
 import { BaseController } from '@/shared/controllers/base.controller';
 import { SuccessResponseDto } from '@/shared/dto/success-response.dto';
 import { LoginResponseDto } from './dto/login-response.dto';

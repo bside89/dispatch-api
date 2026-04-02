@@ -12,7 +12,7 @@ services:
       POSTGRES_PASSWORD: ${DB_PASSWORD}
       POSTGRES_INITDB_ARGS: '--encoding=UTF-8'
     ports:
-      - '5432:5432'
+      - '${DB_PORT}:${DB_PORT}'
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
@@ -28,8 +28,10 @@ services:
   redis:
     image: redis:7-alpine
     restart: always
+    env_file:
+      - .env.docker
     ports:
-      - '6379:6379'
+      - '${REDIS_PORT}:${REDIS_PORT}'
     volumes:
       - redis_data:/data
     networks:
@@ -79,7 +81,7 @@ services:
       redis:
         condition: service_started
     ports:
-      - '3000:3000'
+      - '${APP_PORT}:${APP_PORT}'
     env_file:
       - .env.docker
     volumes:
@@ -88,7 +90,8 @@ services:
     networks:
       - order-flow-network
     healthcheck:
-      test: ['CMD-SHELL', 'curl -f http://localhost:3000/health || exit 1']
+      test:
+        ['CMD-SHELL', 'curl -f http://localhost:${APP_PORT}/health || exit 1']
       interval: 30s
       timeout: 5s
       retries: 3

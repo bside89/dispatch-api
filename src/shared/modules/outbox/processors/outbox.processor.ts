@@ -1,5 +1,5 @@
 import { EVENT_BUS } from '@/shared/modules/events/constants/event-bus.token';
-import { EventBus } from '@/shared/modules/events/interfaces/event-bus.interface';
+import type { EventBus } from '@/shared/modules/events/interfaces/event-bus.interface';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { Queue } from 'bullmq';
