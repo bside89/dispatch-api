@@ -1,11 +1,8 @@
 import { WorkerHost } from '@nestjs/bullmq';
-import { Logger, OnApplicationBootstrap } from '@nestjs/common';
+import { Logger } from '@nestjs/common';
 import * as os from 'os';
 
-export abstract class BaseProcessor
-  extends WorkerHost
-  implements OnApplicationBootstrap
-{
+export abstract class BaseProcessor extends WorkerHost {
   protected readonly logger: Logger;
 
   constructor(protected readonly processorName: string) {
@@ -13,7 +10,10 @@ export abstract class BaseProcessor
     this.logger = new Logger(processorName);
   }
 
-  onApplicationBootstrap(): void {
-    this.worker.concurrency = os.cpus().length;
+  protected setupConcurrency(concurrency?: number) {
+    const multiplier = this.getConcurrencyMultiplier();
+    this.worker.concurrency = concurrency ?? os.cpus().length * multiplier;
   }
+
+  protected abstract getConcurrencyMultiplier(): number;
 }

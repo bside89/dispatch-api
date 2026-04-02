@@ -7,14 +7,27 @@ import { BaseProcessor } from '@/shared/processors/base.processor';
 import { CACHE_CONFIG } from '@/shared/constants/cache.constant';
 import { RequestContext } from '@/shared/utils/request-context';
 import { randomUUID } from 'crypto';
+import { OnApplicationBootstrap } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 
 @Processor('orders', { maxStalledCount: 1 })
-export class OrderProcessor extends BaseProcessor {
+export class OrderProcessor
+  extends BaseProcessor
+  implements OnApplicationBootstrap
+{
   constructor(
     private readonly factory: OrderJobHandlerFactory,
     private readonly cacheService: CacheService,
+    private readonly configService: ConfigService,
   ) {
     super(OrderProcessor.name);
+  }
+
+  onApplicationBootstrap() {
+    const concurrency = this.configService.get<string>(
+      'QUEUE_ORDER_CONCURRENCY',
+    );
+    this.setupConcurrency(Number(concurrency));
   }
 
   async process(job: Job): Promise<void> {
@@ -46,5 +59,9 @@ export class OrderProcessor extends BaseProcessor {
         await this.cacheService.delete(lockKey);
       }
     });
+  }
+
+  getConcurrencyMultiplier(): number {
+    return 4;
   }
 }
