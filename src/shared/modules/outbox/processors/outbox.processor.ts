@@ -7,7 +7,8 @@ import { OutboxRepository } from '../repositories/outbox.repository';
 import { OutboxType } from '../enums/outbox-type.enum';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { Outbox } from '../entities/outbox.entity';
-import { RequestContext } from '@/shared/utils/request-context';
+import { Transactional } from '@/shared/decorators/transactional.decorator';
+import { DataSource } from 'typeorm';
 
 @Injectable()
 export class OutboxProcessor {
@@ -22,9 +23,11 @@ export class OutboxProcessor {
     protected readonly eventBus: EventBus,
 
     private readonly outboxRepository: OutboxRepository,
+    protected readonly dataSource: DataSource,
   ) {}
 
   @Cron(CronExpression.EVERY_5_SECONDS)
+  @Transactional()
   async process() {
     if (this.isProcessing) {
       // Outbox is already being processed, skip this cycle to prevent overlapping
@@ -33,52 +36,66 @@ export class OutboxProcessor {
     this.isProcessing = true;
 
     try {
-      const messages = await this.outboxRepository.findAllByCreatedAt();
+      const limit = 100;
+      const messages = await this.outboxRepository.findAndLockBatch(limit);
 
-      for (const msg of messages) {
-        const correlationId = msg.correlationId;
+      if (messages.length === 0) return;
 
-        return RequestContext.run(correlationId, async () => {
-          try {
-            this.logger.debug(
-              `CorrelationId saved in the Outbox: ${correlationId}`,
-            );
+      await this.dispatch(messages);
 
-            await this.dispatch(msg);
+      const dispatchedIds: string[] = messages.map((m) => m.id);
 
-            await this.outboxRepository.delete(msg.id);
+      await this.outboxRepository.deleteMany(dispatchedIds);
 
-            this.logger.log(
-              `Successfully processed Outbox ${msg.id} of type ${msg.type}`,
-            );
-          } catch (e) {
-            // Try again in the next cycle, but log the error for debugging
-            this.logger.error(
-              `Failed to process Outbox ${msg.id} of type ${msg.type}`,
-              e,
-            );
-          }
-        });
+      this.logger.log(
+        `Successfully processed batch of ${messages.length} Outbox messages.`,
+      );
+
+      // CONTROLLED RECURSION:
+      // If we reached the maximum limit, schedule the next execution immediately
+      if (messages.length === limit) {
+        this.isProcessing = false; // Release the lock for the next execution
+        setImmediate(() => this.process());
+        return;
       }
     } catch (e) {
-      this.logger.error('Error during outbox processing cycle', e);
+      this.logger.error('Error during Outbox processing cycle', e);
     } finally {
       this.isProcessing = false;
     }
   }
 
-  private async dispatch(msg: Outbox): Promise<void> {
-    const type = msg.type;
-    if (
-      type === OutboxType.ORDER_PROCESS ||
-      type === OutboxType.ORDER_SHIP ||
-      type === OutboxType.ORDER_DELIVER ||
-      type === OutboxType.ORDER_CANCEL
-    ) {
-      await this.orderQueue.add(type, msg.payload);
+  private async dispatch(msg: Outbox[]): Promise<void> {
+    if (msg.length === 0) return;
+
+    const orderQueueMsg = msg
+      .filter((m) =>
+        [
+          OutboxType.ORDER_PROCESS,
+          OutboxType.ORDER_SHIP,
+          OutboxType.ORDER_DELIVER,
+          OutboxType.ORDER_CANCEL,
+        ].includes(m.type),
+      )
+      .map((msg) => ({
+        name: msg.type,
+        data: msg.payload,
+        opts: { jobId: msg.id },
+      }));
+
+    const eventBusMsg = msg
+      .filter((m) => m.type === OutboxType.EVENTS_NOTIFY_USER)
+      .map((msg) => ({
+        name: msg.type,
+        data: msg.payload,
+        opts: { jobId: msg.id },
+      }));
+
+    if (orderQueueMsg.length > 0) {
+      await this.orderQueue.addBulk(orderQueueMsg);
     }
-    if (type === OutboxType.EVENTS_NOTIFY_USER) {
-      await this.eventBus.publish(type, msg.payload);
+    if (eventBusMsg.length > 0) {
+      await this.eventBus.publishBulk(eventBusMsg);
     }
   }
 }

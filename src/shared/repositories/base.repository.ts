@@ -68,6 +68,7 @@ export abstract class BaseRepository<T> {
   }
 
   async saveMany(entities: T[]): Promise<T[]> {
+    if (entities.length === 0) return null;
     const manager = this.getManager();
     return manager.save(entities);
   }
@@ -80,6 +81,12 @@ export abstract class BaseRepository<T> {
   async delete(id: any): Promise<DeleteResult> {
     const manager = this.getManager();
     return manager.delete(this.repository.target, id);
+  }
+
+  async deleteMany(ids: string[]): Promise<DeleteResult> {
+    if (ids.length === 0) return null;
+    const manager = this.getManager();
+    return manager.delete(this.repository.target, ids);
   }
 
   async count(): Promise<number> {

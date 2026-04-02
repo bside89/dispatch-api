@@ -1,6 +1,6 @@
 import { InjectQueue } from '@nestjs/bullmq';
 import { Injectable } from '@nestjs/common';
-import { Queue } from 'bullmq';
+import { BulkJobOptions, Queue } from 'bullmq';
 import { EventBus } from '../interfaces/event-bus.interface';
 
 @Injectable()
@@ -9,5 +9,15 @@ export class BullEventBus implements EventBus {
 
   async publish(name: string, event: any): Promise<void> {
     await this.queue.add(name, event);
+  }
+
+  async publishBulk(
+    events: {
+      name: string;
+      data: any;
+      opts?: BulkJobOptions;
+    }[],
+  ): Promise<void> {
+    await this.queue.addBulk(events);
   }
 }

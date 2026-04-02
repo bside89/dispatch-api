@@ -11,14 +11,15 @@ export class OutboxRepository extends BaseRepository<Outbox> {
     super(repository);
   }
 
-  async findAllByCreatedAt(reverse = false): Promise<Outbox[]> {
+  async findAndLockBatch(limit = 50): Promise<Outbox[]> {
     const manager = this.getManager();
 
-    return manager.find(Outbox, {
-      order: {
-        createdAt: reverse ? 'DESC' : 'ASC',
-      },
-      take: 50,
-    });
+    return manager
+      .createQueryBuilder(Outbox, 'outbox')
+      .setLock('pessimistic_write')
+      .setOnLocked('skip_locked') // Skip locked rows to prevent blocking other transactions
+      .orderBy('outbox.createdAt', 'ASC')
+      .limit(limit)
+      .getMany();
   }
 }
