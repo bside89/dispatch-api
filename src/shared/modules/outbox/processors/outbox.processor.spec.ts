@@ -4,6 +4,7 @@ import { OutboxProcessor } from './outbox.processor';
 import { OutboxRepository } from '../repositories/outbox.repository';
 import { EVENT_BUS } from '../../../../shared/modules/events/constants/event-bus.token';
 import { EventBus } from '../../../../shared/modules/events/interfaces/event-bus.interface';
+import { DataSource } from 'typeorm';
 
 describe('OutboxProcessor', () => {
   let processor: OutboxProcessor;
@@ -15,12 +16,13 @@ describe('OutboxProcessor', () => {
 
   const mockEventBus: jest.Mocked<EventBus> = {
     publish: jest.fn(),
+    publishBulk: jest.fn(),
   };
 
   const mockOutboxRepository = {
-    findAllByCreatedAt: jest.fn(),
-    delete: jest.fn(),
-  };
+    findAndLockBatch: jest.fn(),
+    deleteMany: jest.fn(),
+  } as unknown as jest.Mocked<OutboxRepository>;
 
   beforeEach(async () => {
     module = await Test.createTestingModule({
@@ -37,6 +39,10 @@ describe('OutboxProcessor', () => {
         {
           provide: OutboxRepository,
           useValue: mockOutboxRepository,
+        },
+        {
+          provide: DataSource,
+          useValue: {},
         },
       ],
     }).compile();

@@ -4,11 +4,13 @@ import { OrderJobHandlerFactory } from '../factories/order-job-handler.factory';
 import { CacheService } from '../../cache/cache.service';
 import { Job } from 'bullmq';
 import { RequestContext } from '../../../shared/utils/request-context';
+import { ConfigService } from '@nestjs/config';
 
 describe('OrderProcessor', () => {
   let processor: OrderProcessor;
   let factory: jest.Mocked<OrderJobHandlerFactory>;
   let cacheService: jest.Mocked<CacheService>;
+  let configService: jest.Mocked<ConfigService>;
 
   beforeEach(async () => {
     factory = {
@@ -20,11 +22,16 @@ describe('OrderProcessor', () => {
       delete: jest.fn(),
     } as any;
 
+    configService = {
+      get: jest.fn(),
+    } as any;
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         OrderProcessor,
         { provide: OrderJobHandlerFactory, useValue: factory },
         { provide: CacheService, useValue: cacheService },
+        { provide: ConfigService, useValue: configService },
       ],
     }).compile();
 

@@ -4,6 +4,7 @@ import { EventProcessor } from './event.processor';
 import { NotificationStrategy } from '../strategies/notification.strategy';
 import { OutboxType } from '../../../../shared/modules/outbox/enums/outbox-type.enum';
 import { RequestContext } from '../../../../shared/utils/request-context';
+import { ConfigService } from '@nestjs/config';
 
 describe('EventProcessor', () => {
   let processor: EventProcessor;
@@ -20,6 +21,10 @@ describe('EventProcessor', () => {
         {
           provide: NotificationStrategy,
           useValue: notificationStrategy,
+        },
+        {
+          provide: ConfigService,
+          useValue: { get: jest.fn() },
         },
       ],
     }).compile();
