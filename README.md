@@ -101,6 +101,31 @@ Client → API (NestJS)
 - **Centralized logging with correlationId**  
   I added this so I could actually trace an async request from start to finish.
 
+- **High-Throughput Outbox Processor**  
+  Uses Recursive Polling to process events in batches — throughput stays high without blocking the Event Loop.
+
+- **Database Concurrency Control**  
+  Uses `SELECT ... FOR UPDATE SKIP LOCKED` so multiple Outbox instances can run in parallel without stepping on each other.
+
+---
+
+## Performance & Scalability
+
+I ran k6 stress tests to find performance bottlenecks.
+
+### Concurrency tuning
+
+The two queues have different I/O profiles, so they get different concurrency limits:
+
+| Queue      | Concurrency | Strategy                                                                                                |
+| :--------- | :---------- | :------------------------------------------------------------------------------------------------------ |
+| **Orders** | `15`        | Capped to protect the PostgreSQL connection pool during complex transactions.                           |
+| **Events** | `30`        | Higher because these are fast external I/O calls — notifications don't need the same care as DB writes. |
+
+### Throughput benchmarks
+
+Switching to batch processing cut Outbox latency. Load tests at 100+ concurrent orders came back clean — no lost events, no noticeable lag on state updates.
+
 ---
 
 ## Order processing flow
@@ -146,11 +171,11 @@ sequenceDiagram
         Note right of Queue: Order Queue Worker
         Queue->>DB: Update Order to "CONFIRMED"
         Queue->>DB: Save Outbox (Event: ORDER_CONFIRMED & SEND_NOTIFICATION)
-        
+
         Note right of Queue: Next Step
         Queue->>DB: Update Order to "SHIPPED"
         Queue->>DB: Save Outbox (Event: ORDER_SHIPPED & SEND_NOTIFICATION)
-        
+
         Note right of Queue: Final Step
         Queue->>DB: Update Order to "DELIVERED"
         Queue->>DB: Save Outbox (Event: ORDER_DELIVERED & SEND_NOTIFICATION)
@@ -165,8 +190,16 @@ sequenceDiagram
 - Correlation ID for end-to-end tracing
 - Log aggregation via Promtail + Loki
 - Visualization with Grafana
-- Track a single order across multiple async steps  
+- Track a single order across multiple async steps
 - Debug failures in distributed flows
+
+---
+
+## Testing strategy
+
+- **Integration testing (Testcontainers):** Spins up real PostgreSQL and Redis instances per test run. No mocked databases, no "works on my machine" surprises.
+
+- **Load testing (k6):** Hammers the queue under concurrent load to confirm jobs don't get processed twice when retries kick in.
 
 ---
 
