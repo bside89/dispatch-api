@@ -90,7 +90,13 @@ export class ProcessPaymentOrderStrategy extends BaseJobStrategy<ProcessPaymentO
       `Failed to process payment for order ${orderId} after all retries: ${error.message}`,
     );
 
-    await this.compensationLogic(job.data);
+    try {
+      await this.compensationLogic(job.data);
+    } catch (error: any) {
+      this.logger.error(
+        `[CRITICAL] Compensation logic failed for processing order ${orderId}: ${error.message}`,
+      );
+    }
   }
 
   private async compensationLogic(data: ProcessPaymentOrderJobPayload) {

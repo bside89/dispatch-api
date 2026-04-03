@@ -75,7 +75,13 @@ export class DeliverOrderStrategy extends BaseJobStrategy<DeliverOrderJobPayload
       `Failed to deliver order ${orderId} after all retries: ${error.message}`,
     );
 
-    await this.compensationLogic(job.data);
+    try {
+      await this.compensationLogic(job.data);
+    } catch (error: any) {
+      this.logger.error(
+        `[CRITICAL] Compensation logic failed for delivering order ${orderId}: ${error.message}`,
+      );
+    }
   }
 
   private async compensationLogic(data: DeliverOrderJobPayload) {

@@ -78,7 +78,13 @@ export class ShipOrderStrategy extends BaseJobStrategy<ShipOrderJobPayload> {
       `Failed to ship order ${orderId} after all retries: ${error.message}`,
     );
 
-    await this.compensationLogic(job.data);
+    try {
+      await this.compensationLogic(job.data);
+    } catch (error: any) {
+      this.logger.error(
+        `[CRITICAL] Compensation logic failed for shipping order ${orderId}: ${error.message}`,
+      );
+    }
   }
 
   private async compensationLogic(data: ShipOrderJobPayload) {
