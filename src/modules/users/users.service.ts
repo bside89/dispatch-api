@@ -18,6 +18,7 @@ import { DataSource } from 'typeorm';
 import { Transactional } from '@/shared/decorators/transactional.decorator';
 import { CACHE_CONFIG } from '@/shared/constants/cache.constant';
 import { OutboxService } from '@/shared/modules/outbox/outbox.service';
+import { runAndIgnoreError } from '@/shared/helpers/functions';
 
 @Injectable()
 export class UsersService extends BaseService {
@@ -39,7 +40,7 @@ export class UsersService extends BaseService {
     idempotencyKey: string,
   ): Promise<UserResponseDto> {
     const idempotencyKeyFormatted = `${this.IDEMPOTENCY_PREFIX}:${idempotencyKey}`;
-    const existingUser = await this.runAndIgnoreError(
+    const existingUser = await runAndIgnoreError(
       () => this.cacheService.get<UserResponseDto>(idempotencyKeyFormatted),
       'create - cache retrieval',
     );
@@ -88,7 +89,7 @@ export class UsersService extends BaseService {
     query: UserQueryDto,
   ): Promise<PaginatedResultDto<UserResponseDto>> {
     const cacheKey = `${this.CACHE_PREFIX}:list:${JSON.stringify(query)}`;
-    const cachedResult = await this.runAndIgnoreError(
+    const cachedResult = await runAndIgnoreError(
       () =>
         this.cacheService.get<PaginatedResultDto<UserResponseDto>>(cacheKey),
       `fetching users list from cache with key: ${cacheKey}`,
@@ -100,7 +101,7 @@ export class UsersService extends BaseService {
 
     const result = await this.userRepository.findAllWithFilters(query);
 
-    await this.runAndIgnoreError(
+    await runAndIgnoreError(
       () => this.cacheService.set(cacheKey, result, CACHE_CONFIG.LIST_TTL),
       `caching users list with key: ${cacheKey}`,
     );

@@ -1,4 +1,4 @@
-import { Processor } from '@nestjs/bullmq';
+import { OnWorkerEvent, Processor } from '@nestjs/bullmq';
 import { Job } from 'bullmq';
 import { NotificationStrategy } from '../strategies/notification.strategy';
 import { BaseProcessor } from '@/shared/processors/base.processor';
@@ -7,6 +7,8 @@ import { RequestContext } from '@/shared/utils/request-context';
 import { randomUUID } from 'crypto';
 import { OnApplicationBootstrap } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { CACHE_CONFIG } from '@/shared/constants/cache.constant';
+import { CacheService } from '@/modules/cache/cache.service';
 
 @Processor('events', { maxStalledCount: 1 })
 export class EventProcessor
@@ -14,10 +16,11 @@ export class EventProcessor
   implements OnApplicationBootstrap
 {
   constructor(
-    private readonly notificationStrategy: NotificationStrategy,
-    private readonly configService: ConfigService,
+    protected readonly notificationStrategy: NotificationStrategy,
+    protected readonly configService: ConfigService,
+    protected readonly cacheService: CacheService,
   ) {
-    super(EventProcessor.name);
+    super(cacheService, EventProcessor.name);
   }
 
   onApplicationBootstrap() {
@@ -28,12 +31,44 @@ export class EventProcessor
   }
 
   async process(job: Job) {
+    await this.execute('process', job);
+  }
+
+  @OnWorkerEvent('failed')
+  async onJobFailed(job: Job, error: Error) {
+    if (job.attemptsMade >= (job.opts.attempts || 1)) {
+      // Execute after all retries have been exhausted
+      await this.execute('failed', job, error);
+    }
+  }
+
+  async execute(event: 'process' | 'failed', job: Job, error?: Error) {
     const correlationId = job.data?.correlationId ?? randomUUID();
 
     return RequestContext.run(correlationId, async () => {
-      switch (job.name) {
-        case JobName.EVENTS_NOTIFY_USER:
-          return this.notificationStrategy.execute(job, this.logger);
+      const lockKey = `lock:job:${job.id}`;
+
+      const lock = await this.cacheService.setIfNotExists(
+        lockKey,
+        '1',
+        CACHE_CONFIG.SERVICE_LOCK_TTL,
+      );
+      if (!lock) {
+        this.logger.warn(`Job ${job.id} already running`);
+        return;
+      }
+
+      try {
+        switch (job.name) {
+          case JobName.EVENTS_NOTIFY_USER:
+            if (event === 'process') {
+              return this.notificationStrategy.execute(job);
+            } else {
+              return this.notificationStrategy.executeOnFailed(job, error);
+            }
+        }
+      } finally {
+        await this.cacheService.delete(lockKey);
       }
     });
   }

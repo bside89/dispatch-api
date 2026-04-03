@@ -105,7 +105,7 @@ PATCH {{baseUrl}}/orders/{{orderId}}/status
 Content-Type: application/json
 
 {
-  "status": "CONFIRMED"
+  "status": "REFUNDED"
 }
 
 ### Update Complete Order

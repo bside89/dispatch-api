@@ -4,19 +4,20 @@ import { CacheService } from '../../cache/cache.service';
 import { OutboxService } from '../../../shared/modules/outbox/outbox.service';
 import { OrderRepository } from '../repositories/order.repository';
 import { DataSource } from 'typeorm';
-import { ProcessOrderStrategy } from './process-order.strategy';
+import { ProcessPaymentOrderStrategy } from './process-payment-order.strategy';
 
-describe('ProcessOrderStrategy', () => {
-  let strategy: ProcessOrderStrategy;
+describe('ProcessPaymentOrderStrategy', () => {
+  let strategy: ProcessPaymentOrderStrategy;
   let cacheService: jest.Mocked<CacheService>;
   let outboxService: jest.Mocked<OutboxService>;
   let orderRepository: jest.Mocked<OrderRepository>;
+  let dataSource: jest.Mocked<DataSource>;
   let logger: Logger;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
-        ProcessOrderStrategy,
+        ProcessPaymentOrderStrategy,
         {
           provide: CacheService,
           useValue: {
@@ -44,10 +45,13 @@ describe('ProcessOrderStrategy', () => {
       ],
     }).compile();
 
-    strategy = module.get<ProcessOrderStrategy>(ProcessOrderStrategy);
+    strategy = module.get<ProcessPaymentOrderStrategy>(
+      ProcessPaymentOrderStrategy,
+    );
     cacheService = module.get(CacheService);
     outboxService = module.get(OutboxService);
     orderRepository = module.get(OrderRepository);
+    dataSource = module.get(DataSource);
     logger = new Logger();
   });
 

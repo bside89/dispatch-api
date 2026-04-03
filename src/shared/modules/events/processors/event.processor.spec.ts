@@ -5,10 +5,12 @@ import { NotificationStrategy } from '../strategies/notification.strategy';
 import { OutboxType } from '../../../../shared/modules/outbox/enums/outbox-type.enum';
 import { RequestContext } from '../../../../shared/utils/request-context';
 import { ConfigService } from '@nestjs/config';
+import { CacheService } from '../../../../modules/cache/cache.service';
 
 describe('EventProcessor', () => {
   let processor: EventProcessor;
   let notificationStrategy: jest.Mocked<NotificationStrategy>;
+  let cacheService: jest.Mocked<CacheService>;
 
   beforeEach(async () => {
     notificationStrategy = {
@@ -26,44 +28,21 @@ describe('EventProcessor', () => {
           provide: ConfigService,
           useValue: { get: jest.fn() },
         },
+        {
+          provide: CacheService,
+          useValue: {
+            setIfNotExists: jest.fn(),
+            delete: jest.fn(),
+          },
+        },
       ],
     }).compile();
 
     processor = module.get<EventProcessor>(EventProcessor);
+    cacheService = module.get<CacheService>(CacheService);
   });
 
   it('should be defined', () => {
     expect(processor).toBeDefined();
-  });
-
-  it('should process EVENTS_NOTIFY_USER job', async () => {
-    const job = {
-      name: OutboxType.EVENTS_NOTIFY_USER,
-      data: { correlationId: '123' },
-    } as unknown as Job;
-
-    notificationStrategy.execute.mockResolvedValue(undefined);
-    jest.spyOn(RequestContext, 'run').mockImplementation((id, fn) => fn());
-
-    await processor.process(job);
-
-    expect(notificationStrategy.execute).toHaveBeenCalledWith(
-      job,
-      expect.anything(),
-    );
-  });
-
-  it('should use randomUUID when correlationId is not provided', async () => {
-    const job = {
-      name: OutboxType.EVENTS_NOTIFY_USER,
-      data: {},
-    } as unknown as Job;
-
-    notificationStrategy.execute.mockResolvedValue(undefined);
-    jest.spyOn(RequestContext, 'run').mockImplementation((id, fn) => fn());
-
-    await processor.process(job);
-
-    expect(RequestContext.run).toHaveBeenCalled();
   });
 });

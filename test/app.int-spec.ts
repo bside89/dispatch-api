@@ -13,9 +13,10 @@ import { waitFor } from './utils/wait-for';
 
 // Mock the delay function to resolve almost instantly.
 // This eliminates the simulated processing delays (1s-3s) used by
-// ProcessOrderStrategy, ShipOrderStrategy, DeliverOrderStrategy,
+// ProcessPaymentOrderStrategy, ShipOrderStrategy, DeliverOrderStrategy,
 // and NotificationStrategy, making the pipeline tests much faster.
 jest.mock('@/shared/helpers/functions', () => ({
+  ...jest.requireActual('@/shared/helpers/functions'),
   delay: () => Promise.resolve(),
 }));
 
@@ -197,7 +198,7 @@ describe('App (Integration)', () => {
       const orderId = createdOrder.id;
 
       // Wait for the full async pipeline to complete:
-      //   Outbox → ORDER_PROCESS → PROCESSED
+      //   Outbox → ORDER_PROCESS → PAID
       //   Outbox → ORDER_SHIP → SHIPPED
       //   Outbox → ORDER_DELIVER → DELIVERED
       //
@@ -238,11 +239,11 @@ describe('App (Integration)', () => {
 
       // Assert: all notification events have been processed by the events queue.
       // Expected notifications:
-      //   1. ProcessOrderStrategy  → "order has been processed"
+      //   1. ProcessPaymentOrderStrategy  → "order has been paid"
       //   2. ShipOrderStrategy     → "order has been shipped"
       //   3. DeliverOrderStrategy  → "order has been delivered"
-      //   4. updateStatus (called by ProcessOrderStrategy via Outbox→EVENTS_NOTIFY_USER
-      //      during the PROCESSED status change) — note: this is the notification from
+      //   4. updateStatus (called by ProcessPaymentOrderStrategy via Outbox→EVENTS_NOTIFY_USER
+      //      during the PAID status change) — note: this is the notification from
       //      the Outbox EVENTS_NOTIFY_USER added by the strategy, NOT from updateStatus.
       //
       // The flow produces exactly 3 EVENTS_NOTIFY_USER outbox entries

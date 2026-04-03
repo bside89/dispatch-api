@@ -1,9 +1,9 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { Job } from 'bullmq';
-import { BaseOrderJobStrategy } from './base-order-job.strategy';
+import { BaseJobStrategy } from '../../../shared/strategies/base-job.strategy';
 import { OrderStatus } from '../enums/order-status.enum';
 import { CancelOrderJobPayload } from '../processors/payloads/order-job.payload';
-import { NotifyUserJobData } from '../../../shared/modules/events/processors/payloads/notify-user.payload';
+import { NotifyUserJobPayload } from '../../../shared/modules/events/processors/payloads/notify-user.payload';
 import { delay } from '../../../shared/helpers/functions';
 import { Transactional } from '@/shared/decorators/transactional.decorator';
 import { OutboxType } from '@/shared/modules/outbox/enums/outbox-type.enum';
@@ -11,66 +11,78 @@ import { CacheService } from '../../cache/cache.service';
 import { OutboxService } from '@/shared/modules/outbox/outbox.service';
 import { OrderRepository } from '../repositories/order.repository';
 import { DataSource } from 'typeorm';
+import { JobStatus } from '@/shared/enums/job-status.enum';
 
 @Injectable()
-export class CancelOrderStrategy extends BaseOrderJobStrategy<CancelOrderJobPayload> {
+export class CancelOrderStrategy extends BaseJobStrategy<CancelOrderJobPayload> {
   constructor(
-    cacheService: CacheService,
-    outboxService: OutboxService,
-    orderRepository: OrderRepository,
-    dataSource: DataSource,
+    protected readonly cacheService: CacheService,
+    protected readonly outboxService: OutboxService,
+    protected readonly orderRepository: OrderRepository,
+    protected readonly dataSource: DataSource,
   ) {
-    super(cacheService, outboxService, orderRepository, dataSource);
-  }
-
-  async execute(
-    job: Job<CancelOrderJobPayload>,
-    logger: Logger,
-  ): Promise<void> {
-    const { jobId, orderId } = job.data;
-
-    const key = `idempotency:order:cancel:${jobId}`;
-    if (await this.hasKey(key)) return;
-    await this.setKey(key);
-
-    if (
-      await this.isAlreadyInStatusArray(orderId, [
-        OrderStatus.CANCELLED,
-        OrderStatus.REFUNDED,
-      ])
-    ) {
-      logger.log(`Order ${orderId} is already in CANCELLED or REFUNDED status`);
-      return;
-    }
-
-    logger.log(`Cancelling order ${orderId}`);
-
-    try {
-      await this.releaseInventory(job.data, logger);
-      await this.processRefund(job.data, logger);
-
-      // Atomic transaction to update order status and publish events
-      await this.finalizeOrderCancelling(job.data);
-
-      logger.log(`Order ${orderId} cancelled`);
-    } catch (error) {
-      await this.removeKey(key);
-      throw error;
-    }
-  }
-
-  private async releaseInventory(data: CancelOrderJobPayload, logger: Logger) {
-    await delay(800);
-    logger.log(`Inventory released`);
-  }
-
-  private async processRefund(data: CancelOrderJobPayload, logger: Logger) {
-    await delay(2000);
-    logger.log(`Refund processed`);
+    super(cacheService, CancelOrderStrategy.name);
   }
 
   @Transactional()
-  private async finalizeOrderCancelling(data: CancelOrderJobPayload) {
+  async execute(job: Job<CancelOrderJobPayload>): Promise<void> {
+    const { jobId, orderId } = job.data;
+    const idempotencyKey = this.cacheKeyIdempotency(jobId);
+
+    const idempotencyValue = await this.getIdempotency(idempotencyKey);
+    if (idempotencyValue && idempotencyValue !== JobStatus.FAILED) {
+      return;
+    }
+    await this.setIdempotency(idempotencyKey, JobStatus.IN_PROGRESS);
+
+    try {
+      if (
+        await this.orderRepository.existsByStatusIn(orderId, [
+          OrderStatus.CANCELLED,
+          OrderStatus.REFUNDED,
+        ])
+      ) {
+        this.logger.log(
+          `Order ${orderId} is in CANCELLED or REFUNDED status or does not exist`,
+        );
+        await this.setIdempotency(idempotencyKey, JobStatus.COMPLETED);
+        return;
+      }
+
+      this.logger.log(
+        `Cancelling order ${orderId}, attempt ${job.attemptsMade + 1} of ${job.opts.attempts}`,
+      );
+
+      await this.cancelOrder(job.data);
+
+      await this.finish(job.data);
+    } catch (error) {
+      await this.setIdempotency(idempotencyKey, JobStatus.FAILED);
+
+      throw error;
+    } finally {
+      await this.setIdempotency(idempotencyKey, JobStatus.COMPLETED);
+    }
+  }
+
+  @Transactional()
+  async executeOnFailed(
+    job: Job<CancelOrderJobPayload>,
+    error: Error,
+  ): Promise<void> {
+    const { orderId } = job.data;
+
+    this.logger.error(
+      `[CRITICAL] Failed to cancel order ${orderId} after all retries: ${error.message}`,
+    );
+  }
+
+  private async cancelOrder(data: CancelOrderJobPayload) {
+    await delay(2000);
+    this.logger.log(`Cancel for order ${data.orderId} processed`);
+  }
+
+  private async finish(data: CancelOrderJobPayload) {
     const { orderId, userId, userName } = data;
 
     await this.orderRepository.update(orderId, {
@@ -80,11 +92,19 @@ export class CancelOrderStrategy extends BaseOrderJobStrategy<CancelOrderJobPayl
     // Add to the Outbox for sending notification to the user
     await this.outboxService.add(
       OutboxType.EVENTS_NOTIFY_USER,
-      new NotifyUserJobData(
+      new NotifyUserJobPayload(
         userId,
         userName,
         `<To user ${userName}>: Your order with id ${orderId} has been cancelled successfully!`,
       ),
     );
+
+    // TODO: Add to the Outbox for refund the order (job)
+
+    this.logger.log(`Order ${orderId} moved to CANCELLED`);
+  }
+
+  private cacheKeyIdempotency(jobId: string): string {
+    return `idempotency:order:cancel:${jobId}`;
   }
 }

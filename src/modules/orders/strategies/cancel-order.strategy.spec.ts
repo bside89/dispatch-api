@@ -11,6 +11,7 @@ describe('CancelOrderStrategy', () => {
   let cacheService: jest.Mocked<CacheService>;
   let outboxService: jest.Mocked<OutboxService>;
   let orderRepository: jest.Mocked<OrderRepository>;
+  let dataSource: jest.Mocked<DataSource>;
   let logger: Logger;
 
   beforeEach(async () => {
@@ -45,6 +46,7 @@ describe('CancelOrderStrategy', () => {
     }).compile();
 
     strategy = module.get<CancelOrderStrategy>(CancelOrderStrategy);
+    dataSource = module.get(DataSource);
     cacheService = module.get(CacheService);
     outboxService = module.get(OutboxService);
     orderRepository = module.get(OrderRepository);

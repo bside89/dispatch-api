@@ -11,6 +11,7 @@ describe('ShipOrderStrategy', () => {
   let cacheService: jest.Mocked<CacheService>;
   let outboxService: jest.Mocked<OutboxService>;
   let orderRepository: jest.Mocked<OrderRepository>;
+  let dataSource: jest.Mocked<DataSource>;
   let logger: Logger;
 
   beforeEach(async () => {
@@ -48,6 +49,7 @@ describe('ShipOrderStrategy', () => {
     cacheService = module.get(CacheService);
     outboxService = module.get(OutboxService);
     orderRepository = module.get(OrderRepository);
+    dataSource = module.get(DataSource);
     logger = new Logger();
   });
 

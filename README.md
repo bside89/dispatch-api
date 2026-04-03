@@ -160,17 +160,17 @@ sequenceDiagram
     Note over DB, Queue: [PHASE 2: STATUS PROPAGATION]
     loop Continuous Processing
         Worker->>DB: Fetch "PENDING" Outbox events
-        DB-->>Worker: List of events (Created, Processed, etc.)
+        DB-->>Worker: List of events (Created, Paid, etc.)
         Worker->>Queue: Dispatch Jobs (Order Flow & Notification Queues)
         Queue-->>Worker: Ack (Job IDs)
-        Worker->>DB: Mark Outbox messages as PROCESSED
+        Worker->>DB: Mark Outbox messages as PAID
     end
 
     Note over Queue, DB: [PHASE 3: STATE MACHINE STEPS]
     rect rgba(128, 128, 128, 0.1)
         Note right of Queue: Order Queue Worker
-        Queue->>DB: Update Order to "CONFIRMED"
-        Queue->>DB: Save Outbox (Event: ORDER_CONFIRMED & SEND_NOTIFICATION)
+        Queue->>DB: Update Order to "PAID"
+        Queue->>DB: Save Outbox (Event: PAID & SEND_NOTIFICATION)
 
         Note right of Queue: Next Step
         Queue->>DB: Update Order to "SHIPPED"

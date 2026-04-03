@@ -4,11 +4,8 @@ import { UpdateOrderDto } from './dto/update-order.dto';
 import { OrderQueryDto } from './dto/order-query.dto';
 import { OrderStatus } from './enums/order-status.enum';
 import { CacheService } from '../cache/cache.service';
-import {
-  CancelOrderJobPayload,
-  ProcessOrderJobPayload,
-} from './processors/payloads/order-job.payload';
-import { NotifyUserJobData } from '../../shared/modules/events/processors/payloads/notify-user.payload';
+import { ProcessPaymentOrderJobPayload } from './processors/payloads/order-job.payload';
+import { NotifyUserJobPayload } from '@/shared/modules/events/processors/payloads/notify-user.payload';
 import { OrderRepository } from './repositories/order.repository';
 import { OrderItemRepository } from './repositories/order-item.repository';
 import { PaginatedResultDto } from '@/shared/dto/paginated-result.dto';
@@ -19,6 +16,7 @@ import { OrderResponseDto } from './dto/order-response.dto';
 import { CACHE_CONFIG } from '@/shared/constants/cache.constant';
 import { OutboxService } from '@/shared/modules/outbox/outbox.service';
 import { OutboxType } from '@/shared/modules/outbox/enums/outbox-type.enum';
+import { runAndIgnoreError } from '@/shared/helpers/functions';
 
 @Injectable()
 export class OrdersService extends BaseService {
@@ -87,21 +85,21 @@ export class OrdersService extends BaseService {
 
     const orderMapped = OrderResponseDto.fromEntity(completeOrder);
 
-    await this.cacheService.set(
-      idempotencyKeyFormatted,
-      orderMapped,
-      CACHE_CONFIG.IDEMPOTENCY_TTL,
-    );
-
     // Add to the Outbox for processing the order (job)
     await this.outboxService.add(
       OutboxType.ORDER_PROCESS,
-      new ProcessOrderJobPayload(
+      new ProcessPaymentOrderJobPayload(
         userId,
         completeOrder.id,
         total,
         completeOrder.user.name,
       ),
+    );
+
+    await this.cacheService.set(
+      idempotencyKeyFormatted,
+      orderMapped,
+      CACHE_CONFIG.IDEMPOTENCY_TTL,
     );
 
     this.logger.debug(
@@ -115,7 +113,7 @@ export class OrdersService extends BaseService {
     queryDto: OrderQueryDto,
   ): Promise<PaginatedResultDto<OrderResponseDto>> {
     const cacheKey = `${this.CACHE_PREFIX}:list:${JSON.stringify(queryDto)}`;
-    const cachedResult = await this.runAndIgnoreError(
+    const cachedResult = await runAndIgnoreError(
       () =>
         this.cacheService.get<PaginatedResultDto<OrderResponseDto>>(cacheKey),
       `fetching orders list from cache with key: ${cacheKey}`,
@@ -127,7 +125,7 @@ export class OrdersService extends BaseService {
 
     const result = await this.orderRepository.findAllWithFilters(queryDto);
 
-    await this.runAndIgnoreError(
+    await runAndIgnoreError(
       () => this.cacheService.set(cacheKey, result, CACHE_CONFIG.LIST_TTL),
       `caching orders list with key: ${cacheKey}`,
     );
@@ -148,7 +146,7 @@ export class OrdersService extends BaseService {
 
   async findOne(id: string): Promise<OrderResponseDto> {
     const cacheKey = `${this.CACHE_PREFIX}:${id}`;
-    const cachedOrder = await this.runAndIgnoreError(
+    const cachedOrder = await runAndIgnoreError(
       () => this.cacheService.get<OrderResponseDto>(cacheKey),
       `fetching order from cache with key: ${cacheKey}`,
     );
@@ -168,7 +166,7 @@ export class OrdersService extends BaseService {
 
     const orderMapped = OrderResponseDto.fromEntity(order);
 
-    await this.runAndIgnoreError(
+    await runAndIgnoreError(
       () =>
         this.cacheService.set(cacheKey, orderMapped, CACHE_CONFIG.DEFAULT_TTL),
       `caching order with key: ${cacheKey}`,
@@ -227,19 +225,9 @@ export class OrdersService extends BaseService {
   async remove(id: string): Promise<OrderResponseDto> {
     const order = await this.findOne(id);
 
-    const status = order.status;
-
     await this.orderRepository.delete(order.id);
 
     await this.clearOrderCache(order.user.id, id);
-
-    if (status === OrderStatus.PENDING || status === OrderStatus.CONFIRMED) {
-      // Add to the Outbox for cancellation (job)
-      await this.outboxService.add(
-        OutboxType.ORDER_CANCEL,
-        new CancelOrderJobPayload(order.user.id, id, order.user.name),
-      );
-    }
 
     this.logger.debug(`Order deleted: ${id}`);
 
@@ -255,25 +243,29 @@ export class OrdersService extends BaseService {
       'user',
       'items',
     ]);
-    const oldStatus = order.status;
     if (!order) {
       throw new NotFoundException(`Order with ID ${id} not found`);
+    }
+
+    const oldStatus = order.status;
+    if (status === oldStatus) {
+      this.logger.debug(`Order ${id} is already in status ${status}`);
+
+      return OrderResponseDto.fromEntity(order);
     }
 
     order.status = status;
     await this.orderRepository.save(order);
 
-    if (status !== oldStatus) {
-      // Add to the Outbot to notify the user about the status change (Event Bus)
-      await this.outboxService.add(
-        OutboxType.EVENTS_NOTIFY_USER,
-        new NotifyUserJobData(
-          order.user.id,
-          order.user.name,
-          `<To user ${order.user.name}>: Your order with id ${order.id} status has been updated to ${status}`,
-        ),
-      );
-    }
+    // Add to the Outbot to notify the user about the status change (Event Bus)
+    await this.outboxService.add(
+      OutboxType.EVENTS_NOTIFY_USER,
+      new NotifyUserJobPayload(
+        order.user.id,
+        order.user.name,
+        `<To user ${order.user.name}>: Your order with id ${order.id} status has been updated to ${status}`,
+      ),
+    );
 
     await this.clearOrderCache(order.user.id, id);
 
@@ -303,10 +295,18 @@ export class OrdersService extends BaseService {
 
     await Promise.all([
       // Delete specific keys
-      ...keysToDelete.map((key) => this.cacheService.delete(key)),
+      ...keysToDelete.map((key) =>
+        runAndIgnoreError(
+          () => this.cacheService.delete(key),
+          `deleting cache key: ${key}`,
+        ),
+      ),
       // Delete pattern-based keys
       ...patternsToDelete.map((pattern) =>
-        this.cacheService.deletePattern(pattern),
+        runAndIgnoreError(
+          () => this.cacheService.deletePattern(pattern),
+          `deleting cache pattern: ${pattern}`,
+        ),
       ),
     ]);
 

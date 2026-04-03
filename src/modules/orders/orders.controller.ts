@@ -230,7 +230,7 @@ export class OrdersController extends BaseController {
         status: {
           type: 'string',
           enum: Object.values(OrderStatus),
-          example: OrderStatus.CONFIRMED,
+          example: OrderStatus.PAID,
         },
       },
       required: ['status'],

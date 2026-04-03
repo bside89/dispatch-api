@@ -12,7 +12,7 @@ import { CACHE_CONFIG } from '@/shared/constants/cache.constant';
 import { DataSource } from 'typeorm';
 import { BaseService } from '@/shared/services/base.service';
 import { OutboxService } from '@/shared/modules/outbox/outbox.service';
-import { NotifyUserJobData } from '../../shared/modules/events/processors/payloads/notify-user.payload';
+import { NotifyUserJobPayload } from '../../shared/modules/events/processors/payloads/notify-user.payload';
 import { OutboxType } from '@/shared/modules/outbox/enums/outbox-type.enum';
 
 @Injectable()
@@ -50,7 +50,7 @@ export class AuthService extends BaseService {
     // Add to the Outbox for notifying the user about the login (Event Bus)
     await this.outboxService.add(
       OutboxType.EVENTS_NOTIFY_USER,
-      new NotifyUserJobData(
+      new NotifyUserJobPayload(
         user.id,
         user.name,
         `<To user ${user.name}>: Welcome! You have logged in successfully.`,

@@ -118,7 +118,12 @@
         "testRegex": ".*\\.spec\\.ts$",
         "rootDir": "src",
         "transform": {
-          "^.+\\.(t|j)s$": "ts-jest"
+          "^.+\\.(t|j)s$": [
+            "ts-jest",
+            {
+              "tsconfig": "tsconfig.spec.json"
+            }
+          ]
         },
         "moduleFileExtensions": [
           "js",
@@ -137,7 +142,12 @@
         "globalSetup": "<rootDir>/test/setup-integration.ts",
         "globalTeardown": "<rootDir>/test/teardown-integration.ts",
         "transform": {
-          "^.+\\.(t|j)s$": "ts-jest"
+          "^.+\\.(t|j)s$": [
+            "ts-jest",
+            {
+              "tsconfig": "tsconfig.spec.json"
+            }
+          ]
         },
         "moduleFileExtensions": [
           "js",
@@ -156,7 +166,12 @@
         "globalSetup": "<rootDir>/test/setup-integration.ts",
         "globalTeardown": "<rootDir>/test/teardown-integration.ts",
         "transform": {
-          "^.+\\.(t|j)s$": "ts-jest"
+          "^.+\\.(t|j)s$": [
+            "ts-jest",
+            {
+              "tsconfig": "tsconfig.spec.json"
+            }
+          ]
         },
         "moduleFileExtensions": [
           "js",

@@ -1,4 +1,4 @@
-import { Processor } from '@nestjs/bullmq';
+import { OnWorkerEvent, Processor } from '@nestjs/bullmq';
 import { Job } from 'bullmq';
 import { OrderJobHandlerFactory } from '../factories/order-job-handler.factory';
 
@@ -16,11 +16,11 @@ export class OrderProcessor
   implements OnApplicationBootstrap
 {
   constructor(
-    private readonly factory: OrderJobHandlerFactory,
-    private readonly cacheService: CacheService,
-    private readonly configService: ConfigService,
+    protected readonly factory: OrderJobHandlerFactory,
+    protected readonly cacheService: CacheService,
+    protected readonly configService: ConfigService,
   ) {
-    super(OrderProcessor.name);
+    super(cacheService, OrderProcessor.name);
   }
 
   onApplicationBootstrap() {
@@ -30,7 +30,19 @@ export class OrderProcessor
     this.setupConcurrency(Number(concurrency));
   }
 
-  async process(job: Job): Promise<void> {
+  async process(job: Job) {
+    await this.execute('process', job);
+  }
+
+  @OnWorkerEvent('failed')
+  async onJobFailed(job: Job, error: Error) {
+    if (job.attemptsMade >= (job.opts.attempts || 1)) {
+      // Execute after all retries have been exhausted
+      await this.execute('failed', job, error);
+    }
+  }
+
+  async execute(event: 'process' | 'failed', job: Job, error?: Error) {
     const correlationId = job.data?.correlationId ?? randomUUID();
 
     return RequestContext.run(correlationId, async () => {
@@ -54,7 +66,11 @@ export class OrderProcessor
           return;
         }
 
-        await handler.execute(job, this.logger);
+        if (event === 'failed') {
+          await handler.executeOnFailed(job, error!);
+        } else {
+          await handler.execute(job);
+        }
       } finally {
         await this.cacheService.delete(lockKey);
       }

@@ -1,65 +1,97 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { Job } from 'bullmq';
 import { OrderStatus } from '../enums/order-status.enum';
-import { BaseOrderJobStrategy } from './base-order-job.strategy';
+import { BaseJobStrategy } from '../../../shared/strategies/base-job.strategy';
 import {
   DeliverOrderJobPayload,
   ShipOrderJobPayload,
 } from '../processors/payloads/order-job.payload';
 import { delay } from '../../../shared/helpers/functions';
-import { NotifyUserJobData } from '../../../shared/modules/events/processors/payloads/notify-user.payload';
+import { NotifyUserJobPayload } from '../../../shared/modules/events/processors/payloads/notify-user.payload';
 import { Transactional } from '@/shared/decorators/transactional.decorator';
 import { OutboxType } from '@/shared/modules/outbox/enums/outbox-type.enum';
 import { CacheService } from '../../cache/cache.service';
 import { OutboxService } from '@/shared/modules/outbox/outbox.service';
 import { OrderRepository } from '../repositories/order.repository';
 import { DataSource } from 'typeorm';
+import { JobStatus } from '@/shared/enums/job-status.enum';
 
 @Injectable()
-export class ShipOrderStrategy extends BaseOrderJobStrategy<ShipOrderJobPayload> {
+export class ShipOrderStrategy extends BaseJobStrategy<ShipOrderJobPayload> {
   constructor(
-    cacheService: CacheService,
-    outboxService: OutboxService,
-    orderRepository: OrderRepository,
-    dataSource: DataSource,
+    protected readonly outboxService: OutboxService,
+    protected readonly orderRepository: OrderRepository,
+    protected readonly cacheService: CacheService,
+    protected readonly dataSource: DataSource,
   ) {
-    super(cacheService, outboxService, orderRepository, dataSource);
+    super(cacheService, ShipOrderStrategy.name);
   }
 
-  async execute(job: Job<ShipOrderJobPayload>, logger: Logger): Promise<void> {
+  @Transactional()
+  async execute(job: Job<ShipOrderJobPayload>): Promise<void> {
     const { jobId, orderId } = job.data;
+    const idempotencyKey = this.cacheKeyIdempotency(jobId);
 
-    const key = `idempotency:order:ship:${jobId}`;
-    if (await this.hasKey(key)) return;
-    await this.setKey(key);
-
-    if (await this.isAlreadyInStatus(orderId, OrderStatus.SHIPPED)) {
-      logger.log(`Order ${orderId} is already in SHIPPED status`);
+    const idempotencyValue = await this.getIdempotency(idempotencyKey);
+    if (idempotencyValue && idempotencyValue !== JobStatus.FAILED) {
       return;
     }
-
-    logger.log(`Shipping order ${orderId}`);
+    await this.setIdempotency(idempotencyKey, JobStatus.IN_PROGRESS);
 
     try {
-      await this.simulateShipping(logger);
+      if (
+        !(await this.orderRepository.existsByStatusIn(orderId, [
+          OrderStatus.PAID,
+        ]))
+      ) {
+        this.logger.log(
+          `Order ${orderId} is not in PAID status or does not exist`,
+        );
+        await this.setIdempotency(idempotencyKey, JobStatus.COMPLETED);
+        return;
+      }
 
-      // Atomic transaction to update order status and publish events
-      await this.finalizeOrderShipping(job.data);
+      this.logger.log(
+        `Shipping order ${orderId}, attempt ${job.attemptsMade + 1} of ${job.opts.attempts}`,
+      );
 
-      logger.log(`Order ${orderId} moved to SHIPPED`);
-    } catch (error) {
-      await this.removeKey(key);
+      await this.simulateShipping(job.data);
+
+      await this.finish(job.data);
+
+      await this.setIdempotency(idempotencyKey, JobStatus.COMPLETED);
+    } catch (error: any) {
+      await this.setIdempotency(idempotencyKey, JobStatus.FAILED);
+
       throw error;
     }
   }
 
-  private async simulateShipping(logger: Logger) {
-    await delay(2000);
-    logger.log('Shipping OK');
+  @Transactional()
+  async executeOnFailed(
+    job: Job<ShipOrderJobPayload>,
+    error: Error,
+  ): Promise<void> {
+    const { orderId } = job.data;
+
+    this.logger.error(
+      `Failed to ship order ${orderId} after all retries: ${error.message}`,
+    );
+
+    await this.compensationLogic(job.data);
   }
 
-  @Transactional()
-  private async finalizeOrderShipping(data: ShipOrderJobPayload) {
+  private async compensationLogic(data: ShipOrderJobPayload) {
+    // TODO: Implement a RefundOrderStrategy and call it here instead of just logging
+    this.logger.log(`Compensation logic executed for order ${data.orderId}`);
+  }
+
+  private async simulateShipping(data: ShipOrderJobPayload) {
+    await delay(2000);
+    this.logger.log(`Shipping OK for order ${data.orderId}`);
+  }
+
+  private async finish(data: ShipOrderJobPayload) {
     const { orderId, userId, userName } = data;
 
     await this.orderRepository.update(orderId, {
@@ -69,7 +101,7 @@ export class ShipOrderStrategy extends BaseOrderJobStrategy<ShipOrderJobPayload>
     // Add to the Outbox for sending notification to the user (Event Bus)
     await this.outboxService.add(
       OutboxType.EVENTS_NOTIFY_USER,
-      new NotifyUserJobData(
+      new NotifyUserJobPayload(
         userId,
         userName,
         `<To user ${userName}>: Your order with id ${orderId} has been shipped successfully!`,
@@ -81,5 +113,13 @@ export class ShipOrderStrategy extends BaseOrderJobStrategy<ShipOrderJobPayload>
       OutboxType.ORDER_DELIVER,
       new DeliverOrderJobPayload(userId, orderId, userName),
     );
+
+    this.logger.log(`Order ${orderId} moved to SHIPPED`);
+  }
+
+  // Methods for creating cache keys
+
+  private cacheKeyIdempotency(jobId: string): string {
+    return `idempotency:order:ship:${jobId}`;
   }
 }

@@ -1,3 +1,4 @@
+import { CacheService } from '@/modules/cache/cache.service';
 import { WorkerHost } from '@nestjs/bullmq';
 import { Logger } from '@nestjs/common';
 import * as os from 'os';
@@ -5,7 +6,10 @@ import * as os from 'os';
 export abstract class BaseProcessor extends WorkerHost {
   protected readonly logger: Logger;
 
-  constructor(protected readonly processorName: string) {
+  constructor(
+    protected readonly cacheService: CacheService,
+    protected readonly processorName: string,
+  ) {
     super();
     this.logger = new Logger(processorName);
   }

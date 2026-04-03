@@ -8,7 +8,7 @@ import { CacheModule } from '../cache/cache.module';
 import { OrderJobHandlerFactory } from './factories';
 import {
   CancelOrderStrategy,
-  ProcessOrderStrategy,
+  ProcessPaymentOrderStrategy,
   NotificationStrategy,
 } from './strategies';
 import { ShipOrderStrategy } from './strategies/ship-order.strategy';
@@ -26,7 +26,7 @@ import { OrderItemRepository } from './repositories/order-item.repository';
     OrderItemRepository,
     OrderProcessor,
     OrderJobHandlerFactory,
-    ProcessOrderStrategy,
+    ProcessPaymentOrderStrategy,
     ShipOrderStrategy,
     DeliverOrderStrategy,
     CancelOrderStrategy,
