@@ -7,12 +7,12 @@ import { OrderItem } from './entities/order-item.entity';
 import { CacheModule } from '../cache/cache.module';
 import { OrderJobHandlerFactory } from './factories';
 import {
-  CancelOrderStrategy,
-  ProcessPaymentOrderStrategy,
-  NotificationStrategy,
+  CancelOrderJobStrategy,
+  ProcessOrderJobStrategy,
+  NotificationJobStrategy,
 } from './strategies';
-import { ShipOrderStrategy } from './strategies/ship-order.strategy';
-import { DeliverOrderStrategy } from './strategies/deliver-order.strategy';
+import { ShipOrderJobStrategy } from './strategies/ship-order-job.strategy';
+import { DeliverOrderJobStrategy } from './strategies/deliver-order-job.strategy';
 import { OrderProcessor } from './processors/order.processor';
 import { OrderRepository } from './repositories/order.repository';
 import { OrderItemRepository } from './repositories/order-item.repository';
@@ -26,11 +26,11 @@ import { OrderItemRepository } from './repositories/order-item.repository';
     OrderItemRepository,
     OrderProcessor,
     OrderJobHandlerFactory,
-    ProcessPaymentOrderStrategy,
-    ShipOrderStrategy,
-    DeliverOrderStrategy,
-    CancelOrderStrategy,
-    NotificationStrategy,
+    ProcessOrderJobStrategy,
+    ShipOrderJobStrategy,
+    DeliverOrderJobStrategy,
+    CancelOrderJobStrategy,
+    NotificationJobStrategy,
   ],
   exports: [OrdersService, OrderRepository, OrderItemRepository],
 })

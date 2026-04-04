@@ -1,8 +1,8 @@
 import { Injectable } from '@nestjs/common';
-import { ProcessPaymentOrderStrategy } from '../strategies/process-payment-order.strategy';
-import { CancelOrderStrategy } from '../strategies/cancel-order.strategy';
-import { ShipOrderStrategy } from '../strategies/ship-order.strategy';
-import { DeliverOrderStrategy } from '../strategies/deliver-order.strategy';
+import { ProcessOrderJobStrategy } from '../strategies/process-order-job.strategy';
+import { CancelOrderJobStrategy } from '../strategies/cancel-order-job.strategy';
+import { ShipOrderJobStrategy } from '../strategies/ship-order-job.strategy';
+import { DeliverOrderJobStrategy } from '../strategies/deliver-order-job.strategy';
 import { OutboxType as OrderJob } from '@/shared/modules/outbox/enums/outbox-type.enum';
 import { BaseJobStrategy } from '@/shared/strategies/base-job.strategy';
 import { BaseJobPayload } from '@/shared/jobs/base-job.payload';
@@ -10,10 +10,10 @@ import { BaseJobPayload } from '@/shared/jobs/base-job.payload';
 @Injectable()
 export class OrderJobHandlerFactory {
   constructor(
-    private readonly processPaymentOrder: ProcessPaymentOrderStrategy,
-    private readonly shipOrder: ShipOrderStrategy,
-    private readonly deliverOrder: DeliverOrderStrategy,
-    private readonly cancelOrder: CancelOrderStrategy,
+    private readonly processPaymentOrder: ProcessOrderJobStrategy,
+    private readonly shipOrder: ShipOrderJobStrategy,
+    private readonly deliverOrder: DeliverOrderJobStrategy,
+    private readonly cancelOrder: CancelOrderJobStrategy,
   ) {}
 
   createHandler(jobType: string): BaseJobStrategy<BaseJobPayload> | null {

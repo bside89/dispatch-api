@@ -1,12 +1,12 @@
-import { Logger } from '@nestjs/common';
 import { SuccessResponseDto } from '../dto/success-response.dto';
 import { PaginatedResponseDto } from '../dto/paginated-response.dto';
+import { AppLogger } from '../utils/app-logger';
 
 export abstract class BaseController {
-  protected readonly logger: Logger;
+  protected readonly logger: AppLogger;
 
   constructor(protected readonly controllerName: string) {
-    this.logger = new Logger(controllerName);
+    this.logger = new AppLogger(controllerName);
   }
 
   protected success<T>(

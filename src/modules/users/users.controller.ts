@@ -55,7 +55,8 @@ export class UsersController extends BaseController {
   @ApiOperation({
     summary: 'Create a new user',
     description:
-      'Creates a new user with the provided information. Requires Idempotency-Key header to prevent duplicate users.',
+      'Creates a new user with the provided information. ' +
+      'Requires Idempotency-Key header to prevent duplicate users.',
   })
   @ApiHeader({
     name: 'idempotency-key',
@@ -86,9 +87,10 @@ export class UsersController extends BaseController {
       throw new BadRequestException('Idempotency-Key header is required');
     }
 
-    this.logger.debug(
-      `POST /users - Creating user with email: ${createUserDto.email} and idempotency key: ${idempotencyKey}`,
-    );
+    this.logger.debug('POST /users - Creating user', {
+      userEmail: createUserDto.email,
+      idempotencyKey,
+    });
 
     const result = await this.usersService.create(createUserDto, idempotencyKey);
 
@@ -129,10 +131,10 @@ export class UsersController extends BaseController {
     description: 'Number of users to skip',
     type: Number,
   })
-  async findAll(@Query() query: UserQueryDto) {
-    this.logger.debug('GET /users - Retrieving all users');
+  async findAll(@Query() queryDto: UserQueryDto) {
+    this.logger.debug('GET /users - Retrieving all users', { query: queryDto });
 
-    const result = await this.usersService.findAll(query);
+    const result = await this.usersService.findAll(queryDto);
 
     return this.paginate(result.data, result.total, result.page, result.limit);
   }
@@ -159,7 +161,7 @@ export class UsersController extends BaseController {
     description: 'Invalid UUID format',
   })
   async findOne(@Param('id', ParseUUIDPipe) id: string) {
-    this.logger.debug(`GET /users/${id} - Retrieving user`);
+    this.logger.debug(`GET /users/${id} - Retrieving user`, { userId: id });
 
     const result = await this.usersService.findOne(id);
 
@@ -170,7 +172,8 @@ export class UsersController extends BaseController {
   @ApiOperation({
     summary: 'Update user information',
     description:
-      'Updates user information (name and email only). Use PATCH /users/:id/login to update login credentials.',
+      'Updates user information (name and email only). ' +
+      'Use PATCH /users/:id/login to update login credentials.',
   })
   @ApiParam({
     name: 'id',
@@ -199,7 +202,9 @@ export class UsersController extends BaseController {
     @Param('id', ParseUUIDPipe) id: string,
     @Body() updateUserDto: UpdateUserDto,
   ) {
-    this.logger.debug(`PATCH /users/${id} - Updating user`);
+    this.logger.debug(`PATCH /users/${id} - Updating user`, {
+      userId: id,
+    });
 
     const result = await this.usersService.update(id, updateUserDto);
 
@@ -210,7 +215,8 @@ export class UsersController extends BaseController {
   @ApiOperation({
     summary: 'Update user login credentials',
     description:
-      'Updates user email and/or password. Current password is required when changing password.',
+      'Updates user email and/or password. ' +
+      'Current password is required when changing password.',
   })
   @ApiParam({
     name: 'id',
@@ -240,7 +246,9 @@ export class UsersController extends BaseController {
     @Param('id', ParseUUIDPipe) id: string,
     @Body() updateLoginDto: UpdateLoginDto,
   ) {
-    this.logger.debug(`PATCH /users/${id}/login - Updating user login credentials`);
+    this.logger.debug(`PATCH /users/${id}/login - Updating user login credentials`, {
+      userId: id,
+    });
 
     const result = await this.usersService.updateLogin(id, updateLoginDto);
 
@@ -271,7 +279,7 @@ export class UsersController extends BaseController {
     description: 'Invalid UUID format',
   })
   async remove(@Param('id', ParseUUIDPipe) id: string) {
-    this.logger.debug(`DELETE /users/${id} - Deleting user`);
+    this.logger.debug(`DELETE /users/${id} - Deleting user`, { userId: id });
 
     await this.usersService.remove(id);
 

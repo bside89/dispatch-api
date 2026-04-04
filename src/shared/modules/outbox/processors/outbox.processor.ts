@@ -1,7 +1,7 @@
 import { EVENT_BUS } from '@/shared/modules/events/constants/event-bus.token';
 import type { EventBus } from '@/shared/modules/events/interfaces/event-bus.interface';
 import { InjectQueue } from '@nestjs/bullmq';
-import { Inject, Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { Queue } from 'bullmq';
 import { OutboxRepository } from '../repositories/outbox.repository';
 import { OutboxType } from '../enums/outbox-type.enum';
@@ -9,10 +9,11 @@ import { Cron, CronExpression } from '@nestjs/schedule';
 import { Outbox } from '../entities/outbox.entity';
 import { Transactional } from '@/shared/decorators/transactional.decorator';
 import { DataSource } from 'typeorm';
+import { AppLogger } from '@/shared/utils/app-logger';
 
 @Injectable()
 export class OutboxProcessor {
-  private readonly logger = new Logger(OutboxProcessor.name);
+  private readonly logger = new AppLogger(OutboxProcessor.name);
 
   private isProcessing = false;
 
@@ -58,8 +59,8 @@ export class OutboxProcessor {
         setImmediate(() => this.process());
         return;
       }
-    } catch (e) {
-      this.logger.error('Error during Outbox processing cycle', e);
+    } catch (error: any) {
+      this.logger.error('Error during Outbox processing cycle', error);
     } finally {
       this.isProcessing = false;
     }

@@ -12,7 +12,7 @@ jest.mock('@nestjs/passport', () => ({
   },
 }));
 
-describe('JwtRefreshStrategy', () => {
+describe(JwtRefreshStrategy.name, () => {
   let strategy: JwtRefreshStrategy;
 
   beforeEach(async () => {
@@ -50,11 +50,14 @@ describe('JwtRefreshStrategy', () => {
       const result = await strategy.validate(mockReq, validPayload);
 
       expect(result).toEqual({
-        sub: validPayload.sub,
-        email: validPayload.email,
-        role: validPayload.role,
-        jti: validPayload.jti,
-        refreshToken: rawToken,
+        id: 'user-uuid',
+        jwtPayload: {
+          sub: validPayload.sub,
+          email: validPayload.email,
+          role: validPayload.role,
+          jti: validPayload.jti,
+          refreshToken: rawToken,
+        },
       });
     });
 
@@ -63,7 +66,7 @@ describe('JwtRefreshStrategy', () => {
 
       const result = await strategy.validate(mockReq, validPayload);
 
-      expect(result.refreshToken).toBeUndefined();
+      expect(result.jwtPayload.refreshToken).toBeUndefined();
     });
 
     it('should correctly strip the Bearer prefix from the token', async () => {
@@ -73,7 +76,7 @@ describe('JwtRefreshStrategy', () => {
 
       const result = await strategy.validate(mockReq, validPayload);
 
-      expect(result.refreshToken).toBe('token-with-leading-spaces');
+      expect(result.jwtPayload.refreshToken).toBe('token-with-leading-spaces');
     });
 
     it('should map sub to id in the returned user object', async () => {
@@ -86,7 +89,7 @@ describe('JwtRefreshStrategy', () => {
         sub: 'another-user-id',
       });
 
-      expect(result.sub).toBe('another-user-id');
+      expect(result.id).toBe('another-user-id');
     });
   });
 });

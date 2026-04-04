@@ -1,5 +1,4 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { OrderItem } from '../entities/order-item.entity';
 import { OrderStatus } from '../enums/order-status.enum';
 import { UserResponseDto } from '@/modules/users/dto/user-response.dto';
 import { Order } from '../entities/order.entity';

@@ -1,6 +1,6 @@
 import { OnWorkerEvent, Processor } from '@nestjs/bullmq';
 import { Job } from 'bullmq';
-import { NotificationStrategy } from '../strategies/notification.strategy';
+import { NotificationJobStrategy } from '../strategies/notification-job.strategy';
 import { BaseProcessor } from '@/shared/processors/base.processor';
 import { OutboxType as JobName } from '@/shared/modules/outbox/enums/outbox-type.enum';
 import { RequestContext } from '@/shared/utils/request-context';
@@ -15,7 +15,7 @@ import Redlock from 'redlock';
 @Processor('events', { maxStalledCount: 1 })
 export class EventProcessor extends BaseProcessor implements OnApplicationBootstrap {
   constructor(
-    protected readonly notificationStrategy: NotificationStrategy,
+    protected readonly notificationStrategy: NotificationJobStrategy,
     protected readonly configService: ConfigService,
     protected readonly cacheService: CacheService,
     protected readonly redlock: Redlock, // Used in @UseLock()

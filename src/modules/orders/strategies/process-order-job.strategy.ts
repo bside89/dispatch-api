@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { Job } from 'bullmq';
 import { OrderStatus } from '../enums/order-status.enum';
 import {
-  ProcessPaymentOrderJobPayload,
+  ProcessPaymentOrderJobPayload as ProcessOrderJobPayload,
   ShipOrderJobPayload,
 } from '../processors/payloads/order-job.payload';
 import { NotifyUserJobPayload } from '@/shared/modules/events/processors/payloads/notify-user.payload';
@@ -18,7 +18,7 @@ import { BaseOrderJobStrategy } from './base-order-job.strategy';
 import Redlock from 'redlock';
 
 @Injectable()
-export class ProcessPaymentOrderStrategy extends BaseOrderJobStrategy<ProcessPaymentOrderJobPayload> {
+export class ProcessOrderJobStrategy extends BaseOrderJobStrategy<ProcessOrderJobPayload> {
   private readonly orderIsPaidCacheTTL = 24 * 60 * 60 * 1000; // 24 hours
 
   constructor(
@@ -29,7 +29,7 @@ export class ProcessPaymentOrderStrategy extends BaseOrderJobStrategy<ProcessPay
     protected readonly redlock: Redlock, // Used in @UseLock()
   ) {
     super(
-      ProcessPaymentOrderStrategy.name,
+      ProcessOrderJobStrategy.name,
       cacheService,
       orderRepository,
       dataSource,
@@ -38,7 +38,7 @@ export class ProcessPaymentOrderStrategy extends BaseOrderJobStrategy<ProcessPay
   }
 
   @Transactional()
-  async execute(job: Job<ProcessPaymentOrderJobPayload>): Promise<void> {
+  async execute(job: Job<ProcessOrderJobPayload>): Promise<void> {
     const { jobId, orderId } = job.data;
     const idempotencyKey = this.cacheKeyIdempotency(jobId);
 
@@ -89,7 +89,7 @@ export class ProcessPaymentOrderStrategy extends BaseOrderJobStrategy<ProcessPay
 
   @Transactional()
   async executeOnFailed(
-    job: Job<ProcessPaymentOrderJobPayload>,
+    job: Job<ProcessOrderJobPayload>,
     error: Error,
   ): Promise<void> {
     const { orderId } = job.data;
@@ -107,7 +107,7 @@ export class ProcessPaymentOrderStrategy extends BaseOrderJobStrategy<ProcessPay
     }
   }
 
-  private async compensationLogic(data: ProcessPaymentOrderJobPayload) {
+  private async compensationLogic(data: ProcessOrderJobPayload) {
     // TODO: Implement a RefundOrderStrategy and call it here instead of just logging
     const isPaid = await this.cacheService.get<boolean>(
       this.cacheKeyIsPaid(data.orderId),
@@ -124,23 +124,23 @@ export class ProcessPaymentOrderStrategy extends BaseOrderJobStrategy<ProcessPay
     await this.releaseInventory(data);
   }
 
-  private async processPayment(data: ProcessPaymentOrderJobPayload) {
+  private async processPayment(data: ProcessOrderJobPayload) {
     if (Math.random() < 0.1) throw new Error('Random payment error');
     await delay(2000);
     this.logger.log(`Payment OK for order ${data.orderId}`);
   }
 
-  private async refundPayment(data: ProcessPaymentOrderJobPayload) {
+  private async refundPayment(data: ProcessOrderJobPayload) {
     await delay(1000);
     this.logger.warn(`Payment refunded for order ${data.orderId}`);
   }
 
-  private async releaseInventory(data: ProcessPaymentOrderJobPayload) {
+  private async releaseInventory(data: ProcessOrderJobPayload) {
     await delay(1000);
     this.logger.warn(`Inventory released for order ${data.orderId}`);
   }
 
-  private async finish(data: ProcessPaymentOrderJobPayload) {
+  private async finish(data: ProcessOrderJobPayload) {
     const { orderId, userId, userName } = data;
 
     await this.updateOrderStatus(orderId, OrderStatus.PAID);

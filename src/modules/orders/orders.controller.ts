@@ -34,12 +34,12 @@ import { OrderStatus } from './enums/order-status.enum';
 import { UserRole } from '../users/enums/user-role.enum';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { PaginatedResultDto } from '@/shared/dto/paginated-result.dto';
-import type { JwtPayload } from '../auth/interfaces/jwt-payload.interface';
 import { GetUser } from '@/shared/decorators/get-user.decorator';
 import { OrderResponseDto } from './dto/order-response.dto';
 import { BaseController } from '@/shared/controllers/base.controller';
 import { SuccessResponseDto } from '@/shared/dto/success-response.dto';
 import { ErrorResponseDto } from '@/shared/dto/error-response.dto';
+import type { RequestUser } from '../auth/interfaces/request-user.interface';
 
 @Controller({ path: 'v1/orders', version: '1' })
 @ApiTags('orders')
@@ -77,19 +77,20 @@ export class OrdersController extends BaseController {
   async create(
     @Body() createOrderDto: CreateOrderDto,
     @Headers('idempotency-key') idempotencyKey: string,
-    @GetUser() user: JwtPayload,
+    @GetUser() user: RequestUser,
   ) {
     if (!idempotencyKey) {
       throw new BadRequestException('Idempotency-Key header is required');
     }
 
-    this.logger.debug(
-      `POST /orders - Creating order for user: ${user.sub} with idempotency key: ${idempotencyKey}`,
-    );
+    this.logger.debug('POST /orders - Creating order', {
+      userId: user.id,
+      idempotencyKey,
+    });
 
     const result = await this.ordersService.create(
       createOrderDto,
-      user.sub,
+      user.id,
       idempotencyKey,
     );
 
@@ -137,9 +138,7 @@ export class OrdersController extends BaseController {
     description: 'Items per page (default: 10)',
   })
   async findAll(@Query() queryDto: OrderQueryDto) {
-    this.logger.debug(
-      `GET /orders - Fetching orders with filters: ${JSON.stringify(queryDto)}`,
-    );
+    this.logger.debug(`GET /orders - Fetching orders with filters`, { queryDto });
 
     const result = await this.ordersService.findAll(queryDto);
 
@@ -163,7 +162,7 @@ export class OrdersController extends BaseController {
     description: 'Order not found',
   })
   async findOne(@Param('id', ParseUUIDPipe) id: string) {
-    this.logger.debug(`GET /orders/${id} - Fetching order`);
+    this.logger.debug(`GET /orders/${id} - Fetching order`, { orderId: id });
 
     const result = await this.ordersService.findOne(id);
 
@@ -197,7 +196,10 @@ export class OrdersController extends BaseController {
     @Param('id', ParseUUIDPipe) id: string,
     @Body() updateOrderDto: UpdateOrderDto,
   ) {
-    this.logger.debug(`PATCH /orders/${id} - Updating order`);
+    this.logger.debug(`PATCH /orders/${id} - Updating order`, {
+      orderId: id,
+      updateOrderDto,
+    });
 
     const result = await this.ordersService.update(id, updateOrderDto);
 
@@ -241,7 +243,10 @@ export class OrdersController extends BaseController {
     @Param('id', ParseUUIDPipe) id: string,
     @Body('status') status: OrderStatus,
   ) {
-    this.logger.debug(`PATCH /orders/${id}/status - Updating status to: ${status}`);
+    this.logger.debug(`PATCH /orders/${id}/status - Updating order status`, {
+      orderId: id,
+      status,
+    });
 
     const result = await this.ordersService.updateStatus(id, status);
 
@@ -272,7 +277,7 @@ export class OrdersController extends BaseController {
     type: ErrorResponseDto,
   })
   async remove(@Param('id', ParseUUIDPipe) id: string) {
-    this.logger.debug(`DELETE /orders/${id} - Deleting order`);
+    this.logger.debug(`DELETE /orders/${id} - Deleting order`, { orderId: id });
 
     await this.ordersService.remove(id);
 

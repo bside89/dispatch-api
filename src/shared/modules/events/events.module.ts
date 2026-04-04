@@ -4,7 +4,7 @@ import { BullEventBus } from './implementations/bull-event-bus';
 import { EVENT_BUS } from './constants/event-bus.token';
 import { BullModule } from '@nestjs/bullmq';
 import { bullmqDefaultJobOptions } from '../../../config/bullmq.config';
-import { NotificationStrategy } from './strategies/notification.strategy';
+import { NotificationJobStrategy } from './strategies/notification-job.strategy';
 import { CacheModule } from '../../../modules/cache/cache.module';
 
 @Global()
@@ -23,7 +23,7 @@ import { CacheModule } from '../../../modules/cache/cache.module';
     },
     BullEventBus,
     EventProcessor,
-    NotificationStrategy,
+    NotificationJobStrategy,
   ],
   exports: [EVENT_BUS],
 })

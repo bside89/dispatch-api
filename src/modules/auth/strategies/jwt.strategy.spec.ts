@@ -16,7 +16,7 @@ jest.mock('@nestjs/passport', () => ({
   },
 }));
 
-describe('JwtStrategy', () => {
+describe(JwtStrategy.name, () => {
   let strategy: JwtStrategy;
   let cacheService: jest.Mocked<CacheService>;
 
@@ -58,12 +58,17 @@ describe('JwtStrategy', () => {
 
       const result = await strategy.validate(mockReq, validPayload);
 
-      expect(cacheService.get).toHaveBeenCalledWith(`blacklist:${validPayload.jti}`);
+      expect(cacheService.get).toHaveBeenCalledWith(
+        `blacklist:auth:${validPayload.jti}`,
+      );
       expect(result).toEqual({
-        sub: validPayload.sub,
-        email: validPayload.email,
-        role: validPayload.role,
-        jti: validPayload.jti,
+        id: validPayload.sub,
+        jwtPayload: {
+          sub: validPayload.sub,
+          email: validPayload.email,
+          role: validPayload.role,
+          jti: validPayload.jti,
+        },
       });
     });
 
@@ -84,7 +89,7 @@ describe('JwtStrategy', () => {
 
       const result = await strategy.validate(mockReq, payload);
 
-      expect(result.sub).toBe('specific-user-id');
+      expect(result.id).toBe('specific-user-id');
     });
   });
 });

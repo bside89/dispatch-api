@@ -2,8 +2,6 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { OrderProcessor } from './order.processor';
 import { OrderJobHandlerFactory } from '../factories/order-job-handler.factory';
 import { CacheService } from '../../cache/cache.service';
-import { Job } from 'bullmq';
-import { RequestContext } from '../../../shared/utils/request-context';
 import { ConfigService } from '@nestjs/config';
 import Redlock from 'redlock';
 

@@ -6,6 +6,7 @@ import { JwtStrategyName } from '../enums/jwt-strategy-name.enum';
 import { JwtPayload } from '../interfaces/jwt-payload.interface';
 import { CacheService } from '../../cache/cache.service';
 import { Request } from 'express';
+import { RequestUser } from '../interfaces/request-user.interface';
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy, JwtStrategyName.ACCESS) {
@@ -22,12 +23,18 @@ export class JwtStrategy extends PassportStrategy(Strategy, JwtStrategyName.ACCE
   }
 
   async validate(req: Request, payload: JwtPayload) {
-    // Check if the token's jti is blacklisted (i.e., revoked)
-    const isBlacklisted = await this.cacheService.get(`blacklist:${payload.jti}`);
+    const isBlacklisted = await this.cacheService.get(
+      `blacklist:auth:${payload.jti}`,
+    );
     if (isBlacklisted) {
       throw new UnauthorizedException('Token has been revoked');
     }
 
-    return payload;
+    const user: RequestUser = {
+      id: payload.sub,
+      jwtPayload: payload,
+    };
+
+    return user; // Req.user
   }
 }

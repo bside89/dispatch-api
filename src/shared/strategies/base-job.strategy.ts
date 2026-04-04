@@ -1,12 +1,12 @@
-import { Logger } from '@nestjs/common';
 import { Job } from 'bullmq';
 import { BaseJobPayload } from '../jobs/base-job.payload';
+import { AppLogger } from '../utils/app-logger';
 
 export abstract class BaseJobStrategy<T extends BaseJobPayload> {
-  protected readonly logger: Logger;
+  protected readonly logger: AppLogger;
 
   constructor(protected readonly jobName: string) {
-    this.logger = new Logger(jobName);
+    this.logger = new AppLogger(jobName);
   }
 
   abstract execute(job: Job<T>): Promise<void>;

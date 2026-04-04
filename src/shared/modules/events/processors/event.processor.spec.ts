@@ -1,16 +1,13 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { Job } from 'bullmq';
 import { EventProcessor } from './event.processor';
-import { NotificationStrategy } from '../strategies/notification.strategy';
-import { OutboxType } from '../../../../shared/modules/outbox/enums/outbox-type.enum';
-import { RequestContext } from '../../../../shared/utils/request-context';
+import { NotificationJobStrategy } from '../strategies/notification-job.strategy';
 import { ConfigService } from '@nestjs/config';
 import { CacheService } from '../../../../modules/cache/cache.service';
 import Redlock from 'redlock';
 
 describe('EventProcessor', () => {
   let processor: EventProcessor;
-  let notificationStrategy: jest.Mocked<NotificationStrategy>;
+  let notificationStrategy: jest.Mocked<NotificationJobStrategy>;
   let cacheService: jest.Mocked<CacheService>;
 
   beforeEach(async () => {
@@ -22,7 +19,7 @@ describe('EventProcessor', () => {
       providers: [
         EventProcessor,
         {
-          provide: NotificationStrategy,
+          provide: NotificationJobStrategy,
           useValue: notificationStrategy,
         },
         {
@@ -31,9 +28,7 @@ describe('EventProcessor', () => {
         },
         {
           provide: CacheService,
-          useValue: {
-            delete: jest.fn(),
-          },
+          useValue: cacheService,
         },
         {
           provide: Redlock,
@@ -43,7 +38,6 @@ describe('EventProcessor', () => {
     }).compile();
 
     processor = module.get<EventProcessor>(EventProcessor);
-    cacheService = module.get<CacheService>(CacheService);
   });
 
   it('should be defined', () => {

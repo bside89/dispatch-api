@@ -1,24 +1,18 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { Logger } from '@nestjs/common';
 import { CacheService } from '../../cache/cache.service';
 import { OutboxService } from '../../../shared/modules/outbox/outbox.service';
 import { OrderRepository } from '../repositories/order.repository';
 import { DataSource } from 'typeorm';
 import Redlock from 'redlock';
-import { ShipOrderStrategy } from './ship-order.strategy';
+import { ProcessOrderJobStrategy } from './process-order-job.strategy';
 
-describe('ShipOrderStrategy', () => {
-  let strategy: ShipOrderStrategy;
-  let cacheService: jest.Mocked<CacheService>;
-  let outboxService: jest.Mocked<OutboxService>;
-  let orderRepository: jest.Mocked<OrderRepository>;
-  let dataSource: jest.Mocked<DataSource>;
-  let logger: Logger;
+describe(ProcessOrderJobStrategy.name, () => {
+  let strategy: ProcessOrderJobStrategy;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
-        ShipOrderStrategy,
+        ProcessOrderJobStrategy,
         {
           provide: CacheService,
           useValue: {
@@ -50,12 +44,7 @@ describe('ShipOrderStrategy', () => {
       ],
     }).compile();
 
-    strategy = module.get<ShipOrderStrategy>(ShipOrderStrategy);
-    cacheService = module.get(CacheService);
-    outboxService = module.get(OutboxService);
-    orderRepository = module.get(OrderRepository);
-    dataSource = module.get(DataSource);
-    logger = new Logger();
+    strategy = module.get<ProcessOrderJobStrategy>(ProcessOrderJobStrategy);
   });
 
   it('should be defined', () => {

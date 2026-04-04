@@ -1,13 +1,13 @@
 import { WorkerHost } from '@nestjs/bullmq';
-import { Logger } from '@nestjs/common';
 import * as os from 'os';
+import { AppLogger } from '../utils/app-logger';
 
 export abstract class BaseProcessor extends WorkerHost {
-  protected readonly logger: Logger;
+  protected readonly logger: AppLogger;
 
   constructor(protected readonly processorName: string) {
     super();
-    this.logger = new Logger(processorName);
+    this.logger = new AppLogger(processorName);
   }
 
   /**

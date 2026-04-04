@@ -18,7 +18,7 @@ import { BaseOrderJobStrategy } from './base-order-job.strategy';
 import Redlock from 'redlock';
 
 @Injectable()
-export class ShipOrderStrategy extends BaseOrderJobStrategy<ShipOrderJobPayload> {
+export class ShipOrderJobStrategy extends BaseOrderJobStrategy<ShipOrderJobPayload> {
   constructor(
     protected readonly outboxService: OutboxService,
     protected readonly orderRepository: OrderRepository,
@@ -27,7 +27,7 @@ export class ShipOrderStrategy extends BaseOrderJobStrategy<ShipOrderJobPayload>
     protected readonly redlock: Redlock, // Used in @UseLock()
   ) {
     super(
-      ShipOrderStrategy.name,
+      ShipOrderJobStrategy.name,
       cacheService,
       orderRepository,
       dataSource,
