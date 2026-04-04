@@ -14,8 +14,8 @@ export abstract class BaseOrderJobStrategy<
     protected readonly jobName: string,
     protected readonly cacheService: CacheService,
     protected readonly orderRepository: OrderRepository,
-    protected readonly dataSource: DataSource,
-    protected readonly redlock: Redlock,
+    protected readonly dataSource: DataSource, // Used in @Transactional()
+    protected readonly redlock: Redlock, // Used in @UseLock()
   ) {
     super(jobName, cacheService);
   }

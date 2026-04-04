@@ -25,8 +25,8 @@ export class ProcessPaymentOrderStrategy extends BaseOrderJobStrategy<ProcessPay
     protected readonly cacheService: CacheService,
     protected readonly outboxService: OutboxService,
     protected readonly orderRepository: OrderRepository,
-    protected readonly dataSource: DataSource,
-    protected readonly redlock: Redlock,
+    protected readonly dataSource: DataSource, // Used in @Transactional()
+    protected readonly redlock: Redlock, // Used in @UseLock()
   ) {
     super(
       ProcessPaymentOrderStrategy.name,

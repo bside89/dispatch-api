@@ -10,13 +10,13 @@ export function Transactional() {
   ) {
     const originalMethod = descriptor.value;
 
-    descriptor.value = async function (...args: any[]) {
+    descriptor.value = async function (this: any, ...args: any[]) {
       // 'this' refers to the Service instance
       // The Service MUST have the dataSource injected for the decorator to work
       const dataSource = this.dataSource as DataSource;
       if (!dataSource) {
         throw new InternalServerErrorException(
-          'DataSource not found in Service. Please inject DataSource as "private readonly dataSource: DataSource".',
+          'DataSource not found in Service. Please inject DataSource as "protected readonly dataSource: DataSource".',
         );
       }
 

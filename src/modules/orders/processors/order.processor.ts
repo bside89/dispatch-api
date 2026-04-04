@@ -17,7 +17,7 @@ export class OrderProcessor extends BaseProcessor implements OnApplicationBootst
     protected readonly factory: OrderJobHandlerFactory,
     protected readonly cacheService: CacheService,
     protected readonly configService: ConfigService,
-    protected readonly redlock: Redlock,
+    protected readonly redlock: Redlock, // Used in @UseLock()
   ) {
     super(OrderProcessor.name);
   }

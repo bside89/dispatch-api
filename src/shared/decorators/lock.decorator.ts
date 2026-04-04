@@ -25,6 +25,8 @@ export function UseLock({
     const originalMethod = descriptor.value;
 
     descriptor.value = async function (this: any, ...args: any[]) {
+      // 'this' refers to the Service instance
+      // The Service MUST have the redlock injected for the decorator to work
       const redlock = this.redlock as Redlock;
       if (!redlock) {
         throw new InternalServerErrorException(

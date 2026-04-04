@@ -20,8 +20,8 @@ export class DeliverOrderStrategy extends BaseOrderJobStrategy<DeliverOrderJobPa
     protected readonly cacheService: CacheService,
     protected readonly outboxService: OutboxService,
     protected readonly orderRepository: OrderRepository,
-    protected readonly dataSource: DataSource,
-    protected readonly redlock: Redlock,
+    protected readonly dataSource: DataSource, // Used in @Transactional()
+    protected readonly redlock: Redlock, // Used in @UseLock()
   ) {
     super(
       DeliverOrderStrategy.name,

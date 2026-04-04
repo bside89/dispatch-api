@@ -26,8 +26,8 @@ export class UsersService extends CacheableService {
   constructor(
     private readonly userRepository: UserRepository,
     protected readonly cacheService: CacheService,
-    protected readonly dataSource: DataSource,
-    protected readonly redlock: Redlock,
+    protected readonly dataSource: DataSource, // Used in @Transactional()
+    protected readonly redlock: Redlock, // Used in @UseLock()
   ) {
     super(UsersService.name, cacheService);
   }

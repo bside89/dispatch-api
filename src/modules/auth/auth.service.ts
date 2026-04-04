@@ -25,8 +25,8 @@ export class AuthService extends BaseService {
     private readonly configService: ConfigService,
     private readonly userRepository: UserRepository,
     private readonly outboxService: OutboxService,
-    protected readonly dataSource: DataSource,
-    protected readonly redlock: Redlock,
+    protected readonly dataSource: DataSource, // Used in @Transactional()
+    protected readonly redlock: Redlock, // Used in @UseLock()
   ) {
     super(AuthService.name);
   }

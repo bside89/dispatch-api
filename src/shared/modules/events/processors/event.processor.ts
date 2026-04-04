@@ -18,7 +18,7 @@ export class EventProcessor extends BaseProcessor implements OnApplicationBootst
     protected readonly notificationStrategy: NotificationStrategy,
     protected readonly configService: ConfigService,
     protected readonly cacheService: CacheService,
-    protected readonly redlock: Redlock,
+    protected readonly redlock: Redlock, // Used in @UseLock()
   ) {
     super(EventProcessor.name);
   }

@@ -27,8 +27,8 @@ export class OrdersService extends CacheableService {
     private readonly orderItemRepository: OrderItemRepository,
     private readonly outboxService: OutboxService,
     protected readonly cacheService: CacheService,
-    protected readonly dataSource: DataSource,
-    protected readonly redlock: Redlock,
+    protected readonly dataSource: DataSource, // Used in @Transactional()
+    protected readonly redlock: Redlock, // Used in @UseLock()
   ) {
     super(OrdersService.name, cacheService);
   }
