@@ -58,9 +58,7 @@ describe('JwtStrategy', () => {
 
       const result = await strategy.validate(mockReq, validPayload);
 
-      expect(cacheService.get).toHaveBeenCalledWith(
-        `blacklist:${validPayload.jti}`,
-      );
+      expect(cacheService.get).toHaveBeenCalledWith(`blacklist:${validPayload.jti}`);
       expect(result).toEqual({
         sub: validPayload.sub,
         email: validPayload.email,

@@ -43,8 +43,7 @@ export class UserRepository extends BaseRepository<User> {
       .orderBy('user.createdAt', 'DESC')
       .getManyAndCount()
       .then(
-        ([data, total]) =>
-          new PaginatedResultDto(total, query.page, limit, data),
+        ([data, total]) => new PaginatedResultDto(total, query.page, limit, data),
       );
   }
 }

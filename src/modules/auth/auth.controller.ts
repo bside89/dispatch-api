@@ -44,9 +44,7 @@ export class AuthController extends BaseController {
     description: 'Login credentials',
   })
   async login(@Body() dto: LoginDto) {
-    this.logger.debug(
-      `POST /auth/login - Attempting login for email: ${dto.email}`,
-    );
+    this.logger.debug(`POST /auth/login - Attempting login for email: ${dto.email}`);
 
     const result = await this.authService.login(dto.email, dto.password);
 

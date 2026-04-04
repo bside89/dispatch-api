@@ -52,8 +52,7 @@ export class OrderRepository extends BaseRepository<Order> {
       .orderBy('order.createdAt', 'DESC')
       .getManyAndCount()
       .then(
-        ([data, total]) =>
-          new PaginatedResultDto(total, query.page, limit, data),
+        ([data, total]) => new PaginatedResultDto(total, query.page, limit, data),
       );
   }
 

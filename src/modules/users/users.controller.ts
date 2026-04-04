@@ -90,10 +90,7 @@ export class UsersController extends BaseController {
       `POST /users - Creating user with email: ${createUserDto.email} and idempotency key: ${idempotencyKey}`,
     );
 
-    const result = await this.usersService.create(
-      createUserDto,
-      idempotencyKey,
-    );
+    const result = await this.usersService.create(createUserDto, idempotencyKey);
 
     return this.success(result, 'User created successfully');
   }
@@ -243,9 +240,7 @@ export class UsersController extends BaseController {
     @Param('id', ParseUUIDPipe) id: string,
     @Body() updateLoginDto: UpdateLoginDto,
   ) {
-    this.logger.debug(
-      `PATCH /users/${id}/login - Updating user login credentials`,
-    );
+    this.logger.debug(`PATCH /users/${id}/login - Updating user login credentials`);
 
     const result = await this.usersService.updateLogin(id, updateLoginDto);
 

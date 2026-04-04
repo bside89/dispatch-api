@@ -3,9 +3,7 @@ import { CacheModuleOptions } from '@nestjs/cache-manager';
 import { createKeyv } from '@keyv/redis';
 import { CACHE_CONFIG } from '@/shared/constants/cache.constant';
 
-export const redisConfig = (
-  configService: ConfigService,
-): CacheModuleOptions => ({
+export const redisConfig = (configService: ConfigService): CacheModuleOptions => ({
   stores: [
     createKeyv(
       configService.get('REDIS_URL') ||

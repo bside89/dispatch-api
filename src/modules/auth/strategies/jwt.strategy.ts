@@ -8,10 +8,7 @@ import { CacheService } from '../../cache/cache.service';
 import { Request } from 'express';
 
 @Injectable()
-export class JwtStrategy extends PassportStrategy(
-  Strategy,
-  JwtStrategyName.ACCESS,
-) {
+export class JwtStrategy extends PassportStrategy(Strategy, JwtStrategyName.ACCESS) {
   constructor(
     configService: ConfigService,
     private readonly cacheService: CacheService,
@@ -26,9 +23,7 @@ export class JwtStrategy extends PassportStrategy(
 
   async validate(req: Request, payload: JwtPayload) {
     // Check if the token's jti is blacklisted (i.e., revoked)
-    const isBlacklisted = await this.cacheService.get(
-      `blacklist:${payload.jti}`,
-    );
+    const isBlacklisted = await this.cacheService.get(`blacklist:${payload.jti}`);
     if (isBlacklisted) {
       throw new UnauthorizedException('Token has been revoked');
     }
