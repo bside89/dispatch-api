@@ -16,6 +16,11 @@ export abstract class BaseRepository<T> {
     return manager.create(this.repository.target, entityData as DeepPartial<T>);
   }
 
+  async preload(entityData: Partial<T>): Promise<T> {
+    const manager = this.getManager();
+    return manager.preload(this.repository.target, entityData as DeepPartial<T>);
+  }
+
   async findAll(): Promise<T[]> {
     const manager = this.getManager();
     return manager.find(this.repository.target);
@@ -43,19 +48,30 @@ export abstract class BaseRepository<T> {
     return manager.findOne(this.repository.target, { where: params } as any);
   }
 
-  async findOneWithRelations(
-    params: Partial<T>,
-    relations: string[],
-    select?: (keyof T)[],
-  ): Promise<T> {
+  /**
+   * Finds a single entity matching the given parameters and selects all columns.
+   * @param params The parameters to filter the entity.
+   * @returns The found entity or null if not found.
+   * @remarks This method is useful when you want to ensure that all columns of the
+   * entity are selected, regardless of any default select options defined in the
+   * entity metadata.
+   */
+  async findOneCompleteWhere(params: Partial<T>): Promise<T> {
     const manager = this.getManager();
-    if (select) {
-      return manager.findOne(this.repository.target, {
-        where: params,
-        relations,
-        select,
-      } as any);
-    }
+    const select = this.repository.metadata.columns.map(
+      (col) => col.propertyName as keyof T,
+    );
+    return manager.findOne(this.repository.target, {
+      where: params,
+      select,
+    } as any);
+  }
+
+  async findOneWithRelations(params: Partial<T>): Promise<T> {
+    const manager = this.getManager();
+    const relations = this.repository.metadata.relations.map(
+      (rel) => rel.propertyName,
+    );
     return manager.findOne(this.repository.target, {
       where: params,
       relations,
@@ -89,17 +105,33 @@ export abstract class BaseRepository<T> {
     return manager.delete(this.repository.target, ids);
   }
 
+  async existsBy(params: Partial<T>): Promise<boolean> {
+    const manager = this.getManager();
+    const count = await manager.count(this.repository.target, {
+      where: params as any,
+    });
+    return count > 0;
+  }
+
   async count(): Promise<number> {
     const manager = this.getManager();
     return manager.count(this.repository.target);
   }
 
-  // Method to get the manager of a transaction dynamically
+  /**
+   * Gets the EntityManager for the current transaction context or the default
+   * repository manager.
+   * @returns The EntityManager instance.
+   */
   protected getManager(): EntityManager {
     return TransactionContext.getManager() || this.repository.manager;
   }
 
-  // Method to create a query builder for more complex queries
+  /**
+   * Creates a query builder for the current entity.
+   * @param alias The alias to use for the entity in the query.
+   * @returns A SelectQueryBuilder instance for the entity.
+   */
   protected createQueryBuilder(alias: string): SelectQueryBuilder<T> {
     const manager = this.getManager();
     return manager.createQueryBuilder(this.repository.target, alias);

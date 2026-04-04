@@ -4,6 +4,7 @@ import { UserRepository } from './repositories/user.repository';
 import { CacheService } from '../cache/cache.service';
 import { OutboxService } from '../../shared/modules/outbox/outbox.service';
 import { DataSource } from 'typeorm';
+import Redlock from 'redlock';
 
 describe('UsersService', () => {
   let service: UsersService;
@@ -41,6 +42,10 @@ describe('UsersService', () => {
         {
           provide: DataSource,
           useValue: {},
+        },
+        {
+          provide: Redlock,
+          useValue: { acquire: jest.fn(), release: jest.fn() },
         },
       ],
     }).compile();

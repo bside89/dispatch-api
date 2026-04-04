@@ -4,11 +4,12 @@ import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import {
   HealthCheck,
   HealthCheckService,
+  HealthIndicatorService,
   TypeOrmHealthIndicator,
   HealthIndicatorResult,
-  HealthCheckError,
 } from '@nestjs/terminus';
 import Redis from 'ioredis';
+import { REDIS_CLIENT } from './shared/constants/redis-client.constant';
 
 @Controller({ version: VERSION_NEUTRAL })
 @ApiTags('default')
@@ -16,7 +17,8 @@ export class AppController {
   constructor(
     private health: HealthCheckService,
     private db: TypeOrmHealthIndicator,
-    @Inject('REDIS_CLIENT') private readonly redisClient: Redis,
+    private healthIndicatorService: HealthIndicatorService,
+    @Inject(REDIS_CLIENT) private readonly redisClient: Redis,
   ) {}
 
   @Get('health')
@@ -31,13 +33,13 @@ export class AppController {
         try {
           const result = await this.redisClient.ping();
           if (result !== 'PONG') {
-            throw new Error('Redis ping failed');
+            return this.healthIndicatorService
+              .check('redis')
+              .down('Redis ping failed');
           }
-          return { redis: { status: 'up' } };
+          return this.healthIndicatorService.check('redis').up();
         } catch (e: any) {
-          throw new HealthCheckError('Redis check failed', {
-            redis: { status: 'down', message: e.message },
-          });
+          return this.healthIndicatorService.check('redis').down(e.message);
         }
       },
     ]);

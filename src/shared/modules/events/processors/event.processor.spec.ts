@@ -6,6 +6,7 @@ import { OutboxType } from '../../../../shared/modules/outbox/enums/outbox-type.
 import { RequestContext } from '../../../../shared/utils/request-context';
 import { ConfigService } from '@nestjs/config';
 import { CacheService } from '../../../../modules/cache/cache.service';
+import Redlock from 'redlock';
 
 describe('EventProcessor', () => {
   let processor: EventProcessor;
@@ -31,9 +32,12 @@ describe('EventProcessor', () => {
         {
           provide: CacheService,
           useValue: {
-            setIfNotExists: jest.fn(),
             delete: jest.fn(),
           },
+        },
+        {
+          provide: Redlock,
+          useValue: { acquire: jest.fn(), release: jest.fn() },
         },
       ],
     }).compile();

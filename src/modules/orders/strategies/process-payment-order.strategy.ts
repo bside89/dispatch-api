@@ -1,12 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import { Job } from 'bullmq';
-import { BaseJobStrategy } from '../../../shared/strategies/base-job.strategy';
 import { OrderStatus } from '../enums/order-status.enum';
 import {
   ProcessPaymentOrderJobPayload,
   ShipOrderJobPayload,
 } from '../processors/payloads/order-job.payload';
-import { NotifyUserJobPayload } from '../../../shared/modules/events/processors/payloads/notify-user.payload';
+import { NotifyUserJobPayload } from '@/shared/modules/events/processors/payloads/notify-user.payload';
 import { delay } from '../../../shared/helpers/functions';
 import { Transactional } from '@/shared/decorators/transactional.decorator';
 import { OutboxType } from '@/shared/modules/outbox/enums/outbox-type.enum';
@@ -15,9 +14,11 @@ import { OutboxService } from '@/shared/modules/outbox/outbox.service';
 import { OrderRepository } from '../repositories/order.repository';
 import { DataSource } from 'typeorm';
 import { JobStatus } from '@/shared/enums/job-status.enum';
+import { BaseOrderJobStrategy } from './base-order-job.strategy';
+import Redlock from 'redlock';
 
 @Injectable()
-export class ProcessPaymentOrderStrategy extends BaseJobStrategy<ProcessPaymentOrderJobPayload> {
+export class ProcessPaymentOrderStrategy extends BaseOrderJobStrategy<ProcessPaymentOrderJobPayload> {
   private readonly orderIsPaidCacheTTL = 24 * 60 * 60 * 1000; // 24 hours
 
   constructor(
@@ -25,8 +26,15 @@ export class ProcessPaymentOrderStrategy extends BaseJobStrategy<ProcessPaymentO
     protected readonly outboxService: OutboxService,
     protected readonly orderRepository: OrderRepository,
     protected readonly dataSource: DataSource,
+    protected readonly redlock: Redlock,
   ) {
-    super(cacheService, ProcessPaymentOrderStrategy.name);
+    super(
+      ProcessPaymentOrderStrategy.name,
+      cacheService,
+      orderRepository,
+      dataSource,
+      redlock,
+    );
   }
 
   @Transactional()
@@ -135,9 +143,7 @@ export class ProcessPaymentOrderStrategy extends BaseJobStrategy<ProcessPaymentO
   private async finish(data: ProcessPaymentOrderJobPayload) {
     const { orderId, userId, userName } = data;
 
-    await this.orderRepository.update(orderId, {
-      status: OrderStatus.PAID,
-    });
+    await this.updateOrderStatus(orderId, OrderStatus.PAID);
 
     // Add to the Outbox for sending notification to the user (Event Bus)
     await this.outboxService.add(
@@ -165,6 +171,6 @@ export class ProcessPaymentOrderStrategy extends BaseJobStrategy<ProcessPaymentO
   }
 
   private cacheKeyIsPaid(orderId: string): string {
-    return `order:process:is_paid:${orderId}`;
+    return `validate:order:process:is_paid:${orderId}`;
   }
 }

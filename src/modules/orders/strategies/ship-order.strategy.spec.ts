@@ -4,6 +4,7 @@ import { CacheService } from '../../cache/cache.service';
 import { OutboxService } from '../../../shared/modules/outbox/outbox.service';
 import { OrderRepository } from '../repositories/order.repository';
 import { DataSource } from 'typeorm';
+import Redlock from 'redlock';
 import { ShipOrderStrategy } from './ship-order.strategy';
 
 describe('ShipOrderStrategy', () => {
@@ -41,6 +42,10 @@ describe('ShipOrderStrategy', () => {
         {
           provide: DataSource,
           useValue: {},
+        },
+        {
+          provide: Redlock,
+          useValue: { acquire: jest.fn(), release: jest.fn() },
         },
       ],
     }).compile();

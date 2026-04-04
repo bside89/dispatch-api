@@ -4,6 +4,8 @@ import { CancelOrderStrategy } from '../strategies/cancel-order.strategy';
 import { ShipOrderStrategy } from '../strategies/ship-order.strategy';
 import { DeliverOrderStrategy } from '../strategies/deliver-order.strategy';
 import { OutboxType as OrderJob } from '@/shared/modules/outbox/enums/outbox-type.enum';
+import { BaseJobStrategy } from '@/shared/strategies/base-job.strategy';
+import { BaseJobPayload } from '@/shared/jobs/base-job.payload';
 
 @Injectable()
 export class OrderJobHandlerFactory {
@@ -14,14 +16,14 @@ export class OrderJobHandlerFactory {
     private readonly cancelOrder: CancelOrderStrategy,
   ) {}
 
-  createHandler(jobType: string) {
-    const map = {
+  createHandler(jobType: string): BaseJobStrategy<BaseJobPayload> | null {
+    const map: Record<string, BaseJobStrategy<BaseJobPayload>> = {
       [OrderJob.ORDER_PROCESS]: this.processPaymentOrder,
       [OrderJob.ORDER_SHIP]: this.shipOrder,
       [OrderJob.ORDER_DELIVER]: this.deliverOrder,
       [OrderJob.ORDER_CANCEL]: this.cancelOrder,
     };
 
-    return map[jobType] || null;
+    return map[jobType] ?? null;
   }
 }

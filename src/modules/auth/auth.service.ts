@@ -12,8 +12,10 @@ import { CACHE_CONFIG } from '@/shared/constants/cache.constant';
 import { DataSource } from 'typeorm';
 import { BaseService } from '@/shared/services/base.service';
 import { OutboxService } from '@/shared/modules/outbox/outbox.service';
-import { NotifyUserJobPayload } from '../../shared/modules/events/processors/payloads/notify-user.payload';
+import { NotifyUserJobPayload } from '@/shared/modules/events/processors/payloads/notify-user.payload';
 import { OutboxType } from '@/shared/modules/outbox/enums/outbox-type.enum';
+import { UseLock } from '@/shared/decorators/lock.decorator';
+import Redlock from 'redlock';
 
 @Injectable()
 export class AuthService extends BaseService {
@@ -22,13 +24,15 @@ export class AuthService extends BaseService {
     private readonly cacheService: CacheService,
     private readonly configService: ConfigService,
     private readonly userRepository: UserRepository,
+    private readonly outboxService: OutboxService,
     protected readonly dataSource: DataSource,
-    protected readonly outboxService: OutboxService,
+    protected readonly redlock: Redlock,
   ) {
-    super(dataSource, AuthService.name, outboxService);
+    super(AuthService.name);
   }
 
   @Transactional()
+  @UseLock({ prefix: 'auth-login', key: ([email]) => email })
   async login(email: string, password: string): Promise<LoginResponseDto> {
     const user = await this.userRepository.findOneWhere({ email }, [
       'id',
@@ -60,15 +64,14 @@ export class AuthService extends BaseService {
     return tokens;
   }
 
+  @UseLock({ prefix: 'auth-refresh', key: ([payload]) => payload.jti })
   async refresh(payload: JwtPayload): Promise<LoginResponseDto> {
     const refreshToken = payload.refreshToken;
-    if (!refreshToken)
-      throw new UnauthorizedException('No refresh token found');
+    if (!refreshToken) throw new UnauthorizedException('No refresh token found');
 
-    const user = await this.userRepository.findOneWhere(
-      { email: payload.email },
-      ['id', 'email', 'password', 'role', 'refreshToken'],
-    );
+    const user = await this.userRepository.findOneCompleteWhere({
+      email: payload.email,
+    });
     if (!user) throw new UnauthorizedException('User not found');
 
     const isValid = await HashUtils.compare(user.refreshToken, refreshToken);
@@ -93,13 +96,14 @@ export class AuthService extends BaseService {
   }
 
   @Transactional()
+  @UseLock({ prefix: 'auth-logout', key: ([payload]) => payload.jti })
   async logout(payload: JwtPayload): Promise<void> {
     await this.userRepository.update(payload.sub, {
       refreshToken: null,
     });
 
     await this.cacheService.set(
-      `blacklist:${payload.jti}`,
+      `blacklist:auth:${payload.jti}`,
       true,
       CACHE_CONFIG.AUTH_BLACKLIST_TTL,
     );
@@ -135,6 +139,7 @@ export class AuthService extends BaseService {
     return result;
   }
 
+  @UseLock({ prefix: 'user-update', key: ([userId]) => userId })
   private async saveRefreshToken(
     userId: string,
     refreshToken: string,

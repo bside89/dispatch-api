@@ -1,6 +1,5 @@
 import { Injectable } from '@nestjs/common';
 import { Job } from 'bullmq';
-import { BaseJobStrategy } from '../../../shared/strategies/base-job.strategy';
 import { OrderStatus } from '../enums/order-status.enum';
 import { CancelOrderJobPayload } from '../processors/payloads/order-job.payload';
 import { NotifyUserJobPayload } from '../../../shared/modules/events/processors/payloads/notify-user.payload';
@@ -12,16 +11,25 @@ import { OutboxService } from '@/shared/modules/outbox/outbox.service';
 import { OrderRepository } from '../repositories/order.repository';
 import { DataSource } from 'typeorm';
 import { JobStatus } from '@/shared/enums/job-status.enum';
+import { BaseOrderJobStrategy } from './base-order-job.strategy';
+import Redlock from 'redlock';
 
 @Injectable()
-export class CancelOrderStrategy extends BaseJobStrategy<CancelOrderJobPayload> {
+export class CancelOrderStrategy extends BaseOrderJobStrategy<CancelOrderJobPayload> {
   constructor(
     protected readonly cacheService: CacheService,
     protected readonly outboxService: OutboxService,
     protected readonly orderRepository: OrderRepository,
     protected readonly dataSource: DataSource,
+    protected readonly redlock: Redlock,
   ) {
-    super(cacheService, CancelOrderStrategy.name);
+    super(
+      CancelOrderStrategy.name,
+      cacheService,
+      orderRepository,
+      dataSource,
+      redlock,
+    );
   }
 
   @Transactional()
@@ -85,9 +93,7 @@ export class CancelOrderStrategy extends BaseJobStrategy<CancelOrderJobPayload> 
   private async finish(data: CancelOrderJobPayload) {
     const { orderId, userId, userName } = data;
 
-    await this.orderRepository.update(orderId, {
-      status: OrderStatus.CANCELLED,
-    });
+    await this.updateOrderStatus(orderId, OrderStatus.CANCELLED);
 
     // Add to the Outbox for sending notification to the user
     await this.outboxService.add(

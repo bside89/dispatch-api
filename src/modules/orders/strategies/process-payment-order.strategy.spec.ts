@@ -4,6 +4,7 @@ import { CacheService } from '../../cache/cache.service';
 import { OutboxService } from '../../../shared/modules/outbox/outbox.service';
 import { OrderRepository } from '../repositories/order.repository';
 import { DataSource } from 'typeorm';
+import Redlock from 'redlock';
 import { ProcessPaymentOrderStrategy } from './process-payment-order.strategy';
 
 describe('ProcessPaymentOrderStrategy', () => {
@@ -42,12 +43,14 @@ describe('ProcessPaymentOrderStrategy', () => {
           provide: DataSource,
           useValue: {},
         },
+        {
+          provide: Redlock,
+          useValue: { acquire: jest.fn(), release: jest.fn() },
+        },
       ],
     }).compile();
 
-    strategy = module.get<ProcessPaymentOrderStrategy>(
-      ProcessPaymentOrderStrategy,
-    );
+    strategy = module.get<ProcessPaymentOrderStrategy>(ProcessPaymentOrderStrategy);
     cacheService = module.get(CacheService);
     outboxService = module.get(OutboxService);
     orderRepository = module.get(OrderRepository);

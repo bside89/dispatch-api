@@ -1,7 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { Job } from 'bullmq';
 import { OrderStatus } from '../enums/order-status.enum';
-import { BaseJobStrategy } from '../../../shared/strategies/base-job.strategy';
 import {
   DeliverOrderJobPayload,
   ShipOrderJobPayload,
@@ -15,16 +14,25 @@ import { OutboxService } from '@/shared/modules/outbox/outbox.service';
 import { OrderRepository } from '../repositories/order.repository';
 import { DataSource } from 'typeorm';
 import { JobStatus } from '@/shared/enums/job-status.enum';
+import { BaseOrderJobStrategy } from './base-order-job.strategy';
+import Redlock from 'redlock';
 
 @Injectable()
-export class ShipOrderStrategy extends BaseJobStrategy<ShipOrderJobPayload> {
+export class ShipOrderStrategy extends BaseOrderJobStrategy<ShipOrderJobPayload> {
   constructor(
     protected readonly outboxService: OutboxService,
     protected readonly orderRepository: OrderRepository,
     protected readonly cacheService: CacheService,
     protected readonly dataSource: DataSource,
+    protected readonly redlock: Redlock,
   ) {
-    super(cacheService, ShipOrderStrategy.name);
+    super(
+      ShipOrderStrategy.name,
+      cacheService,
+      orderRepository,
+      dataSource,
+      redlock,
+    );
   }
 
   @Transactional()
@@ -40,13 +48,9 @@ export class ShipOrderStrategy extends BaseJobStrategy<ShipOrderJobPayload> {
 
     try {
       if (
-        !(await this.orderRepository.existsByStatusIn(orderId, [
-          OrderStatus.PAID,
-        ]))
+        !(await this.orderRepository.existsByStatusIn(orderId, [OrderStatus.PAID]))
       ) {
-        this.logger.log(
-          `Order ${orderId} is not in PAID status or does not exist`,
-        );
+        this.logger.log(`Order ${orderId} is not in PAID status or does not exist`);
         await this.setIdempotency(idempotencyKey, JobStatus.COMPLETED);
         return;
       }
@@ -68,10 +72,7 @@ export class ShipOrderStrategy extends BaseJobStrategy<ShipOrderJobPayload> {
   }
 
   @Transactional()
-  async executeOnFailed(
-    job: Job<ShipOrderJobPayload>,
-    error: Error,
-  ): Promise<void> {
+  async executeOnFailed(job: Job<ShipOrderJobPayload>, error: Error): Promise<void> {
     const { orderId } = job.data;
 
     this.logger.error(
@@ -100,9 +101,7 @@ export class ShipOrderStrategy extends BaseJobStrategy<ShipOrderJobPayload> {
   private async finish(data: ShipOrderJobPayload) {
     const { orderId, userId, userName } = data;
 
-    await this.orderRepository.update(orderId, {
-      status: OrderStatus.SHIPPED,
-    });
+    await this.updateOrderStatus(orderId, OrderStatus.SHIPPED);
 
     // Add to the Outbox for sending notification to the user (Event Bus)
     await this.outboxService.add(

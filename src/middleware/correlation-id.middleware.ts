@@ -7,7 +7,7 @@ import { RequestContext } from '@/shared/utils/request-context';
 export class CorrelationIdMiddleware implements NestMiddleware {
   use(
     req: IncomingMessage & { id?: string },
-    _res: ServerResponse,
+    res: ServerResponse,
     next: () => void,
   ) {
     // pino-http sets req.id via genReqId; fall back to headers or a fresh UUID
@@ -17,6 +17,10 @@ export class CorrelationIdMiddleware implements NestMiddleware {
       (req.headers['x-request-id'] as string) ||
       randomUUID();
 
-    RequestContext.run(correlationId, () => Promise.resolve(next()));
+    res.setHeader('x-correlation-id', correlationId);
+
+    RequestContext.run(correlationId, async () => {
+      next();
+    });
   }
 }

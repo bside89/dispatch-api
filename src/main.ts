@@ -79,9 +79,7 @@ async function bootstrap() {
   const authMiddleware = new BasicAuthMiddleware(configService);
 
   // Protect Bull Board
-  app.use('/bull-board', (req, res, next) =>
-    authMiddleware.use(req, res, next),
-  );
+  app.use('/bull-board', (req, res, next) => authMiddleware.use(req, res, next));
 
   const port = configService.get('APP_PORT') || 3000;
   const grafanaPort = configService.get('GRAFANA_PORT') || 3001;
@@ -92,10 +90,7 @@ async function bootstrap() {
 
   const logger = app.get(Logger);
 
-  logger.log(
-    `Application is running on: http://localhost:${port}`,
-    'Bootstrap',
-  );
+  logger.log(`Application is running on: http://localhost:${port}`, 'Bootstrap');
   logger.log(
     `Swagger documentation available at: http://localhost:${port}/api/docs`,
     'Bootstrap',

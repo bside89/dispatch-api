@@ -2,8 +2,10 @@ import { Module } from '@nestjs/common';
 import { CacheModule as NestCacheModule } from '@nestjs/cache-manager';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import Redis from 'ioredis';
+import Redlock from 'redlock';
 import { redisConfig } from '../../config/redis.config';
 import { CacheService } from './cache.service';
+import { REDIS_CLIENT } from '@/shared/constants/redis-client.constant';
 
 @Module({
   imports: [
@@ -16,7 +18,7 @@ import { CacheService } from './cache.service';
   providers: [
     CacheService,
     {
-      provide: 'REDIS_CLIENT',
+      provide: REDIS_CLIENT,
       useFactory: (configService: ConfigService) => {
         const redisUrl = configService.get('REDIS_URL');
         if (redisUrl) {
@@ -31,7 +33,12 @@ import { CacheService } from './cache.service';
       },
       inject: [ConfigService],
     },
+    {
+      provide: Redlock,
+      useFactory: (redis: Redis) => new Redlock([redis] as any),
+      inject: [REDIS_CLIENT],
+    },
   ],
-  exports: [CacheService, 'REDIS_CLIENT'],
+  exports: [CacheService, REDIS_CLIENT, Redlock],
 })
 export class CacheModule {}

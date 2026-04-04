@@ -241,9 +241,7 @@ export class OrdersController extends BaseController {
     @Param('id', ParseUUIDPipe) id: string,
     @Body('status') status: OrderStatus,
   ) {
-    this.logger.debug(
-      `PATCH /orders/${id}/status - Updating status to: ${status}`,
-    );
+    this.logger.debug(`PATCH /orders/${id}/status - Updating status to: ${status}`);
 
     const result = await this.ordersService.updateStatus(id, status);
 
@@ -276,8 +274,8 @@ export class OrdersController extends BaseController {
   async remove(@Param('id', ParseUUIDPipe) id: string) {
     this.logger.debug(`DELETE /orders/${id} - Deleting order`);
 
-    const result = await this.ordersService.remove(id);
+    await this.ordersService.remove(id);
 
-    return this.success(result, 'Order deleted successfully');
+    return this.success(null, 'Order deleted successfully');
   }
 }

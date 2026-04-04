@@ -6,6 +6,7 @@ import { AuthService } from './auth.service';
 import { CacheService } from '../cache/cache.service';
 import { UserRepository } from '../users/repositories/user.repository';
 import { OutboxService } from '../../shared/modules/outbox/outbox.service';
+import Redlock from 'redlock';
 
 describe('AuthService', () => {
   let service: AuthService;
@@ -28,7 +29,7 @@ describe('AuthService', () => {
         },
         {
           provide: UserRepository,
-          useValue: { findOneWhere: jest.fn(), update: jest.fn() },
+          useValue: { findOneCompleteWhere: jest.fn(), update: jest.fn() },
         },
         {
           provide: DataSource,
@@ -37,6 +38,10 @@ describe('AuthService', () => {
         {
           provide: OutboxService,
           useValue: { add: jest.fn() },
+        },
+        {
+          provide: Redlock,
+          useValue: { acquire: jest.fn(), release: jest.fn() },
         },
       ],
     }).compile();

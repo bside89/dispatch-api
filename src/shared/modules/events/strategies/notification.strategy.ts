@@ -1,17 +1,16 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { Job } from 'bullmq';
 import { CacheService } from '../../../../modules/cache/cache.service';
 import { delay } from '../../../helpers/functions';
-import { CACHE_CONFIG } from '@/shared/constants/cache.constant';
-import { BaseJobStrategy } from '@/shared/strategies/base-job.strategy';
 import { NotifyUserJobPayload } from '../processors/payloads/notify-user.payload';
 import { JobStatus } from '@/shared/enums/job-status.enum';
 import { Transactional } from '@/shared/decorators/transactional.decorator';
+import { IdempotentJobStrategy } from '@/shared/strategies/idempotent-job.strategy';
 
 @Injectable()
-export class NotificationStrategy extends BaseJobStrategy<NotifyUserJobPayload> {
+export class NotificationStrategy extends IdempotentJobStrategy<NotifyUserJobPayload> {
   constructor(protected readonly cacheService: CacheService) {
-    super(cacheService, NotificationStrategy.name);
+    super(NotificationStrategy.name, cacheService);
   }
 
   async execute(job: Job<NotifyUserJobPayload>): Promise<void> {

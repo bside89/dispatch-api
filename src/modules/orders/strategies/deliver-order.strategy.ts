@@ -1,7 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { Job } from 'bullmq';
 import { OrderStatus } from '../enums/order-status.enum';
-import { BaseJobStrategy } from '../../../shared/strategies/base-job.strategy';
 import { DeliverOrderJobPayload } from '../processors/payloads/order-job.payload';
 import { delay } from '@/shared/helpers/functions';
 import { NotifyUserJobPayload } from '@/shared/modules/events/processors/payloads/notify-user.payload';
@@ -12,16 +11,25 @@ import { OutboxService } from '@/shared/modules/outbox/outbox.service';
 import { OrderRepository } from '../repositories/order.repository';
 import { DataSource } from 'typeorm';
 import { JobStatus } from '@/shared/enums/job-status.enum';
+import { BaseOrderJobStrategy } from './base-order-job.strategy';
+import Redlock from 'redlock';
 
 @Injectable()
-export class DeliverOrderStrategy extends BaseJobStrategy<DeliverOrderJobPayload> {
+export class DeliverOrderStrategy extends BaseOrderJobStrategy<DeliverOrderJobPayload> {
   constructor(
     protected readonly cacheService: CacheService,
     protected readonly outboxService: OutboxService,
     protected readonly orderRepository: OrderRepository,
     protected readonly dataSource: DataSource,
+    protected readonly redlock: Redlock,
   ) {
-    super(cacheService, DeliverOrderStrategy.name);
+    super(
+      DeliverOrderStrategy.name,
+      cacheService,
+      orderRepository,
+      dataSource,
+      redlock,
+    );
   }
 
   @Transactional()
@@ -54,7 +62,7 @@ export class DeliverOrderStrategy extends BaseJobStrategy<DeliverOrderJobPayload
 
       await this.simulateDelivery(job.data);
 
-      await this.finish(orderId, userId, userName);
+      await this.finish(job.data);
 
       await this.setIdempotency(idempotencyKey, JobStatus.COMPLETED);
     } catch (error) {
@@ -94,10 +102,10 @@ export class DeliverOrderStrategy extends BaseJobStrategy<DeliverOrderJobPayload
     this.logger.log(`Delivery OK for order ${data.orderId}`);
   }
 
-  private async finish(orderId: string, userId: string, userName: string) {
-    await this.orderRepository.update(orderId, {
-      status: OrderStatus.DELIVERED,
-    });
+  private async finish(data: DeliverOrderJobPayload) {
+    const { orderId, userId, userName } = data;
+
+    await this.updateOrderStatus(orderId, OrderStatus.DELIVERED);
 
     // Add to the Outbox for sending notification to the user (Event Bus)
     await this.outboxService.add(

@@ -1,8 +1,4 @@
-import {
-  Injectable,
-  NestMiddleware,
-  UnauthorizedException,
-} from '@nestjs/common';
+import { Injectable, NestMiddleware } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Request, Response, NextFunction } from 'express';
 
@@ -18,16 +14,13 @@ export class BasicAuthMiddleware implements NestMiddleware {
     }
 
     const base64Credentials = authHeader.split(' ')[1];
-    const credentials = Buffer.from(base64Credentials, 'base64').toString(
-      'ascii',
-    );
+    const credentials = Buffer.from(base64Credentials, 'base64').toString('ascii');
     const [username, password] = credentials.split(':');
 
     const expectedUsername = this.configService.get('ADMIN_USERNAME');
     const expectedPassword = this.configService.get('ADMIN_PASSWORD');
 
     if (!expectedUsername || !expectedPassword) {
-      console.error('❌ ADMIN_USERNAME and ADMIN_PASSWORD not configured!');
       throw new Error('ADMIN_USERNAME and ADMIN_PASSWORD must be configured');
     }
 

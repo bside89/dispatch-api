@@ -1,0 +1,48 @@
+import { InternalServerErrorException } from '@nestjs/common';
+import Redlock from 'redlock';
+import { CACHE_CONFIG } from '../constants/cache.constant';
+
+export type UseLockKeySelector<T = any> = (args: T) => string | number;
+
+export interface UseLockOptions {
+  prefix: string;
+
+  key: UseLockKeySelector;
+
+  ttl?: number;
+}
+
+export function UseLock({
+  ttl = CACHE_CONFIG.DEFAULT_LOCK_TTL,
+  prefix,
+  key,
+}: UseLockOptions) {
+  return function (
+    _target: any,
+    _propertyKey: string,
+    descriptor: PropertyDescriptor,
+  ) {
+    const originalMethod = descriptor.value;
+
+    descriptor.value = async function (this: any, ...args: any[]) {
+      const redlock = this.redlock as Redlock;
+      if (!redlock) {
+        throw new InternalServerErrorException(
+          'Redlock not found in class instance. Please inject Redlock as "protected readonly redlock: Redlock".',
+        );
+      }
+
+      const keyValue = key(args);
+      const resourceKey = `${prefix}:${keyValue}`;
+
+      const lock = await redlock.acquire([resourceKey], ttl);
+      try {
+        return await originalMethod.apply(this, args);
+      } finally {
+        await redlock.release(lock);
+      }
+    };
+
+    return descriptor;
+  };
+}

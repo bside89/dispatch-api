@@ -13,59 +13,61 @@ import { UserRepository } from './repositories/user.repository';
 import { PaginatedResultDto } from '@/shared/dto/paginated-result.dto';
 import { UserResponseDto } from './dto/user-response.dto';
 import { HashUtils } from '@/shared/utils/hash.utils';
-import { BaseService } from '@/shared/services/base.service';
 import { DataSource } from 'typeorm';
 import { Transactional } from '@/shared/decorators/transactional.decorator';
 import { CACHE_CONFIG } from '@/shared/constants/cache.constant';
-import { OutboxService } from '@/shared/modules/outbox/outbox.service';
 import { runAndIgnoreError } from '@/shared/helpers/functions';
+import { UseLock } from '@/shared/decorators/lock.decorator';
+import Redlock from 'redlock';
+import { CacheableService } from '@/shared/services/cacheable.service';
 
 @Injectable()
-export class UsersService extends BaseService {
-  private readonly IDEMPOTENCY_PREFIX = 'user-idempotency';
-  private readonly CACHE_PREFIX = 'user';
-
+export class UsersService extends CacheableService {
   constructor(
-    private readonly cacheService: CacheService,
     private readonly userRepository: UserRepository,
+    protected readonly cacheService: CacheService,
     protected readonly dataSource: DataSource,
-    protected readonly outboxService: OutboxService,
+    protected readonly redlock: Redlock,
   ) {
-    super(dataSource, UsersService.name, outboxService);
+    super(UsersService.name, cacheService);
   }
 
   @Transactional()
+  @UseLock({
+    prefix: 'user-create',
+    key: ([, idempotencyKey]) => idempotencyKey,
+  })
   async create(
-    createUserDto: CreateUserDto,
+    dto: CreateUserDto,
     idempotencyKey: string,
   ): Promise<UserResponseDto> {
-    const idempotencyKeyFormatted = `${this.IDEMPOTENCY_PREFIX}:${idempotencyKey}`;
-    const existingUser = await runAndIgnoreError(
-      () => this.cacheService.get<UserResponseDto>(idempotencyKeyFormatted),
-      'create - cache retrieval',
+    const idempotencyKeyFormatted = `idempotency:user:create:${idempotencyKey}`;
+
+    // Check if there's an existing user for the same idempotency key
+    const existingUser = await this.cacheService.get<UserResponseDto>(
+      idempotencyKeyFormatted,
     );
     if (existingUser) {
-      this.logger.debug(
-        `Returning existing user for idempotency key: ${idempotencyKey}, User ID: ${existingUser.id}`,
-      );
+      this.logger.debug('Returning existing user for idempotency key', {
+        idempotencyKey,
+        userId: existingUser.id,
+      });
       return existingUser;
     }
 
-    const existingEmailUser = await this.userRepository.findOneWhere({
-      email: createUserDto.email,
+    const emailExists = await this.userRepository.existsBy({
+      email: dto.email,
     });
-    if (existingEmailUser) {
+    if (emailExists) {
       throw new ConflictException('Email already exists');
     }
 
-    this.logger.debug(
-      `Creating new user with idempotency key: ${idempotencyKey}`,
-    );
+    this.logger.debug('Creating new user', { idempotencyKey });
 
     const user = this.userRepository.createEntity({
-      name: createUserDto.name,
-      email: createUserDto.email,
-      password: await HashUtils.hash(createUserDto.password),
+      name: dto.name,
+      email: dto.email,
+      password: await HashUtils.hash(dto.password),
     });
 
     const savedUser = await this.userRepository.save(user);
@@ -78,24 +80,27 @@ export class UsersService extends BaseService {
       CACHE_CONFIG.IDEMPOTENCY_TTL,
     );
 
-    this.logger.debug(
-      `User created and cached with idempotency key: ${idempotencyKey}, User ID: ${savedUser.id}`,
-    );
+    this.logger.debug('User created and cached', {
+      idempotencyKey,
+      userId: savedUser.id,
+    });
+
+    await this.invalidateCache({
+      patternsToDelete: ['cache:user:find-all:*'],
+    });
 
     return userMapped;
   }
 
-  async findAll(
-    query: UserQueryDto,
-  ): Promise<PaginatedResultDto<UserResponseDto>> {
-    const cacheKey = `${this.CACHE_PREFIX}:list:${JSON.stringify(query)}`;
+  async findAll(query: UserQueryDto): Promise<PaginatedResultDto<UserResponseDto>> {
+    const cacheKey = `cache:user:find-all:${JSON.stringify(query)}`;
+
     const cachedResult = await runAndIgnoreError(
-      () =>
-        this.cacheService.get<PaginatedResultDto<UserResponseDto>>(cacheKey),
+      () => this.cacheService.get<PaginatedResultDto<UserResponseDto>>(cacheKey),
       `fetching users list from cache with key: ${cacheKey}`,
     );
     if (cachedResult) {
-      this.logger.debug(`Returning cached users list`);
+      this.logger.debug('Returning cached users list', { cacheKey });
       return cachedResult;
     }
 
@@ -115,7 +120,18 @@ export class UsersService extends BaseService {
   }
 
   async findOne(id: string): Promise<UserResponseDto> {
-    this.logger.debug(`Retrieving user with ID: ${id}`);
+    const cacheKey = `cache:user:find-one:${id}`;
+
+    const cachedResult = await runAndIgnoreError(
+      () => this.cacheService.get<UserResponseDto>(cacheKey),
+      `fetching user from cache with key: ${cacheKey}`,
+    );
+    if (cachedResult) {
+      this.logger.debug('Returning cached user', { id });
+      return cachedResult;
+    }
+
+    this.logger.debug('Retrieving user', { id });
 
     const user = await this.userRepository.findById(id);
 
@@ -123,28 +139,61 @@ export class UsersService extends BaseService {
       throw new NotFoundException(`User with ID ${id} not found`);
     }
 
-    this.logger.debug(`User found: ${user.email}`);
+    this.logger.debug('User found', { email: user.email });
 
-    return UserResponseDto.fromEntity(user);
+    const userMapped = UserResponseDto.fromEntity(user);
+
+    await runAndIgnoreError(
+      () =>
+        this.cacheService.set(
+          `cache:user:find-one:${id}`,
+          userMapped,
+          CACHE_CONFIG.LIST_TTL,
+        ),
+      `caching user with ID: ${id}`,
+    );
+
+    return userMapped;
   }
 
   async findByEmail(email: string): Promise<UserResponseDto> {
-    this.logger.debug(`Finding user by email: ${email}`);
+    const cacheKey = `cache:user:find-by-email:${email}`;
+
+    const cachedResult = await runAndIgnoreError(
+      () => this.cacheService.get<UserResponseDto>(cacheKey),
+      `fetching user from cache with key: ${cacheKey}`,
+    );
+    if (cachedResult) {
+      this.logger.debug('Returning cached user', { email });
+      return cachedResult;
+    }
+
+    this.logger.debug('Finding user by email', { email });
 
     const user = await this.userRepository.findOneWhere({ email });
     if (!user) {
       throw new NotFoundException(`User with email ${email} not found`);
     }
 
-    this.logger.debug(`User found with email: ${email}`);
+    this.logger.debug('User found', { email });
 
-    return UserResponseDto.fromEntity(user);
+    const userMapped = UserResponseDto.fromEntity(user);
+
+    await runAndIgnoreError(
+      () =>
+        this.cacheService.set(
+          `cache:user:find-by-email:${email}`,
+          userMapped,
+          CACHE_CONFIG.LIST_TTL,
+        ),
+      `caching user with email: ${email}`,
+    );
+
+    return userMapped;
   }
 
-  async update(
-    id: string,
-    updateUserDto: UpdateUserDto,
-  ): Promise<UserResponseDto> {
+  @UseLock({ prefix: 'user-update', key: ([id]) => id })
+  async update(id: string, updateUserDto: UpdateUserDto): Promise<UserResponseDto> {
     this.logger.debug(`Updating user with ID: ${id}`);
 
     const user = await this.userRepository.findById(id);
@@ -153,29 +202,41 @@ export class UsersService extends BaseService {
     }
 
     // Check if email already exists (if email is being updated)
-    if (updateUserDto.email && updateUserDto.email !== user.email) {
-      const existingUser = await this.userRepository.findOneWhere({
-        email: updateUserDto.email,
+    const oldEmail = user.email;
+    const newEmail = updateUserDto.email;
+    if (newEmail && newEmail !== oldEmail) {
+      const emailExists = await this.userRepository.existsBy({
+        email: newEmail,
       });
-
-      if (existingUser) {
+      if (emailExists) {
         throw new ConflictException('Email already exists');
       }
     }
 
+    // This will only update the fields that are present in updateUserDto
     Object.assign(user, updateUserDto);
+
     const updatedUser = await this.userRepository.save(user);
 
-    this.logger.debug(`User updated successfully: ${updatedUser.email}`);
+    this.logger.debug(`User updated successfully: ${updatedUser.id}`);
+
+    await this.invalidateCache({
+      keysToDelete: [
+        `cache:user:find-one:${updatedUser.id}`,
+        `cache:user:find-by-email:${updatedUser.email}`,
+      ],
+      patternsToDelete: ['cache:user:find-all:*'],
+    });
 
     return UserResponseDto.fromEntity(updatedUser);
   }
 
+  @UseLock({ prefix: 'user-update', key: ([id]) => id })
   async updateLogin(
     id: string,
     updateLoginDto: UpdateLoginDto,
   ): Promise<UserResponseDto> {
-    this.logger.debug(`Updating login for user with ID: ${id}`);
+    this.logger.debug('Updating login for user', { userId: id });
 
     const user = await this.userRepository.findById(id, [
       'id',
@@ -199,10 +260,7 @@ export class UsersService extends BaseService {
 
       // Verify current password
       if (
-        !(await HashUtils.compare(
-          user.password,
-          updateLoginDto.currentPassword,
-        ))
+        !(await HashUtils.compare(user.password, updateLoginDto.currentPassword))
       ) {
         throw new BadRequestException('Current password is incorrect');
       }
@@ -210,10 +268,10 @@ export class UsersService extends BaseService {
     }
 
     if (updateLoginDto.email && updateLoginDto.email !== user.email) {
-      const existingUser = await this.userRepository.findOneWhere({
+      const emailExists = await this.userRepository.existsBy({
         email: updateLoginDto.email,
       });
-      if (existingUser) {
+      if (emailExists) {
         throw new ConflictException('Email already exists');
       }
       user.email = updateLoginDto.email;
@@ -223,22 +281,40 @@ export class UsersService extends BaseService {
 
     const userMapped = UserResponseDto.fromEntity(updatedUser);
 
-    this.logger.debug(
-      `Login updated successfully for user: ${userMapped.email}`,
-    );
+    await this.invalidateCache({
+      keysToDelete: [
+        `cache:user:find-one:${updatedUser.id}`,
+        `cache:user:find-by-email:${updatedUser.email}`,
+      ],
+      patternsToDelete: ['cache:user:find-all:*'],
+    });
+
+    this.logger.debug('Login updated successfully for user', {
+      userEmail: userMapped.email,
+    });
 
     return userMapped;
   }
 
+  @UseLock({ prefix: 'user-delete', key: ([id]) => id })
   async remove(id: string): Promise<void> {
-    this.logger.debug(`Deleting user with ID: ${id}`);
+    this.logger.debug('Deleting user', { id });
 
-    const result = await this.userRepository.delete(id);
-
-    if (result.affected === 0) {
+    const user = await this.userRepository.findById(id);
+    if (!user) {
       throw new NotFoundException(`User with ID ${id} not found`);
     }
 
-    this.logger.debug(`User with ID ${id} deleted successfully`);
+    await this.userRepository.delete(id);
+
+    this.logger.debug('User deleted successfully', { userId: id });
+
+    await this.invalidateCache({
+      keysToDelete: [
+        `cache:user:find-one:${id}`,
+        `cache:user:find-by-email:${user.email}`,
+      ],
+      patternsToDelete: ['cache:user:find-all:*'],
+    });
   }
 }

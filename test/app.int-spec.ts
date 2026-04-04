@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { AppModule } from '@/app.module';
 import { DataSource } from 'typeorm';
 import Redis from 'ioredis';
+import { REDIS_CLIENT } from '@/shared/constants/redis-client.constant';
 import { UsersService } from '@/modules/users/users.service';
 import { OrdersService } from '@/modules/orders/orders.service';
 import { OutboxRepository } from '@/shared/modules/outbox/repositories/outbox.repository';
@@ -44,7 +45,7 @@ describe('App (Integration)', () => {
     orderQueue = module.get<Queue>(getQueueToken('orders'));
     eventBusQueue = module.get<Queue>(getQueueToken('events'));
     dataSource = module.get<DataSource>(DataSource);
-    redisClient = module.get<Redis>('REDIS_CLIENT');
+    redisClient = module.get<Redis>(REDIS_CLIENT);
   });
 
   afterAll(async () => {
@@ -76,11 +77,7 @@ describe('App (Integration)', () => {
           { productId: 'product-bbb', quantity: 1, price: 3000 },
         ],
       };
-      await ordersService.create(
-        createOrderDto,
-        userId,
-        'idempotency-key-order-1',
-      );
+      await ordersService.create(createOrderDto, userId, 'idempotency-key-order-1');
 
       // Assert: verify the state directly in the database
       const orders = await dataSource.query(

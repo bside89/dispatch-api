@@ -5,6 +5,7 @@ import { CacheService } from '../../cache/cache.service';
 import { Job } from 'bullmq';
 import { RequestContext } from '../../../shared/utils/request-context';
 import { ConfigService } from '@nestjs/config';
+import Redlock from 'redlock';
 
 describe('OrderProcessor', () => {
   let processor: OrderProcessor;
@@ -18,7 +19,6 @@ describe('OrderProcessor', () => {
     } as any;
 
     cacheService = {
-      setIfNotExists: jest.fn(),
       delete: jest.fn(),
     } as any;
 
@@ -32,6 +32,7 @@ describe('OrderProcessor', () => {
         { provide: OrderJobHandlerFactory, useValue: factory },
         { provide: CacheService, useValue: cacheService },
         { provide: ConfigService, useValue: configService },
+        { provide: Redlock, useValue: { acquire: jest.fn(), release: jest.fn() } },
       ],
     }).compile();
 

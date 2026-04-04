@@ -9,66 +9,49 @@ import { OnApplicationBootstrap } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { CACHE_CONFIG } from '@/shared/constants/cache.constant';
 import { CacheService } from '@/modules/cache/cache.service';
+import { UseLock } from '@/shared/decorators/lock.decorator';
+import Redlock from 'redlock';
 
 @Processor('events', { maxStalledCount: 1 })
-export class EventProcessor
-  extends BaseProcessor
-  implements OnApplicationBootstrap
-{
+export class EventProcessor extends BaseProcessor implements OnApplicationBootstrap {
   constructor(
     protected readonly notificationStrategy: NotificationStrategy,
     protected readonly configService: ConfigService,
     protected readonly cacheService: CacheService,
+    protected readonly redlock: Redlock,
   ) {
-    super(cacheService, EventProcessor.name);
+    super(EventProcessor.name);
   }
 
   onApplicationBootstrap() {
-    const concurrency = this.configService.get<string>(
-      'QUEUE_EVENT_CONCURRENCY',
-    );
+    const concurrency = this.configService.get<string>('QUEUE_EVENT_CONCURRENCY');
     this.setupConcurrency(Number(concurrency));
   }
 
   async process(job: Job) {
-    await this.execute('process', job);
+    await this.execute(job, 'process');
   }
 
   @OnWorkerEvent('failed')
   async onJobFailed(job: Job, error: Error) {
     if (job.attemptsMade >= (job.opts.attempts || 1)) {
       // Execute after all retries have been exhausted
-      await this.execute('failed', job, error);
+      await this.execute(job, 'failed', error);
     }
   }
 
-  async execute(event: 'process' | 'failed', job: Job, error?: Error) {
+  @UseLock({ prefix: 'job-execute', key: ([job]) => job.id })
+  async execute(job: Job, event: 'process' | 'failed', error?: Error) {
     const correlationId = job.data?.correlationId ?? randomUUID();
 
     return RequestContext.run(correlationId, async () => {
-      const lockKey = `lock:job:${job.id}`;
-
-      const lock = await this.cacheService.setIfNotExists(
-        lockKey,
-        '1',
-        CACHE_CONFIG.SERVICE_LOCK_TTL,
-      );
-      if (!lock) {
-        this.logger.warn(`Job ${job.id} already running`);
-        return;
-      }
-
-      try {
-        switch (job.name) {
-          case JobName.EVENTS_NOTIFY_USER:
-            if (event === 'process') {
-              return this.notificationStrategy.execute(job);
-            } else {
-              return this.notificationStrategy.executeOnFailed(job, error);
-            }
-        }
-      } finally {
-        await this.cacheService.delete(lockKey);
+      switch (job.name) {
+        case JobName.EVENTS_NOTIFY_USER:
+          if (event === 'process') {
+            await this.notificationStrategy.execute(job);
+          } else {
+            await this.notificationStrategy.executeOnFailed(job, error);
+          }
       }
     });
   }
