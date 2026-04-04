@@ -6,16 +6,15 @@ import { Order } from './entities/order.entity';
 import { OrderItem } from './entities/order-item.entity';
 import { CacheModule } from '../cache/cache.module';
 import { OrderJobHandlerFactory } from './factories';
-import {
-  CancelOrderJobStrategy,
-  ProcessOrderJobStrategy,
-  NotificationJobStrategy,
-} from './strategies';
-import { ShipOrderJobStrategy } from './strategies/ship-order-job.strategy';
-import { DeliverOrderJobStrategy } from './strategies/deliver-order-job.strategy';
 import { OrderProcessor } from './processors/order.processor';
 import { OrderRepository } from './repositories/order.repository';
 import { OrderItemRepository } from './repositories/order-item.repository';
+import {
+  CancelOrderJobStrategy,
+  DeliverOrderJobStrategy,
+  ProcessOrderJobStrategy,
+  ShipOrderJobStrategy,
+} from './strategies';
 
 @Module({
   imports: [TypeOrmModule.forFeature([Order, OrderItem]), CacheModule],
@@ -30,7 +29,6 @@ import { OrderItemRepository } from './repositories/order-item.repository';
     ShipOrderJobStrategy,
     DeliverOrderJobStrategy,
     CancelOrderJobStrategy,
-    NotificationJobStrategy,
   ],
   exports: [OrdersService, OrderRepository, OrderItemRepository],
 })

@@ -1,13 +1,13 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { EventProcessor } from './event.processor';
-import { NotificationJobStrategy } from '../strategies/notification-job.strategy';
+import { NotifyUserJobStrategy } from '../strategies/notify-user-job.strategy';
 import { ConfigService } from '@nestjs/config';
 import { CacheService } from '../../../../modules/cache/cache.service';
 import Redlock from 'redlock';
 
 describe('EventProcessor', () => {
   let processor: EventProcessor;
-  let notificationStrategy: jest.Mocked<NotificationJobStrategy>;
+  let notificationStrategy: jest.Mocked<NotifyUserJobStrategy>;
   let cacheService: jest.Mocked<CacheService>;
 
   beforeEach(async () => {
@@ -19,7 +19,7 @@ describe('EventProcessor', () => {
       providers: [
         EventProcessor,
         {
-          provide: NotificationJobStrategy,
+          provide: NotifyUserJobStrategy,
           useValue: notificationStrategy,
         },
         {

@@ -10,7 +10,7 @@ export class OrderJobPayload extends BaseJobPayload {
   }
 }
 
-export class ProcessPaymentOrderJobPayload extends OrderJobPayload {
+export class ProcessOrderJobPayload extends OrderJobPayload {
   constructor(
     public readonly userId: string,
     public readonly orderId: string,

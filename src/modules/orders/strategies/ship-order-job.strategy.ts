@@ -19,6 +19,10 @@ import Redlock from 'redlock';
 
 @Injectable()
 export class ShipOrderJobStrategy extends BaseOrderJobStrategy<ShipOrderJobPayload> {
+  private readonly CACHE_KEYS = {
+    IDEMPOTENCY: (jobId: string) => `idempotency:order:ship:${jobId}`,
+  };
+
   constructor(
     protected readonly outboxService: OutboxService,
     protected readonly orderRepository: OrderRepository,
@@ -38,7 +42,7 @@ export class ShipOrderJobStrategy extends BaseOrderJobStrategy<ShipOrderJobPaylo
   @Transactional()
   async execute(job: Job<ShipOrderJobPayload>): Promise<void> {
     const { jobId, orderId } = job.data;
-    const idempotencyKey = this.cacheKeyIdempotency(jobId);
+    const idempotencyKey = this.CACHE_KEYS.IDEMPOTENCY(jobId);
 
     const idempotencyValue = await this.getIdempotency(idempotencyKey);
     if (idempotencyValue && idempotencyValue !== JobStatus.FAILED) {
@@ -47,16 +51,15 @@ export class ShipOrderJobStrategy extends BaseOrderJobStrategy<ShipOrderJobPaylo
     await this.setIdempotency(idempotencyKey, JobStatus.IN_PROGRESS);
 
     try {
-      if (
-        !(await this.orderRepository.existsByStatusIn(orderId, [OrderStatus.PAID]))
-      ) {
+      if (!(await this.orderRepository.hasStatus(orderId, [OrderStatus.PAID]))) {
         this.logger.log(`Order ${orderId} is not in PAID status or does not exist`);
         await this.setIdempotency(idempotencyKey, JobStatus.COMPLETED);
         return;
       }
 
       this.logger.log(
-        `Shipping order ${orderId}, attempt ${job.attemptsMade + 1} of ${job.opts.attempts}`,
+        `Shipping order, attempt ${job.attemptsMade + 1} of ${job.opts.attempts}`,
+        { orderId },
       );
 
       await this.simulateShipping(job.data);
@@ -75,27 +78,28 @@ export class ShipOrderJobStrategy extends BaseOrderJobStrategy<ShipOrderJobPaylo
   async executeOnFailed(job: Job<ShipOrderJobPayload>, error: Error): Promise<void> {
     const { orderId } = job.data;
 
-    this.logger.error(
-      `Failed to ship order ${orderId} after all retries: ${error.message}`,
-    );
+    this.logger.error(`Failed to ship order after all retries: ${error.message}`, {
+      orderId,
+    });
 
     try {
       await this.compensationLogic(job.data);
     } catch (error: any) {
       this.logger.error(
-        `[CRITICAL] Compensation logic failed for shipping order ${orderId}: ${error.message}`,
+        `[CRITICAL] Compensation logic failed for shipping order: ${error.message}`,
+        { orderId },
       );
     }
   }
 
   private async compensationLogic(data: ShipOrderJobPayload) {
     // TODO: Implement a RefundOrderStrategy and call it here instead of just logging
-    this.logger.log(`Compensation logic executed for order ${data.orderId}`);
+    this.logger.log('Compensation logic executed', { orderId: data.orderId });
   }
 
   private async simulateShipping(data: ShipOrderJobPayload) {
     await delay(2000);
-    this.logger.log(`Shipping OK for order ${data.orderId}`);
+    this.logger.log('Shipping OK', { orderId: data.orderId });
   }
 
   private async finish(data: ShipOrderJobPayload) {
@@ -109,7 +113,7 @@ export class ShipOrderJobStrategy extends BaseOrderJobStrategy<ShipOrderJobPaylo
       new NotifyUserJobPayload(
         userId,
         userName,
-        `<To user ${userName}>: Your order with id ${orderId} has been shipped successfully!`,
+        `<To user ${userName}>: Your order with id ${orderId} has been shipped successfully.`,
       ),
     );
 
@@ -119,12 +123,6 @@ export class ShipOrderJobStrategy extends BaseOrderJobStrategy<ShipOrderJobPaylo
       new DeliverOrderJobPayload(userId, orderId, userName),
     );
 
-    this.logger.log(`Order ${orderId} moved to SHIPPED`);
-  }
-
-  // Methods for creating cache keys
-
-  private cacheKeyIdempotency(jobId: string): string {
-    return `idempotency:order:ship:${jobId}`;
+    this.logger.log(`Order moved to SHIPPED`, { orderId });
   }
 }

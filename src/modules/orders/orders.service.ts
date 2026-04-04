@@ -4,7 +4,7 @@ import { UpdateOrderDto } from './dto/update-order.dto';
 import { OrderQueryDto } from './dto/order-query.dto';
 import { OrderStatus } from './enums/order-status.enum';
 import { CacheService } from '../cache/cache.service';
-import { ProcessPaymentOrderJobPayload } from './processors/payloads/order-job.payload';
+import { ProcessOrderJobPayload } from './processors/payloads/order-job.payload';
 import { NotifyUserJobPayload } from '@/shared/modules/events/processors/payloads/notify-user.payload';
 import { OrderRepository } from './repositories/order.repository';
 import { OrderItemRepository } from './repositories/order-item.repository';
@@ -93,7 +93,7 @@ export class OrdersService extends CacheableService {
     // Add to the Outbox for processing the order (job)
     await this.outboxService.add(
       OutboxType.ORDER_PROCESS,
-      new ProcessPaymentOrderJobPayload(
+      new ProcessOrderJobPayload(
         userId,
         completeOrder.id,
         total,
@@ -122,6 +122,7 @@ export class OrdersService extends CacheableService {
     const cachedResult = await runAndIgnoreError(
       () => this.cacheService.get<PaginatedResultDto<OrderResponseDto>>(cacheKey),
       `fetching orders list from cache with key: ${cacheKey}`,
+      this.logger,
     );
     if (cachedResult) {
       this.logger.debug('Returning cached orders list', { cacheKey });
@@ -133,6 +134,7 @@ export class OrdersService extends CacheableService {
     await runAndIgnoreError(
       () => this.cacheService.set(cacheKey, result, CACHE_CONFIG.LIST_TTL),
       `caching orders list with key: ${cacheKey}`,
+      this.logger,
     );
 
     this.logger.debug(`Found ${result.data.length} orders`, {
@@ -155,6 +157,7 @@ export class OrdersService extends CacheableService {
     const cachedOrder = await runAndIgnoreError(
       () => this.cacheService.get<OrderResponseDto>(cacheKey),
       `fetching order from cache with key: ${cacheKey}`,
+      this.logger,
     );
     if (cachedOrder) {
       this.logger.debug('Returning cached order', { orderId: id });
@@ -172,6 +175,7 @@ export class OrdersService extends CacheableService {
     await runAndIgnoreError(
       () => this.cacheService.set(cacheKey, orderMapped, CACHE_CONFIG.DEFAULT_TTL),
       `caching order with key: ${cacheKey}`,
+      this.logger,
     );
 
     this.logger.debug('Found order', { orderId: id });

@@ -8,9 +8,9 @@ import { Transactional } from '@/shared/decorators/transactional.decorator';
 import { IdempotentJobStrategy } from '@/shared/strategies/idempotent-job.strategy';
 
 @Injectable()
-export class NotificationJobStrategy extends IdempotentJobStrategy<NotifyUserJobPayload> {
+export class NotifyUserJobStrategy extends IdempotentJobStrategy<NotifyUserJobPayload> {
   constructor(protected readonly cacheService: CacheService) {
-    super(NotificationJobStrategy.name, cacheService);
+    super(NotifyUserJobStrategy.name, cacheService);
   }
 
   async execute(job: Job<NotifyUserJobPayload>): Promise<void> {

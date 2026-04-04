@@ -56,10 +56,7 @@ export class OrderRepository extends BaseRepository<Order> {
       );
   }
 
-  async existsByStatusIn(
-    orderId: string,
-    statusArray: OrderStatus[],
-  ): Promise<boolean> {
+  async hasStatus(orderId: string, statusArray: OrderStatus[]): Promise<boolean> {
     const manager = this.getManager();
     return manager.existsBy(Order, {
       id: orderId,

@@ -16,6 +16,10 @@ import Redlock from 'redlock';
 
 @Injectable()
 export class DeliverOrderJobStrategy extends BaseOrderJobStrategy<DeliverOrderJobPayload> {
+  private readonly CACHE_KEYS = {
+    IDEMPOTENCY: (jobId: string) => `idempotency:order:deliver:${jobId}`,
+  };
+
   constructor(
     protected readonly cacheService: CacheService,
     protected readonly outboxService: OutboxService,
@@ -34,8 +38,8 @@ export class DeliverOrderJobStrategy extends BaseOrderJobStrategy<DeliverOrderJo
 
   @Transactional()
   async execute(job: Job<DeliverOrderJobPayload>): Promise<void> {
-    const { jobId, orderId, userId, userName } = job.data;
-    const idempotencyKey = this.cacheKeyIdempotency(jobId);
+    const { jobId, orderId } = job.data;
+    const idempotencyKey = this.CACHE_KEYS.IDEMPOTENCY(jobId);
 
     const idempotencyValue = await this.getIdempotency(idempotencyKey);
     if (idempotencyValue && idempotencyValue !== JobStatus.FAILED) {
@@ -44,11 +48,7 @@ export class DeliverOrderJobStrategy extends BaseOrderJobStrategy<DeliverOrderJo
     await this.setIdempotency(idempotencyKey, JobStatus.IN_PROGRESS);
 
     try {
-      if (
-        !(await this.orderRepository.existsByStatusIn(orderId, [
-          OrderStatus.SHIPPED,
-        ]))
-      ) {
+      if (!(await this.orderRepository.hasStatus(orderId, [OrderStatus.SHIPPED]))) {
         this.logger.log(
           `Order ${orderId} is not in SHIPPED status or does not exist`,
         );
@@ -57,7 +57,8 @@ export class DeliverOrderJobStrategy extends BaseOrderJobStrategy<DeliverOrderJo
       }
 
       this.logger.log(
-        `Delivering order ${orderId}, attempt ${job.attemptsMade + 1} of ${job.opts.attempts}`,
+        `Delivering order, attempt ${job.attemptsMade + 1} of ${job.opts.attempts}`,
+        { orderId },
       );
 
       await this.simulateDelivery(job.data);
@@ -80,26 +81,28 @@ export class DeliverOrderJobStrategy extends BaseOrderJobStrategy<DeliverOrderJo
     const { orderId } = job.data;
 
     this.logger.error(
-      `Failed to deliver order ${orderId} after all retries: ${error.message}`,
+      `Failed to deliver order after all retries: ${error.message}`,
+      { orderId },
     );
 
     try {
       await this.compensationLogic(job.data);
     } catch (error: any) {
       this.logger.error(
-        `[CRITICAL] Compensation logic failed for delivering order ${orderId}: ${error.message}`,
+        `[CRITICAL] Compensation logic failed for delivering order: ${error.message}`,
+        { orderId },
       );
     }
   }
 
   private async compensationLogic(data: DeliverOrderJobPayload) {
     // TODO: Implement a RefundOrderStrategy and call it here instead of just logging
-    this.logger.log(`Compensation logic executed for order ${data.orderId}`);
+    this.logger.log(`Compensation logic executed`, { orderId: data.orderId });
   }
 
   private async simulateDelivery(data: DeliverOrderJobPayload) {
     await delay(3000);
-    this.logger.log(`Delivery OK for order ${data.orderId}`);
+    this.logger.log(`Delivery OK`, { orderId: data.orderId });
   }
 
   private async finish(data: DeliverOrderJobPayload) {
@@ -113,14 +116,10 @@ export class DeliverOrderJobStrategy extends BaseOrderJobStrategy<DeliverOrderJo
       new NotifyUserJobPayload(
         userId,
         userName,
-        `<To user ${userName}>: Your order with id ${orderId} has been delivered successfully!`,
+        `<To user ${userName}>: Your order with id ${orderId} has been delivered successfully.`,
       ),
     );
 
-    this.logger.log(`Order ${orderId} moved to DELIVERED`);
-  }
-
-  private cacheKeyIdempotency(jobId: string): string {
-    return `idempotency:order:deliver:${jobId}`;
+    this.logger.log(`Order moved to DELIVERED`, { orderId });
   }
 }

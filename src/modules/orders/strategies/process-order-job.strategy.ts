@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { Job } from 'bullmq';
 import { OrderStatus } from '../enums/order-status.enum';
 import {
-  ProcessPaymentOrderJobPayload as ProcessOrderJobPayload,
+  ProcessOrderJobPayload,
   ShipOrderJobPayload,
 } from '../processors/payloads/order-job.payload';
 import { NotifyUserJobPayload } from '@/shared/modules/events/processors/payloads/notify-user.payload';
@@ -19,7 +19,12 @@ import Redlock from 'redlock';
 
 @Injectable()
 export class ProcessOrderJobStrategy extends BaseOrderJobStrategy<ProcessOrderJobPayload> {
-  private readonly orderIsPaidCacheTTL = 24 * 60 * 60 * 1000; // 24 hours
+  private readonly PAYMENT_IDEMPOTENCY_TTL = 24 * 60 * 60 * 1000; // 24 hours
+
+  private readonly CACHE_KEYS = {
+    IDEMPOTENCY: (jobId: string) => `idempotency:order:process:${jobId}`,
+    IS_PAID: (orderId: string) => `validate:order:process:is_paid:${orderId}`,
+  };
 
   constructor(
     protected readonly cacheService: CacheService,
@@ -40,7 +45,7 @@ export class ProcessOrderJobStrategy extends BaseOrderJobStrategy<ProcessOrderJo
   @Transactional()
   async execute(job: Job<ProcessOrderJobPayload>): Promise<void> {
     const { jobId, orderId } = job.data;
-    const idempotencyKey = this.cacheKeyIdempotency(jobId);
+    const idempotencyKey = this.CACHE_KEYS.IDEMPOTENCY(jobId);
 
     const idempotencyValue = await this.getIdempotency(idempotencyKey);
     if (idempotencyValue && idempotencyValue !== JobStatus.FAILED) {
@@ -49,11 +54,7 @@ export class ProcessOrderJobStrategy extends BaseOrderJobStrategy<ProcessOrderJo
     await this.setIdempotency(idempotencyKey, JobStatus.IN_PROGRESS);
 
     try {
-      if (
-        !(await this.orderRepository.existsByStatusIn(orderId, [
-          OrderStatus.PENDING,
-        ]))
-      ) {
+      if (!(await this.orderRepository.hasStatus(orderId, [OrderStatus.PENDING]))) {
         this.logger.log(
           `Order ${orderId} is not in PENDING status or does not exist`,
         );
@@ -62,19 +63,20 @@ export class ProcessOrderJobStrategy extends BaseOrderJobStrategy<ProcessOrderJo
       }
 
       this.logger.log(
-        `Processing order ${orderId}, attempt ${job.attemptsMade + 1} of ${job.opts.attempts}`,
+        `Processing order, attempt ${job.attemptsMade + 1} of ${job.opts.attempts}`,
+        { orderId },
       );
 
       const isPaid = await this.cacheService.get<boolean>(
-        this.cacheKeyIsPaid(orderId),
+        this.CACHE_KEYS.IS_PAID(orderId),
       );
       if (!isPaid) {
         await this.processPayment(job.data);
       }
       await this.cacheService.set(
-        this.cacheKeyIsPaid(orderId),
+        this.CACHE_KEYS.IS_PAID(orderId),
         true,
-        this.orderIsPaidCacheTTL,
+        this.PAYMENT_IDEMPOTENCY_TTL,
       );
 
       await this.finish(job.data);
@@ -95,14 +97,16 @@ export class ProcessOrderJobStrategy extends BaseOrderJobStrategy<ProcessOrderJo
     const { orderId } = job.data;
 
     this.logger.error(
-      `Failed to process payment for order ${orderId} after all retries: ${error.message}`,
+      `Failed to process payment for order after all retries: ${error.message}`,
+      { orderId },
     );
 
     try {
       await this.compensationLogic(job.data);
     } catch (error: any) {
       this.logger.error(
-        `[CRITICAL] Compensation logic failed for processing order ${orderId}: ${error.message}`,
+        `[CRITICAL] Compensation logic failed for processing order: ${error.message}`,
+        { orderId },
       );
     }
   }
@@ -110,15 +114,15 @@ export class ProcessOrderJobStrategy extends BaseOrderJobStrategy<ProcessOrderJo
   private async compensationLogic(data: ProcessOrderJobPayload) {
     // TODO: Implement a RefundOrderStrategy and call it here instead of just logging
     const isPaid = await this.cacheService.get<boolean>(
-      this.cacheKeyIsPaid(data.orderId),
+      this.CACHE_KEYS.IS_PAID(data.orderId),
     );
     if (isPaid) {
       await this.refundPayment(data);
     }
     await this.cacheService.set(
-      this.cacheKeyIsPaid(data.orderId),
+      this.CACHE_KEYS.IS_PAID(data.orderId),
       false,
-      this.orderIsPaidCacheTTL,
+      this.PAYMENT_IDEMPOTENCY_TTL,
     );
 
     await this.releaseInventory(data);
@@ -127,17 +131,17 @@ export class ProcessOrderJobStrategy extends BaseOrderJobStrategy<ProcessOrderJo
   private async processPayment(data: ProcessOrderJobPayload) {
     if (Math.random() < 0.1) throw new Error('Random payment error');
     await delay(2000);
-    this.logger.log(`Payment OK for order ${data.orderId}`);
+    this.logger.log('Payment OK', { orderId: data.orderId });
   }
 
   private async refundPayment(data: ProcessOrderJobPayload) {
     await delay(1000);
-    this.logger.warn(`Payment refunded for order ${data.orderId}`);
+    this.logger.warn('Payment refunded', { orderId: data.orderId });
   }
 
   private async releaseInventory(data: ProcessOrderJobPayload) {
     await delay(1000);
-    this.logger.warn(`Inventory released for order ${data.orderId}`);
+    this.logger.warn('Inventory released', { orderId: data.orderId });
   }
 
   private async finish(data: ProcessOrderJobPayload) {
@@ -151,7 +155,7 @@ export class ProcessOrderJobStrategy extends BaseOrderJobStrategy<ProcessOrderJo
       new NotifyUserJobPayload(
         userId,
         userName,
-        `<To user ${userName}>: Your order with id ${orderId} has been paid successfully!`,
+        `<To user ${userName}>: Your order with id ${orderId} has been paid successfully.`,
       ),
     );
 
@@ -161,16 +165,6 @@ export class ProcessOrderJobStrategy extends BaseOrderJobStrategy<ProcessOrderJo
       new ShipOrderJobPayload(userId, orderId, userName),
     );
 
-    this.logger.log(`Order ${orderId} moved to PAID`);
-  }
-
-  // Methods for creating cache keys
-
-  private cacheKeyIdempotency(jobId: string): string {
-    return `idempotency:order:process:${jobId}`;
-  }
-
-  private cacheKeyIsPaid(orderId: string): string {
-    return `validate:order:process:is_paid:${orderId}`;
+    this.logger.log(`Order moved to PAID`, { orderId });
   }
 }

@@ -1,17 +1,17 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { Logger } from '@nestjs/common';
-import { NotificationJobStrategy } from './notification-job.strategy';
+import { NotifyUserJobStrategy } from './notify-user-job.strategy';
 import { CacheService } from '../../../../modules/cache/cache.service';
 
-describe(NotificationJobStrategy.name, () => {
-  let strategy: NotificationJobStrategy;
+describe(NotifyUserJobStrategy.name, () => {
+  let strategy: NotifyUserJobStrategy;
   let cacheService: jest.Mocked<CacheService>;
   let logger: jest.Mocked<Logger>;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
-        NotificationJobStrategy,
+        NotifyUserJobStrategy,
         {
           provide: CacheService,
           useValue: {
@@ -23,7 +23,7 @@ describe(NotificationJobStrategy.name, () => {
       ],
     }).compile();
 
-    strategy = module.get<NotificationJobStrategy>(NotificationJobStrategy);
+    strategy = module.get<NotifyUserJobStrategy>(NotifyUserJobStrategy);
     cacheService = module.get(CacheService) as jest.Mocked<CacheService>;
     logger = {
       log: jest.fn(),

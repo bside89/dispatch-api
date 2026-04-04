@@ -1,3 +1,5 @@
+import { AppLogger } from '../utils/app-logger';
+
 /**
  * Delays the execution for a specified amount of time.
  * @param ms Time to wait in milliseconds.
@@ -10,17 +12,22 @@ export async function delay(ms: number): Promise<void> {
 /**
  * Runs a function and ignores any errors that occur, logging them instead.
  * @param fn The function to run.
- * @param context A description of the context in which the function is run, used for logging.
+ * @param context A description of the context in which the function is run, used for
+ * logging.
+ * @param logger An optional logger to use for logging warnings. If not provided, it
+ * will default to using console.warn.
  * @returns The result of the function, or null if an error occurred.
  */
 export async function runAndIgnoreError<T>(
   fn: () => Promise<T>,
   context: string,
+  logger?: Pick<AppLogger, 'warn'>,
 ): Promise<T | null> {
   try {
     return await fn();
   } catch (error: any) {
-    console.warn(`Non-critical error ignored in ${context}: ${error.message}`);
+    const message = `Non-critical error ignored in ${context}: ${error.message}`;
+    logger ? logger.warn(message) : console.warn(message);
     return null;
   }
 }

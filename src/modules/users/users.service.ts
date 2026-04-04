@@ -99,6 +99,7 @@ export class UsersService extends CacheableService {
     const cachedResult = await runAndIgnoreError(
       () => this.cacheService.get<PaginatedResultDto<UserResponseDto>>(cacheKey),
       `fetching users list from cache with key: ${cacheKey}`,
+      this.logger,
     );
     if (cachedResult) {
       this.logger.debug('Returning cached users list', { cacheKey });
@@ -110,6 +111,7 @@ export class UsersService extends CacheableService {
     await runAndIgnoreError(
       () => this.cacheService.set(cacheKey, result, CACHE_CONFIG.LIST_TTL),
       `caching users list with key: ${cacheKey}`,
+      this.logger,
     );
 
     this.logger.debug(`Retrieved ${result.data.length} users`);
@@ -126,6 +128,7 @@ export class UsersService extends CacheableService {
     const cachedResult = await runAndIgnoreError(
       () => this.cacheService.get<UserResponseDto>(cacheKey),
       `fetching user from cache with key: ${cacheKey}`,
+      this.logger,
     );
     if (cachedResult) {
       this.logger.debug('Returning cached user', { id });
@@ -152,6 +155,7 @@ export class UsersService extends CacheableService {
           CACHE_CONFIG.LIST_TTL,
         ),
       `caching user with ID: ${id}`,
+      this.logger,
     );
 
     return userMapped;
@@ -163,6 +167,7 @@ export class UsersService extends CacheableService {
     const cachedResult = await runAndIgnoreError(
       () => this.cacheService.get<UserResponseDto>(cacheKey),
       `fetching user from cache with key: ${cacheKey}`,
+      this.logger,
     );
     if (cachedResult) {
       this.logger.debug('Returning cached user', { email });
@@ -188,6 +193,7 @@ export class UsersService extends CacheableService {
           CACHE_CONFIG.LIST_TTL,
         ),
       `caching user with email: ${email}`,
+      this.logger,
     );
 
     return userMapped;

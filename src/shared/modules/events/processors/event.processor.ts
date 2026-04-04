@@ -1,6 +1,6 @@
 import { OnWorkerEvent, Processor } from '@nestjs/bullmq';
 import { Job } from 'bullmq';
-import { NotificationJobStrategy } from '../strategies/notification-job.strategy';
+import { NotifyUserJobStrategy } from '../strategies/notify-user-job.strategy';
 import { BaseProcessor } from '@/shared/processors/base.processor';
 import { OutboxType as JobName } from '@/shared/modules/outbox/enums/outbox-type.enum';
 import { RequestContext } from '@/shared/utils/request-context';
@@ -11,11 +11,13 @@ import { CACHE_CONFIG } from '@/shared/constants/cache.constant';
 import { CacheService } from '@/modules/cache/cache.service';
 import { UseLock } from '@/shared/decorators/lock.decorator';
 import Redlock from 'redlock';
+import { EventJobHandlerFactory } from '../factories/event-job-handler.factory';
 
 @Processor('events', { maxStalledCount: 1 })
 export class EventProcessor extends BaseProcessor implements OnApplicationBootstrap {
   constructor(
-    protected readonly notificationStrategy: NotificationJobStrategy,
+    protected readonly factory: EventJobHandlerFactory,
+    protected readonly notificationStrategy: NotifyUserJobStrategy,
     protected readonly configService: ConfigService,
     protected readonly cacheService: CacheService,
     protected readonly redlock: Redlock, // Used in @UseLock()
@@ -45,13 +47,17 @@ export class EventProcessor extends BaseProcessor implements OnApplicationBootst
     const correlationId = job.data?.correlationId ?? randomUUID();
 
     return RequestContext.run(correlationId, async () => {
-      switch (job.name) {
-        case JobName.EVENTS_NOTIFY_USER:
-          if (event === 'process') {
-            await this.notificationStrategy.execute(job);
-          } else {
-            await this.notificationStrategy.executeOnFailed(job, error);
-          }
+      const handler = this.factory.createHandler(job.name);
+
+      if (!handler) {
+        this.logger.warn(`Unknown job: ${job.name}`);
+        return;
+      }
+
+      if (event === 'process') {
+        await handler.execute(job);
+      } else {
+        await handler.executeOnFailed(job, error);
       }
     });
   }

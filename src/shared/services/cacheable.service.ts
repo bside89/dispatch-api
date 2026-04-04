@@ -27,6 +27,7 @@ export abstract class CacheableService extends BaseService {
         runAndIgnoreError(
           () => this.cacheService.delete(key),
           `deleting cache key: ${key}`,
+          this.logger,
         ),
       ),
       // Delete pattern-based keys
@@ -34,6 +35,7 @@ export abstract class CacheableService extends BaseService {
         runAndIgnoreError(
           () => this.cacheService.deletePattern(pattern),
           `deleting cache pattern: ${pattern}`,
+          this.logger,
         ),
       ),
     ]);

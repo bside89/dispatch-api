@@ -16,6 +16,10 @@ import Redlock from 'redlock';
 
 @Injectable()
 export class CancelOrderJobStrategy extends BaseOrderJobStrategy<CancelOrderJobPayload> {
+  private readonly CACHE_KEYS = {
+    IDEMPOTENCY: (jobId: string) => `idempotency:order:cancel:${jobId}`,
+  };
+
   constructor(
     protected readonly cacheService: CacheService,
     protected readonly outboxService: OutboxService,
@@ -35,7 +39,7 @@ export class CancelOrderJobStrategy extends BaseOrderJobStrategy<CancelOrderJobP
   @Transactional()
   async execute(job: Job<CancelOrderJobPayload>): Promise<void> {
     const { jobId, orderId } = job.data;
-    const idempotencyKey = this.cacheKeyIdempotency(jobId);
+    const idempotencyKey = this.CACHE_KEYS.IDEMPOTENCY(jobId);
 
     const idempotencyValue = await this.getIdempotency(idempotencyKey);
     if (idempotencyValue && idempotencyValue !== JobStatus.FAILED) {
@@ -45,7 +49,7 @@ export class CancelOrderJobStrategy extends BaseOrderJobStrategy<CancelOrderJobP
 
     try {
       if (
-        await this.orderRepository.existsByStatusIn(orderId, [
+        await this.orderRepository.hasStatus(orderId, [
           OrderStatus.CANCELLED,
           OrderStatus.REFUNDED,
         ])
@@ -58,7 +62,8 @@ export class CancelOrderJobStrategy extends BaseOrderJobStrategy<CancelOrderJobP
       }
 
       this.logger.log(
-        `Cancelling order ${orderId}, attempt ${job.attemptsMade + 1} of ${job.opts.attempts}`,
+        `Cancelling order, attempt ${job.attemptsMade + 1} of ${job.opts.attempts}`,
+        { orderId },
       );
 
       await this.cancelOrder(job.data);
@@ -81,13 +86,14 @@ export class CancelOrderJobStrategy extends BaseOrderJobStrategy<CancelOrderJobP
     const { orderId } = job.data;
 
     this.logger.error(
-      `[CRITICAL] Failed to cancel order ${orderId} after all retries: ${error.message}`,
+      `[CRITICAL] Failed to cancel order after all retries: ${error.message}`,
+      { orderId },
     );
   }
 
   private async cancelOrder(data: CancelOrderJobPayload) {
     await delay(2000);
-    this.logger.log(`Cancel for order ${data.orderId} processed`);
+    this.logger.log(`Cancel for order processed`, { orderId: data.orderId });
   }
 
   private async finish(data: CancelOrderJobPayload) {
@@ -101,16 +107,12 @@ export class CancelOrderJobStrategy extends BaseOrderJobStrategy<CancelOrderJobP
       new NotifyUserJobPayload(
         userId,
         userName,
-        `<To user ${userName}>: Your order with id ${orderId} has been cancelled successfully!`,
+        `<To user ${userName}>: Your order with id ${orderId} has been cancelled successfully.`,
       ),
     );
 
     // TODO: Add to the Outbox for refund the order (job)
 
-    this.logger.log(`Order ${orderId} moved to CANCELLED`);
-  }
-
-  private cacheKeyIdempotency(jobId: string): string {
-    return `idempotency:order:cancel:${jobId}`;
+    this.logger.log(`Order moved to CANCELLED`, { orderId });
   }
 }
