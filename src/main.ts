@@ -68,14 +68,13 @@ async function bootstrap() {
     .addTag('auth', 'Authentication endpoints')
     .addTag('users', 'User management endpoints')
     .addTag('orders', 'Order management endpoints')
-    .addTag('admin', 'Admin endpoints')
     .addBearerAuth()
     .build();
 
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api/docs', app, document);
 
-  // Apply the middleware manually for the admin routes
+  // Apply the middleware manually for the protected routes
   const authMiddleware = new BasicAuthMiddleware(configService);
 
   // Protect Bull Board

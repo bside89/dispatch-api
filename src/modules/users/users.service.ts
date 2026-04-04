@@ -12,6 +12,7 @@ import { UserQueryDto } from './dto/user-query.dto';
 import { UserRepository } from './repositories/user.repository';
 import { PaginatedResultDto } from '@/shared/dto/paginated-result.dto';
 import { UserResponseDto } from './dto/user-response.dto';
+import { EntityMapper } from '@/shared/utils/entity-mapper';
 import { HashUtils } from '@/shared/utils/hash.utils';
 import { DataSource } from 'typeorm';
 import { Transactional } from '@/shared/decorators/transactional.decorator';
@@ -72,7 +73,7 @@ export class UsersService extends CacheableService {
 
     const savedUser = await this.userRepository.save(user);
 
-    const userMapped = UserResponseDto.fromEntity(savedUser);
+    const userMapped = EntityMapper.map(savedUser, UserResponseDto);
 
     await this.cacheService.set(
       idempotencyKeyFormatted,
@@ -115,7 +116,7 @@ export class UsersService extends CacheableService {
 
     return {
       ...result,
-      data: result.data.map(UserResponseDto.fromEntity),
+      data: EntityMapper.mapArray(result.data, UserResponseDto),
     };
   }
 
@@ -141,7 +142,7 @@ export class UsersService extends CacheableService {
 
     this.logger.debug('User found', { email: user.email });
 
-    const userMapped = UserResponseDto.fromEntity(user);
+    const userMapped = EntityMapper.map(user, UserResponseDto);
 
     await runAndIgnoreError(
       () =>
@@ -177,7 +178,7 @@ export class UsersService extends CacheableService {
 
     this.logger.debug('User found', { email });
 
-    const userMapped = UserResponseDto.fromEntity(user);
+    const userMapped = EntityMapper.map(user, UserResponseDto);
 
     await runAndIgnoreError(
       () =>
@@ -228,7 +229,7 @@ export class UsersService extends CacheableService {
       patternsToDelete: ['cache:user:find-all:*'],
     });
 
-    return UserResponseDto.fromEntity(updatedUser);
+    return EntityMapper.map(updatedUser, UserResponseDto);
   }
 
   @UseLock({ prefix: 'user-update', key: ([id]) => id })
@@ -279,7 +280,7 @@ export class UsersService extends CacheableService {
 
     const updatedUser = await this.userRepository.save(user);
 
-    const userMapped = UserResponseDto.fromEntity(updatedUser);
+    const userMapped = EntityMapper.map(updatedUser, UserResponseDto);
 
     await this.invalidateCache({
       keysToDelete: [

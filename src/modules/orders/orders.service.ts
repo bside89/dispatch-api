@@ -12,6 +12,7 @@ import { PaginatedResultDto } from '@/shared/dto/paginated-result.dto';
 import { DataSource } from 'typeorm';
 import { Transactional } from '@/shared/decorators/transactional.decorator';
 import { OrderResponseDto } from './dto/order-response.dto';
+import { EntityMapper } from '@/shared/utils/entity-mapper';
 import { CACHE_CONFIG } from '@/shared/constants/cache.constant';
 import { OutboxService } from '@/shared/modules/outbox/outbox.service';
 import { OutboxType } from '@/shared/modules/outbox/enums/outbox-type.enum';
@@ -87,7 +88,7 @@ export class OrdersService extends CacheableService {
       patternsToDelete: ['cache:order:list:*'],
     });
 
-    const orderMapped = OrderResponseDto.fromEntity(completeOrder);
+    const orderMapped = EntityMapper.map(completeOrder, OrderResponseDto);
 
     // Add to the Outbox for processing the order (job)
     await this.outboxService.add(
@@ -143,7 +144,7 @@ export class OrdersService extends CacheableService {
       result.total,
       result.page,
       result.limit,
-      result.data.map(OrderResponseDto.fromEntity),
+      EntityMapper.mapArray(result.data, OrderResponseDto),
     );
 
     return resultMapped;
@@ -166,7 +167,7 @@ export class OrdersService extends CacheableService {
       throw new NotFoundException(`Order with ID ${id} not found`);
     }
 
-    const orderMapped = OrderResponseDto.fromEntity(order);
+    const orderMapped = EntityMapper.map(order, OrderResponseDto);
 
     await runAndIgnoreError(
       () => this.cacheService.set(cacheKey, orderMapped, CACHE_CONFIG.DEFAULT_TTL),
@@ -222,7 +223,7 @@ export class OrdersService extends CacheableService {
 
     this.logger.debug('Order updated', { orderId: id });
 
-    return OrderResponseDto.fromEntity(order);
+    return EntityMapper.map(order, OrderResponseDto);
   }
 
   @Transactional()
@@ -257,7 +258,7 @@ export class OrdersService extends CacheableService {
     if (status === oldStatus) {
       this.logger.debug(`Order ${id} is already in status ${status}`);
 
-      return OrderResponseDto.fromEntity(order);
+      return EntityMapper.map(order, OrderResponseDto);
     }
 
     order.status = status;
@@ -280,6 +281,6 @@ export class OrdersService extends CacheableService {
 
     this.logger.debug('Order status updated', { orderId: id });
 
-    return OrderResponseDto.fromEntity(order);
+    return EntityMapper.map(order, OrderResponseDto);
   }
 }
