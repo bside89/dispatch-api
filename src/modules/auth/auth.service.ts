@@ -4,7 +4,7 @@ import { User } from '../users/entities/user.entity';
 import { LoginResponseDto } from './dto/login-response.dto';
 import { ConfigService } from '@nestjs/config';
 import type { JwtPayload } from './interfaces/jwt-payload.interface';
-import { CacheService } from '../cache/cache.service';
+import { CacheService } from '../../shared/modules/cache/cache.service';
 import { UserRepository } from '../users/repositories/user.repository';
 import { HashUtils } from '@/shared/utils/hash.utils';
 import { CACHE_CONFIG } from '@/shared/constants/cache.constant';

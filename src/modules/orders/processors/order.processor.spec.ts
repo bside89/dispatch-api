@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { OrderProcessor } from './order.processor';
 import { OrderJobHandlerFactory } from '../factories/order-job-handler.factory';
-import { CacheService } from '../../cache/cache.service';
+import { CacheService } from '../../../shared/modules/cache/cache.service';
 import { ConfigService } from '@nestjs/config';
 import Redlock from 'redlock';
 

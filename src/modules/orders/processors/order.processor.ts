@@ -2,17 +2,20 @@ import { OnWorkerEvent, Processor } from '@nestjs/bullmq';
 import { Job } from 'bullmq';
 import { OrderJobHandlerFactory } from '../factories/order-job-handler.factory';
 
-import { CacheService } from '../../cache/cache.service';
+import { CacheService } from '../../../shared/modules/cache/cache.service';
 import { BaseProcessor } from '@/shared/processors/base.processor';
 import { RequestContext } from '@/shared/utils/request-context';
 import { randomUUID } from 'crypto';
-import { OnApplicationBootstrap } from '@nestjs/common';
+import { BeforeApplicationShutdown, OnApplicationBootstrap } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { UseLock } from '@/shared/decorators/lock.decorator';
 import Redlock from 'redlock';
 
 @Processor('orders', { maxStalledCount: 1 })
-export class OrderProcessor extends BaseProcessor implements OnApplicationBootstrap {
+export class OrderProcessor
+  extends BaseProcessor
+  implements OnApplicationBootstrap, BeforeApplicationShutdown
+{
   constructor(
     protected readonly factory: OrderJobHandlerFactory,
     protected readonly cacheService: CacheService,
@@ -25,6 +28,10 @@ export class OrderProcessor extends BaseProcessor implements OnApplicationBootst
   onApplicationBootstrap() {
     const concurrency = this.configService.get<string>('QUEUE_ORDER_CONCURRENCY');
     this.setupConcurrency(Number(concurrency));
+  }
+
+  async beforeApplicationShutdown(): Promise<void> {
+    await this.worker.pause(true);
   }
 
   async process(job: Job) {

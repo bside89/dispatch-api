@@ -11,7 +11,7 @@ import { typeOrmConfig } from './config/typeorm.config';
 import { bullmqConfig } from './config/bullmq.config';
 import { OrdersModule } from './modules/orders/orders.module';
 import { UsersModule } from './modules/users/users.module';
-import { CacheModule } from './modules/cache/cache.module';
+import { CacheModule } from './shared/modules/cache/cache.module';
 import { BullBoardModule } from '@bull-board/nestjs';
 import { ExpressAdapter } from '@bull-board/express';
 import { BullMQAdapter } from '@bull-board/api/bullMQAdapter';
@@ -30,6 +30,8 @@ import { MiddlewareConsumer, NestModule } from '@nestjs/common';
 import { CorrelationIdMiddleware } from './middleware/correlation-id.middleware';
 import { TerminusModule } from '@nestjs/terminus';
 import { throttleConfig } from './config/throttle.config';
+import { EVENT_QUEUE_TOKEN } from './shared/modules/events/constants/event-queue.token';
+import { ORDER_QUEUE_TOKEN } from './modules/orders/constants/order-queue.token';
 
 @Module({
   imports: [
@@ -75,17 +77,14 @@ import { throttleConfig } from './config/throttle.config';
     }),
     BullBoardModule.forFeature(
       {
-        name: 'orders',
+        name: ORDER_QUEUE_TOKEN,
         adapter: BullMQAdapter,
       },
       {
-        name: 'events',
+        name: EVENT_QUEUE_TOKEN,
         adapter: BullMQAdapter,
       },
     ),
-
-    // Cache (Redis)
-    CacheModule,
 
     // Scheduler (for cron jobs)
     ScheduleModule.forRoot(),
@@ -95,6 +94,7 @@ import { throttleConfig } from './config/throttle.config';
     OrdersModule,
     UsersModule,
     EventsModule,
+    CacheModule,
     OutboxModule,
     TerminusModule,
   ],

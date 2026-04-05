@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { UsersService } from './users.service';
 import { UserRepository } from './repositories/user.repository';
-import { CacheService } from '../cache/cache.service';
+import { CacheService } from '../../shared/modules/cache/cache.service';
 import { OutboxService } from '../../shared/modules/outbox/outbox.service';
 import { DataSource } from 'typeorm';
 import Redlock from 'redlock';

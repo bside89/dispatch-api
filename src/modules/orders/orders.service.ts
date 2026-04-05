@@ -3,7 +3,7 @@ import { CreateOrderDto } from './dto/create-order.dto';
 import { UpdateOrderDto } from './dto/update-order.dto';
 import { OrderQueryDto } from './dto/order-query.dto';
 import { OrderStatus } from './enums/order-status.enum';
-import { CacheService } from '../cache/cache.service';
+import { CacheService } from '../../shared/modules/cache/cache.service';
 import { ProcessOrderJobPayload } from './processors/payloads/order-job.payload';
 import { NotifyUserJobPayload } from '@/shared/modules/events/processors/payloads/notify-user.payload';
 import { OrderRepository } from './repositories/order.repository';
@@ -23,6 +23,14 @@ import { CacheableService } from '@/shared/services/cacheable.service';
 
 @Injectable()
 export class OrdersService extends CacheableService {
+  private readonly CACHE_KEYS = {
+    FIND_ONE: (id: string) => `cache:order:find-one:${id}`,
+    FIND_ALL: (query: Partial<OrderQueryDto>) =>
+      `cache:order:find-all:${JSON.stringify(query)}`,
+    FIND_ALL_PATTERN: 'cache:order:find-all:*',
+    IDEMPOTENCY: (op: string, key: string) => `idempotency:order:${op}:${key}`,
+  };
+
   constructor(
     private readonly orderRepository: OrderRepository,
     private readonly orderItemRepository: OrderItemRepository,
@@ -41,7 +49,10 @@ export class OrdersService extends CacheableService {
     userId: string,
     idempotencyKey: string,
   ): Promise<OrderResponseDto> {
-    const idempotencyKeyFormatted = `idempotency:order:create:${idempotencyKey}`;
+    const idempotencyKeyFormatted = this.CACHE_KEYS.IDEMPOTENCY(
+      'create',
+      idempotencyKey,
+    );
 
     // Check if there's an existing order for the same idempotency key
     const existingOrder = await this.cacheService.get<OrderResponseDto>(
@@ -49,13 +60,15 @@ export class OrdersService extends CacheableService {
     );
     if (existingOrder) {
       this.logger.debug('Returning existing order for idempotency key', {
-        idempotencyKey,
+        idempotencyKey: idempotencyKeyFormatted,
         orderId: existingOrder.id,
       });
       return existingOrder;
     }
 
-    this.logger.debug('Creating new order', { idempotencyKey });
+    this.logger.debug('Creating new order', {
+      idempotencyKey: idempotencyKeyFormatted,
+    });
 
     const total = createOrderDto.items.reduce(
       (sum, item) => sum + item.price * item.quantity,
@@ -84,8 +97,8 @@ export class OrdersService extends CacheableService {
     });
 
     await this.invalidateCache({
-      keysToDelete: [`cache:order:find-one:${completeOrder.id}`],
-      patternsToDelete: ['cache:order:list:*'],
+      keysToDelete: [this.CACHE_KEYS.FIND_ONE(completeOrder.id)],
+      patternsToDelete: [this.CACHE_KEYS.FIND_ALL_PATTERN],
     });
 
     const orderMapped = EntityMapper.map(completeOrder, OrderResponseDto);
@@ -108,7 +121,7 @@ export class OrdersService extends CacheableService {
     );
 
     this.logger.debug('Order created', {
-      idempotencyKey,
+      idempotencyKey: idempotencyKeyFormatted,
       orderId: completeOrder.id,
     });
 
@@ -221,8 +234,8 @@ export class OrdersService extends CacheableService {
     await this.orderRepository.save(order);
 
     await this.invalidateCache({
-      keysToDelete: [`cache:order:find-one:${id}`],
-      patternsToDelete: ['cache:order:find-all:*'],
+      keysToDelete: [this.CACHE_KEYS.FIND_ONE(id)],
+      patternsToDelete: [this.CACHE_KEYS.FIND_ALL_PATTERN],
     });
 
     this.logger.debug('Order updated', { orderId: id });
@@ -243,8 +256,8 @@ export class OrdersService extends CacheableService {
     await this.orderRepository.delete(order.id);
 
     await this.invalidateCache({
-      keysToDelete: [`cache:order:find-one:${id}`],
-      patternsToDelete: ['cache:order:find-all:*'],
+      keysToDelete: [this.CACHE_KEYS.FIND_ONE(id)],
+      patternsToDelete: [this.CACHE_KEYS.FIND_ALL_PATTERN],
     });
 
     this.logger.debug('Order deleted successfully', { orderId: id });
@@ -279,8 +292,8 @@ export class OrdersService extends CacheableService {
     );
 
     await this.invalidateCache({
-      keysToDelete: [`cache:order:find-one:${id}`],
-      patternsToDelete: ['cache:order:find-all:*'],
+      keysToDelete: [this.CACHE_KEYS.FIND_ONE(id)],
+      patternsToDelete: [this.CACHE_KEYS.FIND_ALL_PATTERN],
     });
 
     this.logger.debug('Order status updated', { orderId: id });

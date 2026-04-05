@@ -2,7 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { OrdersService } from './orders.service';
 import { OrderRepository } from './repositories/order.repository';
 import { OrderItemRepository } from './repositories/order-item.repository';
-import { CacheService } from '../cache/cache.service';
+import { CacheService } from '../../shared/modules/cache/cache.service';
 import { OutboxService } from '../../shared/modules/outbox/outbox.service';
 import { DataSource } from 'typeorm';
 import Redlock from 'redlock';

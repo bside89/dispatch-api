@@ -9,7 +9,7 @@ import { delay } from '../../../shared/helpers/functions';
 import { NotifyUserJobPayload } from '../../../shared/modules/events/processors/payloads/notify-user.payload';
 import { Transactional } from '@/shared/decorators/transactional.decorator';
 import { OutboxType } from '@/shared/modules/outbox/enums/outbox-type.enum';
-import { CacheService } from '../../cache/cache.service';
+import { CacheService } from '../../../shared/modules/cache/cache.service';
 import { OutboxService } from '@/shared/modules/outbox/outbox.service';
 import { OrderRepository } from '../repositories/order.repository';
 import { DataSource } from 'typeorm';

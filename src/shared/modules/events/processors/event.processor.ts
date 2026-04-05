@@ -2,19 +2,20 @@ import { OnWorkerEvent, Processor } from '@nestjs/bullmq';
 import { Job } from 'bullmq';
 import { NotifyUserJobStrategy } from '../strategies/notify-user-job.strategy';
 import { BaseProcessor } from '@/shared/processors/base.processor';
-import { OutboxType as JobName } from '@/shared/modules/outbox/enums/outbox-type.enum';
 import { RequestContext } from '@/shared/utils/request-context';
 import { randomUUID } from 'crypto';
-import { OnApplicationBootstrap } from '@nestjs/common';
+import { BeforeApplicationShutdown, OnApplicationBootstrap } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { CACHE_CONFIG } from '@/shared/constants/cache.constant';
-import { CacheService } from '@/modules/cache/cache.service';
+import { CacheService } from '@/shared/modules/cache/cache.service';
 import { UseLock } from '@/shared/decorators/lock.decorator';
 import Redlock from 'redlock';
 import { EventJobHandlerFactory } from '../factories/event-job-handler.factory';
 
 @Processor('events', { maxStalledCount: 1 })
-export class EventProcessor extends BaseProcessor implements OnApplicationBootstrap {
+export class EventProcessor
+  extends BaseProcessor
+  implements OnApplicationBootstrap, BeforeApplicationShutdown
+{
   constructor(
     protected readonly factory: EventJobHandlerFactory,
     protected readonly notificationStrategy: NotifyUserJobStrategy,
@@ -28,6 +29,10 @@ export class EventProcessor extends BaseProcessor implements OnApplicationBootst
   onApplicationBootstrap() {
     const concurrency = this.configService.get<string>('QUEUE_EVENT_CONCURRENCY');
     this.setupConcurrency(Number(concurrency));
+  }
+
+  async beforeApplicationShutdown(): Promise<void> {
+    await this.worker.pause(true);
   }
 
   async process(job: Job) {

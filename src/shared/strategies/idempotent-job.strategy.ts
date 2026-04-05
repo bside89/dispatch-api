@@ -1,4 +1,4 @@
-import { CacheService } from '@/modules/cache/cache.service';
+import { CacheService } from '@/shared/modules/cache/cache.service';
 import { BaseJobStrategy } from './base-job.strategy';
 import { CACHE_CONFIG } from '../constants/cache.constant';
 import { BaseJobPayload } from '../jobs/base-job.payload';

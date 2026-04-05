@@ -11,6 +11,8 @@ import { INestApplication } from '@nestjs/common';
 import { Queue } from 'bullmq';
 import { getQueueToken } from '@nestjs/bullmq';
 import { waitFor } from './utils/wait-for';
+import { EVENT_QUEUE_TOKEN } from '@/shared/modules/events/constants/event-queue.token';
+import { ORDER_QUEUE_TOKEN } from '@/modules/orders/constants/order-queue.token';
 
 // Mock the delay function to resolve almost instantly.
 // This eliminates the simulated processing delays (1s-3s) used by
@@ -42,8 +44,8 @@ describe('App (Integration)', () => {
     usersService = module.get<UsersService>(UsersService);
     ordersService = module.get<OrdersService>(OrdersService);
     outboxRepository = module.get<OutboxRepository>(OutboxRepository);
-    orderQueue = module.get<Queue>(getQueueToken('orders'));
-    eventBusQueue = module.get<Queue>(getQueueToken('events'));
+    orderQueue = module.get<Queue>(getQueueToken(ORDER_QUEUE_TOKEN));
+    eventBusQueue = module.get<Queue>(getQueueToken(EVENT_QUEUE_TOKEN));
     dataSource = module.get<DataSource>(DataSource);
     redisClient = module.get<Redis>(REDIS_CLIENT);
   });

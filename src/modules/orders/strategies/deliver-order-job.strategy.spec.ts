@@ -1,5 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { CacheService } from '../../cache/cache.service';
+import { CacheService } from '../../../shared/modules/cache/cache.service';
 import { OutboxService } from '../../../shared/modules/outbox/outbox.service';
 import { OrderRepository } from '../repositories/order.repository';
 import { DataSource } from 'typeorm';

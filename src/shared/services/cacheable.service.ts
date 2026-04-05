@@ -1,4 +1,4 @@
-import { CacheService } from '@/modules/cache/cache.service';
+import { CacheService } from '@/shared/modules/cache/cache.service';
 import { BaseService } from './base.service';
 import { runAndIgnoreError } from '../helpers/functions';
 

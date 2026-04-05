@@ -1,22 +1,128 @@
 import { Outbox } from './entities/outbox.entity';
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable, OnModuleDestroy } from '@nestjs/common';
 import { OutboxType } from './enums/outbox-type.enum';
 import { OutboxRepository } from './repositories/outbox.repository';
 import { RequestContext } from '@/shared/utils/request-context';
 import { randomUUID } from 'crypto';
+import { BaseService } from '@/shared/services/base.service';
+import { DataSource } from 'typeorm';
+import type { EventBus } from '../events/interfaces/event-bus.interface';
+import { Queue } from 'bullmq';
+import { EVENT_BUS } from '../events/constants/event-bus.token';
+import { InjectQueue } from '@nestjs/bullmq';
+import { Cron, CronExpression } from '@nestjs/schedule';
+import { Transactional } from '@/shared/decorators/transactional.decorator';
+import { ORDER_QUEUE_TOKEN } from '@/modules/orders/constants/order-queue.token';
 
 @Injectable()
-export class OutboxService {
-  constructor(private readonly repository: OutboxRepository) {}
+export class OutboxService extends BaseService implements OnModuleDestroy {
+  private isProcessing = false;
+  private isShuttingDown = false;
+
+  constructor(
+    @InjectQueue(ORDER_QUEUE_TOKEN)
+    protected readonly orderQueue: Queue,
+    @Inject(EVENT_BUS)
+    protected readonly eventBus: EventBus,
+
+    private readonly outboxRepository: OutboxRepository,
+    protected readonly dataSource: DataSource,
+  ) {
+    super(OutboxService.name);
+  }
+
+  async onModuleDestroy(): Promise<void> {
+    // Wait until any ongoing processing is finished before allowing shutdown to proceed
+    this.isShuttingDown = true;
+    while (this.isProcessing) {
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    }
+  }
+
+  @Cron(CronExpression.EVERY_5_SECONDS)
+  @Transactional()
+  async process() {
+    if (this.isShuttingDown || this.isShuttingDown || this.isProcessing) {
+      // Outbox is already being processed or shutting down, skip this cycle
+      return;
+    }
+    this.isProcessing = true;
+
+    try {
+      const limit = 100;
+      const messages = await this.outboxRepository.findAndLockBatch(limit);
+
+      if (messages.length === 0) return;
+
+      await this.dispatch(messages);
+
+      const dispatchedIds: string[] = messages.map((m) => m.id);
+
+      await this.outboxRepository.deleteMany(dispatchedIds);
+
+      this.logger.log(
+        `Successfully processed batch of ${messages.length} Outbox messages.`,
+      );
+
+      // CONTROLLED RECURSION:
+      // If we reached the maximum limit, schedule the next execution immediately
+      if (messages.length === limit) {
+        this.isProcessing = false; // Release the lock for the next execution
+
+        setImmediate(() => this.process());
+
+        return;
+      }
+    } catch (error: any) {
+      this.logger.error('Error during Outbox processing cycle', error);
+    } finally {
+      this.isProcessing = false;
+    }
+  }
+
+  private async dispatch(msg: Outbox[]): Promise<void> {
+    if (msg.length === 0) return;
+
+    // Separate messages based on their type to determine the appropriate dispatch
+    // method (queue vs event bus)
+    const orderQueueMsg = msg
+      .filter((m) =>
+        [
+          OutboxType.ORDER_PROCESS,
+          OutboxType.ORDER_SHIP,
+          OutboxType.ORDER_DELIVER,
+          OutboxType.ORDER_CANCEL,
+        ].includes(m.type),
+      )
+      .map((msg) => ({
+        name: msg.type,
+        data: msg.payload,
+        opts: { jobId: msg.id },
+      }));
+    const eventBusMsg = msg
+      .filter((m) => m.type === OutboxType.EVENTS_NOTIFY_USER)
+      .map((msg) => ({
+        name: msg.type,
+        data: msg.payload,
+        opts: { jobId: msg.id },
+      }));
+
+    if (orderQueueMsg.length > 0) {
+      await this.orderQueue.addBulk(orderQueueMsg);
+    }
+    if (eventBusMsg.length > 0) {
+      await this.eventBus.publishBulk(eventBusMsg);
+    }
+  }
 
   async add(type: OutboxType, payload: any): Promise<void> {
     const correlationId = RequestContext.getCorrelationId() ?? randomUUID();
-    const outboxEntry = this.repository.createEntity({
+    const outboxEntry = this.outboxRepository.createEntity({
       type,
       payload,
       correlationId,
       createdAt: new Date(),
     });
-    await this.repository.save(outboxEntry);
+    await this.outboxRepository.save(outboxEntry);
   }
 }

@@ -1,22 +1,23 @@
 import { OutboxService } from './outbox.service';
 import { Global, Module } from '@nestjs/common';
-import { OutboxProcessor } from './processors/outbox.processor';
 import { OutboxRepository } from './repositories/outbox.repository';
 import { bullmqDefaultJobOptions } from '@/config/bullmq.config';
 import { BullModule } from '@nestjs/bullmq';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Outbox } from './entities/outbox.entity';
+import { ORDER_QUEUE_TOKEN } from '@/modules/orders/constants/order-queue.token';
 
 @Global()
 @Module({
   imports: [
     TypeOrmModule.forFeature([Outbox]),
     BullModule.registerQueue({
-      name: 'orders',
+      name: ORDER_QUEUE_TOKEN,
       defaultJobOptions: bullmqDefaultJobOptions,
+      forceDisconnectOnShutdown: true,
     }),
   ],
-  providers: [OutboxService, OutboxProcessor, OutboxRepository],
-  exports: [OutboxService, OutboxRepository, OutboxProcessor],
+  providers: [OutboxService, OutboxRepository],
+  exports: [OutboxService, OutboxRepository],
 })
 export class OutboxModule {}

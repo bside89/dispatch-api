@@ -3,7 +3,7 @@ import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { DataSource } from 'typeorm';
 import { AuthService } from './auth.service';
-import { CacheService } from '../cache/cache.service';
+import { CacheService } from '../../shared/modules/cache/cache.service';
 import { UserRepository } from '../users/repositories/user.repository';
 import { OutboxService } from '../../shared/modules/outbox/outbox.service';
 import Redlock from 'redlock';

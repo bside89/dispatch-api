@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { Logger } from '@nestjs/common';
 import { NotifyUserJobStrategy } from './notify-user-job.strategy';
-import { CacheService } from '../../../../modules/cache/cache.service';
+import { CacheService } from '../../cache/cache.service';
 
 describe(NotifyUserJobStrategy.name, () => {
   let strategy: NotifyUserJobStrategy;

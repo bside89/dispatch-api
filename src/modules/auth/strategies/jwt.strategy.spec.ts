@@ -3,7 +3,7 @@ import { UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
 import { JwtStrategy } from './jwt.strategy';
-import { CacheService } from '../../cache/cache.service';
+import { CacheService } from '../../../shared/modules/cache/cache.service';
 import { JwtStrategyName } from '../enums/jwt-strategy-name.enum';
 
 // Stub out the PassportStrategy base so we can instantiate JwtStrategy

@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { Job } from 'bullmq';
-import { CacheService } from '../../../../modules/cache/cache.service';
+import { CacheService } from '../../cache/cache.service';
 import { delay } from '../../../helpers/functions';
 import { NotifyUserJobPayload } from '../processors/payloads/notify-user.payload';
 import { JobStatus } from '@/shared/enums/job-status.enum';

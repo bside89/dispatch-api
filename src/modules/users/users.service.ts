@@ -4,7 +4,7 @@ import {
   ConflictException,
   BadRequestException,
 } from '@nestjs/common';
-import { CacheService } from '../cache/cache.service';
+import { CacheService } from '../../shared/modules/cache/cache.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { UpdateLoginDto } from './dto/update-login.dto';
@@ -24,6 +24,15 @@ import { CacheableService } from '@/shared/services/cacheable.service';
 
 @Injectable()
 export class UsersService extends CacheableService {
+  private readonly CACHE_KEYS = {
+    FIND_ALL: (query: Partial<UserQueryDto>) =>
+      `cache:user:find-all:${JSON.stringify(query)}`,
+    FIND_ALL_PATTERN: 'cache:user:find-all:*',
+    FIND_ONE: (id: string) => `cache:user:find-one:${id}`,
+    FIND_BY_EMAIL: (email: string) => `cache:user:find-by-email:${email}`,
+    IDEMPOTENCY: (op: string, key: string) => `idempotency:user:${op}:${key}`,
+  };
+
   constructor(
     private readonly userRepository: UserRepository,
     protected readonly cacheService: CacheService,
@@ -42,7 +51,10 @@ export class UsersService extends CacheableService {
     dto: CreateUserDto,
     idempotencyKey: string,
   ): Promise<UserResponseDto> {
-    const idempotencyKeyFormatted = `idempotency:user:create:${idempotencyKey}`;
+    const idempotencyKeyFormatted = this.CACHE_KEYS.IDEMPOTENCY(
+      'create',
+      idempotencyKey,
+    );
 
     // Check if there's an existing user for the same idempotency key
     const existingUser = await this.cacheService.get<UserResponseDto>(
@@ -50,7 +62,7 @@ export class UsersService extends CacheableService {
     );
     if (existingUser) {
       this.logger.debug('Returning existing user for idempotency key', {
-        idempotencyKey,
+        idempotencyKey: idempotencyKeyFormatted,
         userId: existingUser.id,
       });
       return existingUser;
@@ -63,7 +75,9 @@ export class UsersService extends CacheableService {
       throw new ConflictException('Email already exists');
     }
 
-    this.logger.debug('Creating new user', { idempotencyKey });
+    this.logger.debug('Creating new user', {
+      idempotencyKey: idempotencyKeyFormatted,
+    });
 
     const user = this.userRepository.createEntity({
       name: dto.name,
@@ -82,19 +96,19 @@ export class UsersService extends CacheableService {
     );
 
     this.logger.debug('User created and cached', {
-      idempotencyKey,
+      idempotencyKey: idempotencyKeyFormatted,
       userId: savedUser.id,
     });
 
     await this.invalidateCache({
-      patternsToDelete: ['cache:user:find-all:*'],
+      patternsToDelete: [this.CACHE_KEYS.FIND_ALL_PATTERN],
     });
 
     return userMapped;
   }
 
   async findAll(query: UserQueryDto): Promise<PaginatedResultDto<UserResponseDto>> {
-    const cacheKey = `cache:user:find-all:${JSON.stringify(query)}`;
+    const cacheKey = this.CACHE_KEYS.FIND_ALL(query);
 
     const cachedResult = await runAndIgnoreError(
       () => this.cacheService.get<PaginatedResultDto<UserResponseDto>>(cacheKey),
@@ -114,7 +128,7 @@ export class UsersService extends CacheableService {
       this.logger,
     );
 
-    this.logger.debug(`Retrieved ${result.data.length} users`);
+    this.logger.debug(`Retrieved ${result.data.length} users`, { cacheKey });
 
     return {
       ...result,
@@ -123,7 +137,7 @@ export class UsersService extends CacheableService {
   }
 
   async findOne(id: string): Promise<UserResponseDto> {
-    const cacheKey = `cache:user:find-one:${id}`;
+    const cacheKey = this.CACHE_KEYS.FIND_ONE(id);
 
     const cachedResult = await runAndIgnoreError(
       () => this.cacheService.get<UserResponseDto>(cacheKey),
@@ -150,7 +164,7 @@ export class UsersService extends CacheableService {
     await runAndIgnoreError(
       () =>
         this.cacheService.set(
-          `cache:user:find-one:${id}`,
+          this.CACHE_KEYS.FIND_ONE(id),
           userMapped,
           CACHE_CONFIG.LIST_TTL,
         ),
@@ -162,7 +176,7 @@ export class UsersService extends CacheableService {
   }
 
   async findByEmail(email: string): Promise<UserResponseDto> {
-    const cacheKey = `cache:user:find-by-email:${email}`;
+    const cacheKey = this.CACHE_KEYS.FIND_BY_EMAIL(email);
 
     const cachedResult = await runAndIgnoreError(
       () => this.cacheService.get<UserResponseDto>(cacheKey),
@@ -188,7 +202,7 @@ export class UsersService extends CacheableService {
     await runAndIgnoreError(
       () =>
         this.cacheService.set(
-          `cache:user:find-by-email:${email}`,
+          this.CACHE_KEYS.FIND_BY_EMAIL(email),
           userMapped,
           CACHE_CONFIG.LIST_TTL,
         ),
@@ -229,10 +243,10 @@ export class UsersService extends CacheableService {
 
     await this.invalidateCache({
       keysToDelete: [
-        `cache:user:find-one:${updatedUser.id}`,
-        `cache:user:find-by-email:${updatedUser.email}`,
+        this.CACHE_KEYS.FIND_ONE(updatedUser.id),
+        this.CACHE_KEYS.FIND_BY_EMAIL(updatedUser.email),
       ],
-      patternsToDelete: ['cache:user:find-all:*'],
+      patternsToDelete: [this.CACHE_KEYS.FIND_ALL_PATTERN],
     });
 
     return EntityMapper.map(updatedUser, UserResponseDto);
@@ -290,10 +304,10 @@ export class UsersService extends CacheableService {
 
     await this.invalidateCache({
       keysToDelete: [
-        `cache:user:find-one:${updatedUser.id}`,
-        `cache:user:find-by-email:${updatedUser.email}`,
+        this.CACHE_KEYS.FIND_ONE(updatedUser.id),
+        this.CACHE_KEYS.FIND_BY_EMAIL(updatedUser.email),
       ],
-      patternsToDelete: ['cache:user:find-all:*'],
+      patternsToDelete: [this.CACHE_KEYS.FIND_ALL_PATTERN],
     });
 
     this.logger.debug('Login updated successfully for user', {
@@ -318,10 +332,10 @@ export class UsersService extends CacheableService {
 
     await this.invalidateCache({
       keysToDelete: [
-        `cache:user:find-one:${id}`,
-        `cache:user:find-by-email:${user.email}`,
+        this.CACHE_KEYS.FIND_ONE(id),
+        this.CACHE_KEYS.FIND_BY_EMAIL(user.email),
       ],
-      patternsToDelete: ['cache:user:find-all:*'],
+      patternsToDelete: [this.CACHE_KEYS.FIND_ALL_PATTERN],
     });
   }
 }

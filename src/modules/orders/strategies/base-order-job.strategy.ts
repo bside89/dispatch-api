@@ -1,5 +1,5 @@
 import { OrderRepository } from '../repositories/order.repository';
-import { CacheService } from '@/modules/cache/cache.service';
+import { CacheService } from '@/shared/modules/cache/cache.service';
 import { OrderStatus } from '../enums/order-status.enum';
 import { DataSource } from 'typeorm';
 import { UseLock } from '@/shared/decorators/lock.decorator';

@@ -4,7 +4,7 @@ import { OrdersController } from './orders.controller';
 import { OrdersService } from './orders.service';
 import { Order } from './entities/order.entity';
 import { OrderItem } from './entities/order-item.entity';
-import { CacheModule } from '../cache/cache.module';
+import { CacheModule } from '../../shared/modules/cache/cache.module';
 import { OrderJobHandlerFactory } from './factories';
 import { OrderProcessor } from './processors/order.processor';
 import { OrderRepository } from './repositories/order.repository';
@@ -17,7 +17,7 @@ import {
 } from './strategies';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Order, OrderItem]), CacheModule],
+  imports: [TypeOrmModule.forFeature([Order, OrderItem])],
   controllers: [OrdersController],
   providers: [
     OrdersService,
