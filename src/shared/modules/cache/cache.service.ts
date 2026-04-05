@@ -36,4 +36,23 @@ export class CacheService implements OnModuleDestroy {
       await this.redisClient.del(...keys);
     }
   }
+
+  /**
+   * Deletes cache entries based on the provided options.
+   * @param options Object containing keys and patterns to delete from the cache.
+   */
+  async deleteBulk(options: {
+    keysToDelete?: string[];
+    patternsToDelete?: string[];
+  }): Promise<void> {
+    const keysToDelete: string[] = options.keysToDelete || [];
+    const patternsToDelete: string[] = options.patternsToDelete || [];
+
+    await Promise.all([
+      // Delete specific keys
+      ...keysToDelete.map((key) => this.delete(key)),
+      // Delete pattern-based keys
+      ...patternsToDelete.map((pattern) => this.deletePattern(pattern)),
+    ]);
+  }
 }

@@ -7,7 +7,7 @@ import type { JwtPayload } from './interfaces/jwt-payload.interface';
 import { CacheService } from '../../shared/modules/cache/cache.service';
 import { UserRepository } from '../users/repositories/user.repository';
 import { HashUtils } from '@/shared/utils/hash.utils';
-import { CACHE_CONFIG } from '@/shared/constants/cache.constant';
+import { CACHE_CONFIG } from '@/shared/constants/cache-config.constant';
 import { BaseService } from '@/shared/services/base.service';
 import { OutboxService } from '@/shared/modules/outbox/outbox.service';
 import { NotifyUserJobPayload } from '@/shared/modules/events/processors/payloads/notify-user.payload';
@@ -15,6 +15,7 @@ import { OutboxType } from '@/shared/modules/outbox/enums/outbox-type.enum';
 import { UseLock } from '@/shared/decorators/lock.decorator';
 import Redlock from 'redlock';
 import type { RequestUser } from './interfaces/request-user.interface';
+import { AUTH_KEY } from './constants/auth.key';
 
 @Injectable()
 export class AuthService extends BaseService {
@@ -84,7 +85,7 @@ export class AuthService extends BaseService {
     await this.updateRefreshToken(reqUser.id, null);
 
     await this.cacheService.set(
-      `blacklist:auth:${reqUser.jwtPayload.jti}`,
+      AUTH_KEY.BLACKLIST(reqUser.jwtPayload.jti),
       true,
       CACHE_CONFIG.AUTH_BLACKLIST_TTL,
     );

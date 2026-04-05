@@ -6,6 +6,7 @@ import { UseLock } from '@/shared/decorators/lock.decorator';
 import Redlock from 'redlock';
 import { IdempotentJobStrategy } from '@/shared/strategies/idempotent-job.strategy';
 import { BaseJobPayload } from '@/shared/jobs/base-job.payload';
+import { ORDER_KEY } from '../constants/order.key';
 
 export abstract class BaseOrderJobStrategy<
   T extends BaseJobPayload,
@@ -23,5 +24,10 @@ export abstract class BaseOrderJobStrategy<
   @UseLock({ prefix: 'order-update', key: ([orderId]) => orderId })
   async updateOrderStatus(orderId: string, status: OrderStatus): Promise<void> {
     await this.orderRepository.update(orderId, { status });
+
+    await this.cacheService.deleteBulk({
+      keysToDelete: [ORDER_KEY.CACHE_FIND_ONE(orderId)],
+      patternsToDelete: [ORDER_KEY.CACHE_FIND_ALL_PATTERN()],
+    });
   }
 }

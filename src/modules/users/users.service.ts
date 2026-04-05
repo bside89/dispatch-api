@@ -16,30 +16,22 @@ import { EntityMapper } from '@/shared/utils/entity-mapper';
 import { HashUtils } from '@/shared/utils/hash.utils';
 import { DataSource } from 'typeorm';
 import { Transactional } from '@/shared/decorators/transactional.decorator';
-import { CACHE_CONFIG } from '@/shared/constants/cache.constant';
+import { CACHE_CONFIG } from '@/shared/constants/cache-config.constant';
 import { runAndIgnoreError } from '@/shared/helpers/functions';
 import { UseLock } from '@/shared/decorators/lock.decorator';
 import Redlock from 'redlock';
-import { CacheableService } from '@/shared/services/cacheable.service';
+import { BaseService } from '@/shared/services/base.service';
+import { USER_KEY } from './constants/user.key';
 
 @Injectable()
-export class UsersService extends CacheableService {
-  private readonly CACHE_KEYS = {
-    FIND_ALL: (query: Partial<UserQueryDto>) =>
-      `cache:user:find-all:${JSON.stringify(query)}`,
-    FIND_ALL_PATTERN: 'cache:user:find-all:*',
-    FIND_ONE: (id: string) => `cache:user:find-one:${id}`,
-    FIND_BY_EMAIL: (email: string) => `cache:user:find-by-email:${email}`,
-    IDEMPOTENCY: (op: string, key: string) => `idempotency:user:${op}:${key}`,
-  };
-
+export class UsersService extends BaseService {
   constructor(
     private readonly userRepository: UserRepository,
     protected readonly cacheService: CacheService,
     protected readonly dataSource: DataSource, // Used in @Transactional()
     protected readonly redlock: Redlock, // Used in @UseLock()
   ) {
-    super(UsersService.name, cacheService);
+    super(UsersService.name);
   }
 
   @Transactional()
@@ -51,8 +43,8 @@ export class UsersService extends CacheableService {
     dto: CreateUserDto,
     idempotencyKey: string,
   ): Promise<UserResponseDto> {
-    const idempotencyKeyFormatted = this.CACHE_KEYS.IDEMPOTENCY(
-      'create',
+    const idempotencyKeyFormatted = USER_KEY.IDEMPOTENCY(
+      this.create.name,
       idempotencyKey,
     );
 
@@ -100,15 +92,15 @@ export class UsersService extends CacheableService {
       userId: savedUser.id,
     });
 
-    await this.invalidateCache({
-      patternsToDelete: [this.CACHE_KEYS.FIND_ALL_PATTERN],
+    await this.cacheService.deleteBulk({
+      patternsToDelete: [USER_KEY.CACHE_FIND_ALL_PATTERN()],
     });
 
     return userMapped;
   }
 
   async findAll(query: UserQueryDto): Promise<PaginatedResultDto<UserResponseDto>> {
-    const cacheKey = this.CACHE_KEYS.FIND_ALL(query);
+    const cacheKey = USER_KEY.CACHE_FIND_ALL(query);
 
     const cachedResult = await runAndIgnoreError(
       () => this.cacheService.get<PaginatedResultDto<UserResponseDto>>(cacheKey),
@@ -137,7 +129,7 @@ export class UsersService extends CacheableService {
   }
 
   async findOne(id: string): Promise<UserResponseDto> {
-    const cacheKey = this.CACHE_KEYS.FIND_ONE(id);
+    const cacheKey = USER_KEY.CACHE_FIND_ONE(id);
 
     const cachedResult = await runAndIgnoreError(
       () => this.cacheService.get<UserResponseDto>(cacheKey),
@@ -164,7 +156,7 @@ export class UsersService extends CacheableService {
     await runAndIgnoreError(
       () =>
         this.cacheService.set(
-          this.CACHE_KEYS.FIND_ONE(id),
+          USER_KEY.CACHE_FIND_ONE(id),
           userMapped,
           CACHE_CONFIG.LIST_TTL,
         ),
@@ -176,7 +168,7 @@ export class UsersService extends CacheableService {
   }
 
   async findByEmail(email: string): Promise<UserResponseDto> {
-    const cacheKey = this.CACHE_KEYS.FIND_BY_EMAIL(email);
+    const cacheKey = USER_KEY.CACHE_FIND_BY_EMAIL(email);
 
     const cachedResult = await runAndIgnoreError(
       () => this.cacheService.get<UserResponseDto>(cacheKey),
@@ -202,7 +194,7 @@ export class UsersService extends CacheableService {
     await runAndIgnoreError(
       () =>
         this.cacheService.set(
-          this.CACHE_KEYS.FIND_BY_EMAIL(email),
+          USER_KEY.CACHE_FIND_BY_EMAIL(email),
           userMapped,
           CACHE_CONFIG.LIST_TTL,
         ),
@@ -241,12 +233,9 @@ export class UsersService extends CacheableService {
 
     this.logger.debug(`User updated successfully: ${updatedUser.id}`);
 
-    await this.invalidateCache({
-      keysToDelete: [
-        this.CACHE_KEYS.FIND_ONE(updatedUser.id),
-        this.CACHE_KEYS.FIND_BY_EMAIL(updatedUser.email),
-      ],
-      patternsToDelete: [this.CACHE_KEYS.FIND_ALL_PATTERN],
+    await this.cacheService.deleteBulk({
+      keysToDelete: [USER_KEY.CACHE_FIND_BY_EMAIL(updatedUser.email)],
+      patternsToDelete: [USER_KEY.CACHE_FIND_ALL_PATTERN()],
     });
 
     return EntityMapper.map(updatedUser, UserResponseDto);
@@ -302,12 +291,12 @@ export class UsersService extends CacheableService {
 
     const userMapped = EntityMapper.map(updatedUser, UserResponseDto);
 
-    await this.invalidateCache({
+    await this.cacheService.deleteBulk({
       keysToDelete: [
-        this.CACHE_KEYS.FIND_ONE(updatedUser.id),
-        this.CACHE_KEYS.FIND_BY_EMAIL(updatedUser.email),
+        USER_KEY.CACHE_FIND_ONE(updatedUser.id),
+        USER_KEY.CACHE_FIND_BY_EMAIL(updatedUser.email),
       ],
-      patternsToDelete: [this.CACHE_KEYS.FIND_ALL_PATTERN],
+      patternsToDelete: [USER_KEY.CACHE_FIND_ALL_PATTERN()],
     });
 
     this.logger.debug('Login updated successfully for user', {
@@ -330,12 +319,12 @@ export class UsersService extends CacheableService {
 
     this.logger.debug('User deleted successfully', { userId: id });
 
-    await this.invalidateCache({
+    await this.cacheService.deleteBulk({
       keysToDelete: [
-        this.CACHE_KEYS.FIND_ONE(id),
-        this.CACHE_KEYS.FIND_BY_EMAIL(user.email),
+        USER_KEY.CACHE_FIND_ONE(id),
+        USER_KEY.CACHE_FIND_BY_EMAIL(user.email),
       ],
-      patternsToDelete: [this.CACHE_KEYS.FIND_ALL_PATTERN],
+      patternsToDelete: [USER_KEY.CACHE_FIND_ALL_PATTERN()],
     });
   }
 }

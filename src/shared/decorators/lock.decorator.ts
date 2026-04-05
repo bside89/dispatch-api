@@ -1,6 +1,6 @@
 import { InternalServerErrorException } from '@nestjs/common';
 import Redlock from 'redlock';
-import { CACHE_CONFIG } from '../constants/cache.constant';
+import { CACHE_CONFIG } from '../constants/cache-config.constant';
 
 export type UseLockKeySelector<T = any> = (args: T) => string | number;
 

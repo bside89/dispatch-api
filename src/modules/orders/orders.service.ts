@@ -13,24 +13,17 @@ import { DataSource } from 'typeorm';
 import { Transactional } from '@/shared/decorators/transactional.decorator';
 import { OrderResponseDto } from './dto/order-response.dto';
 import { EntityMapper } from '@/shared/utils/entity-mapper';
-import { CACHE_CONFIG } from '@/shared/constants/cache.constant';
+import { CACHE_CONFIG } from '@/shared/constants/cache-config.constant';
 import { OutboxService } from '@/shared/modules/outbox/outbox.service';
 import { OutboxType } from '@/shared/modules/outbox/enums/outbox-type.enum';
 import { runAndIgnoreError } from '@/shared/helpers/functions';
 import { UseLock } from '@/shared/decorators/lock.decorator';
 import Redlock from 'redlock';
-import { CacheableService } from '@/shared/services/cacheable.service';
+import { BaseService } from '@/shared/services/base.service';
+import { ORDER_KEY } from './constants/order.key';
 
 @Injectable()
-export class OrdersService extends CacheableService {
-  private readonly CACHE_KEYS = {
-    FIND_ONE: (id: string) => `cache:order:find-one:${id}`,
-    FIND_ALL: (query: Partial<OrderQueryDto>) =>
-      `cache:order:find-all:${JSON.stringify(query)}`,
-    FIND_ALL_PATTERN: 'cache:order:find-all:*',
-    IDEMPOTENCY: (op: string, key: string) => `idempotency:order:${op}:${key}`,
-  };
-
+export class OrdersService extends BaseService {
   constructor(
     private readonly orderRepository: OrderRepository,
     private readonly orderItemRepository: OrderItemRepository,
@@ -39,7 +32,7 @@ export class OrdersService extends CacheableService {
     protected readonly dataSource: DataSource, // Used in @Transactional()
     protected readonly redlock: Redlock, // Used in @UseLock()
   ) {
-    super(OrdersService.name, cacheService);
+    super(OrdersService.name);
   }
 
   @Transactional()
@@ -49,12 +42,8 @@ export class OrdersService extends CacheableService {
     userId: string,
     idempotencyKey: string,
   ): Promise<OrderResponseDto> {
-    const idempotencyKeyFormatted = this.CACHE_KEYS.IDEMPOTENCY(
-      'create',
-      idempotencyKey,
-    );
+    const idempotencyKeyFormatted = ORDER_KEY.IDEMPOTENCY('create', idempotencyKey);
 
-    // Check if there's an existing order for the same idempotency key
     const existingOrder = await this.cacheService.get<OrderResponseDto>(
       idempotencyKeyFormatted,
     );
@@ -96,9 +85,9 @@ export class OrdersService extends CacheableService {
       id: savedOrder.id,
     });
 
-    await this.invalidateCache({
-      keysToDelete: [this.CACHE_KEYS.FIND_ONE(completeOrder.id)],
-      patternsToDelete: [this.CACHE_KEYS.FIND_ALL_PATTERN],
+    await this.cacheService.deleteBulk({
+      keysToDelete: [ORDER_KEY.CACHE_FIND_ONE(completeOrder.id)],
+      patternsToDelete: [ORDER_KEY.CACHE_FIND_ALL_PATTERN()],
     });
 
     const orderMapped = EntityMapper.map(completeOrder, OrderResponseDto);
@@ -131,7 +120,7 @@ export class OrdersService extends CacheableService {
   async findAll(
     queryDto: OrderQueryDto,
   ): Promise<PaginatedResultDto<OrderResponseDto>> {
-    const cacheKey = `cache:order:find-all:${JSON.stringify(queryDto)}`;
+    const cacheKey = ORDER_KEY.CACHE_FIND_ALL(queryDto);
     const cachedResult = await runAndIgnoreError(
       () => this.cacheService.get<PaginatedResultDto<OrderResponseDto>>(cacheKey),
       `fetching orders list from cache with key: ${cacheKey}`,
@@ -143,12 +132,6 @@ export class OrdersService extends CacheableService {
     }
 
     const result = await this.orderRepository.findAllWithFilters(queryDto);
-
-    await runAndIgnoreError(
-      () => this.cacheService.set(cacheKey, result, CACHE_CONFIG.LIST_TTL),
-      `caching orders list with key: ${cacheKey}`,
-      this.logger,
-    );
 
     this.logger.debug(`Found ${result.data.length} orders`, {
       page: queryDto.page,
@@ -162,11 +145,17 @@ export class OrdersService extends CacheableService {
       EntityMapper.mapArray(result.data, OrderResponseDto),
     );
 
+    await runAndIgnoreError(
+      () => this.cacheService.set(cacheKey, resultMapped, CACHE_CONFIG.LIST_TTL),
+      `caching orders list with key: ${cacheKey}`,
+      this.logger,
+    );
+
     return resultMapped;
   }
 
   async findOne(id: string): Promise<OrderResponseDto> {
-    const cacheKey = `cache:order:find-one:${id}`;
+    const cacheKey = ORDER_KEY.CACHE_FIND_ONE(id);
     const cachedOrder = await runAndIgnoreError(
       () => this.cacheService.get<OrderResponseDto>(cacheKey),
       `fetching order from cache with key: ${cacheKey}`,
@@ -177,7 +166,7 @@ export class OrdersService extends CacheableService {
       return cachedOrder;
     }
 
-    const order = await this.orderRepository.findOneWithRelations({ id });
+    const order = await this.orderRepository.findOneCompleteWhere({ id });
 
     if (!order) {
       throw new NotFoundException(`Order with ID ${id} not found`);
@@ -233,9 +222,9 @@ export class OrdersService extends CacheableService {
 
     await this.orderRepository.save(order);
 
-    await this.invalidateCache({
-      keysToDelete: [this.CACHE_KEYS.FIND_ONE(id)],
-      patternsToDelete: [this.CACHE_KEYS.FIND_ALL_PATTERN],
+    await this.cacheService.deleteBulk({
+      keysToDelete: [ORDER_KEY.CACHE_FIND_ONE(id)],
+      patternsToDelete: [ORDER_KEY.CACHE_FIND_ALL_PATTERN()],
     });
 
     this.logger.debug('Order updated', { orderId: id });
@@ -255,9 +244,9 @@ export class OrdersService extends CacheableService {
 
     await this.orderRepository.delete(order.id);
 
-    await this.invalidateCache({
-      keysToDelete: [this.CACHE_KEYS.FIND_ONE(id)],
-      patternsToDelete: [this.CACHE_KEYS.FIND_ALL_PATTERN],
+    await this.cacheService.deleteBulk({
+      keysToDelete: [ORDER_KEY.CACHE_FIND_ONE(id)],
+      patternsToDelete: [ORDER_KEY.CACHE_FIND_ALL_PATTERN()],
     });
 
     this.logger.debug('Order deleted successfully', { orderId: id });
@@ -291,9 +280,9 @@ export class OrdersService extends CacheableService {
       ),
     );
 
-    await this.invalidateCache({
-      keysToDelete: [this.CACHE_KEYS.FIND_ONE(id)],
-      patternsToDelete: [this.CACHE_KEYS.FIND_ALL_PATTERN],
+    await this.cacheService.deleteBulk({
+      keysToDelete: [ORDER_KEY.CACHE_FIND_ONE(id)],
+      patternsToDelete: [ORDER_KEY.CACHE_FIND_ALL_PATTERN()],
     });
 
     this.logger.debug('Order status updated', { orderId: id });

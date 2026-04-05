@@ -1,7 +1,7 @@
 import { ConfigService } from '@nestjs/config';
 import { CacheModuleOptions } from '@nestjs/cache-manager';
 import { createKeyv } from '@keyv/redis';
-import { CACHE_CONFIG } from '@/shared/constants/cache.constant';
+import { CACHE_CONFIG } from '@/shared/constants/cache-config.constant';
 import Redis from 'ioredis';
 
 export const cacheConfig = (configService: ConfigService): CacheModuleOptions => ({
@@ -15,7 +15,7 @@ export const cacheConfig = (configService: ConfigService): CacheModuleOptions =>
   isGlobal: true,
 });
 
-export const redisClientConfig = (configService: ConfigService) => {
+export const redisClient = (configService: ConfigService): Redis => {
   const redisUrl = configService.get('REDIS_URL');
   if (redisUrl) {
     return new Redis(redisUrl);

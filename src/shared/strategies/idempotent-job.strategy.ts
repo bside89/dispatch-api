@@ -1,6 +1,6 @@
 import { CacheService } from '@/shared/modules/cache/cache.service';
 import { BaseJobStrategy } from './base-job.strategy';
-import { CACHE_CONFIG } from '../constants/cache.constant';
+import { CACHE_CONFIG } from '../constants/cache-config.constant';
 import { BaseJobPayload } from '../jobs/base-job.payload';
 
 export abstract class IdempotentJobStrategy<

@@ -3,7 +3,7 @@ import { CacheModule as NestCacheModule } from '@nestjs/cache-manager';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import Redis from 'ioredis';
 import Redlock from 'redlock';
-import { cacheConfig, redisClientConfig } from '../../../config/redis.config';
+import { cacheConfig, redisClient } from '../../../config/redis.config';
 import { CacheService } from './cache.service';
 import { REDIS_CLIENT } from '@/shared/constants/redis-client.constant';
 
@@ -20,7 +20,7 @@ import { REDIS_CLIENT } from '@/shared/constants/redis-client.constant';
     CacheService,
     {
       provide: REDIS_CLIENT,
-      useFactory: redisClientConfig,
+      useFactory: redisClient,
       inject: [ConfigService],
     },
     {

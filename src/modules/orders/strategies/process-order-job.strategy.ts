@@ -16,15 +16,11 @@ import { DataSource } from 'typeorm';
 import { JobStatus } from '@/shared/enums/job-status.enum';
 import { BaseOrderJobStrategy } from './base-order-job.strategy';
 import Redlock from 'redlock';
+import { ORDER_KEY } from '../constants/order.key';
 
 @Injectable()
 export class ProcessOrderJobStrategy extends BaseOrderJobStrategy<ProcessOrderJobPayload> {
   private readonly PAYMENT_IDEMPOTENCY_TTL = 24 * 60 * 60 * 1000; // 24 hours
-
-  private readonly CACHE_KEYS = {
-    IDEMPOTENCY: (jobId: string) => `idempotency:order:process:${jobId}`,
-    IS_PAID: (orderId: string) => `validate:order:process:is_paid:${orderId}`,
-  };
 
   constructor(
     protected readonly cacheService: CacheService,
@@ -45,7 +41,7 @@ export class ProcessOrderJobStrategy extends BaseOrderJobStrategy<ProcessOrderJo
   @Transactional()
   async execute(job: Job<ProcessOrderJobPayload>): Promise<void> {
     const { jobId, orderId } = job.data;
-    const idempotencyKey = this.CACHE_KEYS.IDEMPOTENCY(jobId);
+    const idempotencyKey = ORDER_KEY.IDEMPOTENCY('job', jobId);
 
     const idempotencyValue = await this.getIdempotency(idempotencyKey);
     if (idempotencyValue && idempotencyValue !== JobStatus.FAILED) {
@@ -68,13 +64,13 @@ export class ProcessOrderJobStrategy extends BaseOrderJobStrategy<ProcessOrderJo
       );
 
       const isPaid = await this.cacheService.get<boolean>(
-        this.CACHE_KEYS.IS_PAID(orderId),
+        ORDER_KEY.VALIDATE_IF_PAID(orderId),
       );
       if (!isPaid) {
         await this.processPayment(job.data);
       }
       await this.cacheService.set(
-        this.CACHE_KEYS.IS_PAID(orderId),
+        ORDER_KEY.VALIDATE_IF_PAID(orderId),
         true,
         this.PAYMENT_IDEMPOTENCY_TTL,
       );
@@ -114,13 +110,13 @@ export class ProcessOrderJobStrategy extends BaseOrderJobStrategy<ProcessOrderJo
   private async compensationLogic(data: ProcessOrderJobPayload) {
     // TODO: Implement a RefundOrderStrategy and call it here instead of just logging
     const isPaid = await this.cacheService.get<boolean>(
-      this.CACHE_KEYS.IS_PAID(data.orderId),
+      ORDER_KEY.VALIDATE_IF_PAID(data.orderId),
     );
     if (isPaid) {
       await this.refundPayment(data);
     }
     await this.cacheService.set(
-      this.CACHE_KEYS.IS_PAID(data.orderId),
+      ORDER_KEY.VALIDATE_IF_PAID(data.orderId),
       false,
       this.PAYMENT_IDEMPOTENCY_TTL,
     );
