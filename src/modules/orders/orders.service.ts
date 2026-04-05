@@ -13,7 +13,7 @@ import { DataSource } from 'typeorm';
 import { Transactional } from '@/shared/decorators/transactional.decorator';
 import { OrderResponseDto } from './dto/order-response.dto';
 import { EntityMapper } from '@/shared/utils/entity-mapper';
-import { CACHE_CONFIG } from '@/shared/constants/cache-config.constant';
+import { CACHE_TTL } from '@/shared/constants/cache-ttl.constant';
 import { OutboxService } from '@/shared/modules/outbox/outbox.service';
 import { OutboxType } from '@/shared/modules/outbox/enums/outbox-type.enum';
 import { runAndIgnoreError } from '@/shared/helpers/functions';
@@ -79,15 +79,16 @@ export class OrdersService extends BaseService {
       }),
     );
 
-    await this.orderItemRepository.saveMany(orderItems);
+    await this.orderItemRepository.saveBulk(orderItems);
 
-    const completeOrder = await this.orderRepository.findOneWithRelations({
-      id: savedOrder.id,
+    const completeOrder = await this.orderRepository.findOne({
+      where: { id: savedOrder.id },
+      relations: ['user', 'items'],
     });
 
     await this.cacheService.deleteBulk({
-      keysToDelete: [ORDER_KEY.CACHE_FIND_ONE(completeOrder.id)],
-      patternsToDelete: [ORDER_KEY.CACHE_FIND_ALL_PATTERN()],
+      keys: [ORDER_KEY.CACHE_FIND_ONE(completeOrder.id)],
+      patterns: [ORDER_KEY.CACHE_FIND_ALL_PATTERN()],
     });
 
     const orderMapped = EntityMapper.map(completeOrder, OrderResponseDto);
@@ -106,7 +107,7 @@ export class OrdersService extends BaseService {
     await this.cacheService.set(
       idempotencyKeyFormatted,
       orderMapped,
-      CACHE_CONFIG.IDEMPOTENCY_TTL,
+      CACHE_TTL.IDEMPOTENCY,
     );
 
     this.logger.debug('Order created', {
@@ -146,7 +147,7 @@ export class OrdersService extends BaseService {
     );
 
     await runAndIgnoreError(
-      () => this.cacheService.set(cacheKey, resultMapped, CACHE_CONFIG.LIST_TTL),
+      () => this.cacheService.set(cacheKey, resultMapped, CACHE_TTL.LIST),
       `caching orders list with key: ${cacheKey}`,
       this.logger,
     );
@@ -166,7 +167,10 @@ export class OrdersService extends BaseService {
       return cachedOrder;
     }
 
-    const order = await this.orderRepository.findOneCompleteWhere({ id });
+    const order = await this.orderRepository.findOne({
+      where: { id },
+      relations: ['items'],
+    });
 
     if (!order) {
       throw new NotFoundException(`Order with ID ${id} not found`);
@@ -175,7 +179,7 @@ export class OrdersService extends BaseService {
     const orderMapped = EntityMapper.map(order, OrderResponseDto);
 
     await runAndIgnoreError(
-      () => this.cacheService.set(cacheKey, orderMapped, CACHE_CONFIG.DEFAULT_TTL),
+      () => this.cacheService.set(cacheKey, orderMapped, CACHE_TTL.DEFAULT),
       `caching order with key: ${cacheKey}`,
       this.logger,
     );
@@ -193,7 +197,10 @@ export class OrdersService extends BaseService {
   ): Promise<OrderResponseDto> {
     this.logger.debug('Updating order', { orderId: id });
 
-    const order = await this.orderRepository.findOneWithRelations({ id });
+    const order = await this.orderRepository.findOne({
+      where: { id },
+      relations: ['items'],
+    });
     if (!order) {
       throw new NotFoundException(`Order with ID ${id} not found`);
     }
@@ -211,7 +218,7 @@ export class OrdersService extends BaseService {
         }),
       );
 
-      await this.orderItemRepository.saveMany(orderItems);
+      await this.orderItemRepository.saveBulk(orderItems);
       order.items = orderItems;
 
       order.total = updateOrderDto.items.reduce(
@@ -223,8 +230,8 @@ export class OrdersService extends BaseService {
     await this.orderRepository.save(order);
 
     await this.cacheService.deleteBulk({
-      keysToDelete: [ORDER_KEY.CACHE_FIND_ONE(id)],
-      patternsToDelete: [ORDER_KEY.CACHE_FIND_ALL_PATTERN()],
+      keys: [ORDER_KEY.CACHE_FIND_ONE(id)],
+      patterns: [ORDER_KEY.CACHE_FIND_ALL_PATTERN()],
     });
 
     this.logger.debug('Order updated', { orderId: id });
@@ -235,7 +242,7 @@ export class OrdersService extends BaseService {
   @Transactional()
   @UseLock({ prefix: 'order-remove', key: ([id]) => id })
   async remove(id: string): Promise<void> {
-    this.logger.debug('Deleting order', { id });
+    this.logger.debug('Deleting order', { orderId: id });
 
     const order = await this.orderRepository.findById(id);
     if (!order) {
@@ -245,19 +252,25 @@ export class OrdersService extends BaseService {
     await this.orderRepository.delete(order.id);
 
     await this.cacheService.deleteBulk({
-      keysToDelete: [ORDER_KEY.CACHE_FIND_ONE(id)],
-      patternsToDelete: [ORDER_KEY.CACHE_FIND_ALL_PATTERN()],
+      keys: [ORDER_KEY.CACHE_FIND_ONE(id)],
+      patterns: [ORDER_KEY.CACHE_FIND_ALL_PATTERN()],
     });
 
-    this.logger.debug('Order deleted successfully', { orderId: id });
+    this.logger.debug('Order deleted', { orderId: id });
   }
 
   @Transactional()
   @UseLock({ prefix: 'order-update', key: ([id]) => id })
   async updateStatus(id: string, status: OrderStatus): Promise<OrderResponseDto> {
-    const order = await this.orderRepository.findOneWithRelations({ id });
+    const order = await this.orderRepository.findOne({
+      where: { id },
+      relations: ['user'],
+    });
     if (!order) {
       throw new NotFoundException(`Order with ID ${id} not found`);
+    }
+    if (!order.user) {
+      throw new NotFoundException(`User for order with ID ${id} not found`);
     }
 
     const oldStatus = order.status;
@@ -281,8 +294,8 @@ export class OrdersService extends BaseService {
     );
 
     await this.cacheService.deleteBulk({
-      keysToDelete: [ORDER_KEY.CACHE_FIND_ONE(id)],
-      patternsToDelete: [ORDER_KEY.CACHE_FIND_ALL_PATTERN()],
+      keys: [ORDER_KEY.CACHE_FIND_ONE(id)],
+      patterns: [ORDER_KEY.CACHE_FIND_ALL_PATTERN()],
     });
 
     this.logger.debug('Order status updated', { orderId: id });

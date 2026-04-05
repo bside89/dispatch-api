@@ -170,6 +170,7 @@ export class OrdersController extends BaseController {
   }
 
   @Patch(':id')
+  @Roles(UserRole.ADMIN)
   @ApiOperation({
     summary: 'Update an order',
     description: 'Update order details including status and items',
@@ -207,6 +208,7 @@ export class OrdersController extends BaseController {
   }
 
   @Patch(':id/status')
+  @Roles(UserRole.ADMIN)
   @ApiOperation({
     summary: 'Update order status',
     description: 'Update only the order status',

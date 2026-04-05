@@ -2,6 +2,11 @@ import { InternalServerErrorException } from '@nestjs/common';
 import { DataSource } from 'typeorm';
 import { TransactionContext } from '../utils/transaction-context';
 
+/**
+ * A decorator that wraps a method in a TypeORM transaction.
+ * The Service MUST have the dataSource injected for the decorator to work.
+ * @returns A method decorator.
+ */
 export function Transactional() {
   return function (
     target: any,

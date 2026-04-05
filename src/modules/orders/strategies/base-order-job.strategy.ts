@@ -26,8 +26,8 @@ export abstract class BaseOrderJobStrategy<
     await this.orderRepository.update(orderId, { status });
 
     await this.cacheService.deleteBulk({
-      keysToDelete: [ORDER_KEY.CACHE_FIND_ONE(orderId)],
-      patternsToDelete: [ORDER_KEY.CACHE_FIND_ALL_PATTERN()],
+      keys: [ORDER_KEY.CACHE_FIND_ONE(orderId)],
+      patterns: [ORDER_KEY.CACHE_FIND_ALL_PATTERN()],
     });
   }
 }

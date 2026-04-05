@@ -5,6 +5,10 @@ import { User } from '../entities/user.entity';
 import { BaseRepository } from '@/shared/repositories/base.repository';
 import { Injectable } from '@nestjs/common';
 import { PaginatedResultDto } from '@/shared/dto/paginated-result.dto';
+import { col } from '@/shared/helpers/functions';
+
+const aliasUser = 'user';
+const user = col<User>(aliasUser);
 
 @Injectable()
 export class UserRepository extends BaseRepository<User> {
@@ -18,17 +22,15 @@ export class UserRepository extends BaseRepository<User> {
   async findAllWithFilters(
     query: Partial<UserQueryDto>,
   ): Promise<PaginatedResultDto<User>> {
-    const manager = this.getManager();
-
-    const queryBuilder = manager.createQueryBuilder(User, 'user');
+    const queryBuilder = this.createQueryBuilder(aliasUser);
 
     if (query.name) {
-      queryBuilder.andWhere('user.name ILIKE :name', {
+      queryBuilder.andWhere(`${user('name')} ILIKE :name`, {
         name: `%${query.name}%`,
       });
     }
     if (query.email) {
-      queryBuilder.andWhere('user.email ILIKE :email', {
+      queryBuilder.andWhere(`${user('email')} ILIKE :email`, {
         email: `%${query.email}%`,
       });
     }
@@ -40,7 +42,7 @@ export class UserRepository extends BaseRepository<User> {
     return queryBuilder
       .skip(skip)
       .take(limit)
-      .orderBy('user.createdAt', 'DESC')
+      .orderBy(user('createdAt'), 'DESC')
       .getManyAndCount()
       .then(
         ([data, total]) => new PaginatedResultDto(total, query.page, limit, data),

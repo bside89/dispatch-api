@@ -1,21 +1,11 @@
-import {
-  Entity,
-  PrimaryGeneratedColumn,
-  Column,
-  CreateDateColumn,
-  UpdateDateColumn,
-  OneToMany,
-  Index,
-} from 'typeorm';
+import { Entity, Column, OneToMany, Index } from 'typeorm';
 import { Order } from '../../orders/entities/order.entity';
 import { UserRole } from '../enums/user-role.enum';
+import { BaseEntity } from '@/shared/entities/base.entity';
 
 @Entity('users')
 @Index('IDX_user_email', ['email'], { unique: true })
-export class User {
-  @PrimaryGeneratedColumn('uuid')
-  id: string;
-
+export class User extends BaseEntity {
   @Column({ nullable: false })
   name: string;
 
@@ -35,12 +25,6 @@ export class User {
   @Column({ nullable: true, select: false })
   refreshToken?: string;
 
-  @CreateDateColumn()
-  createdAt: Date;
-
-  @UpdateDateColumn()
-  updatedAt: Date;
-
-  @OneToMany(() => Order, (order) => order.user)
+  @OneToMany(() => Order, (order) => order.user, { cascade: true })
   orders: Order[];
 }

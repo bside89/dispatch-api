@@ -16,7 +16,7 @@ import { EntityMapper } from '@/shared/utils/entity-mapper';
 import { HashUtils } from '@/shared/utils/hash.utils';
 import { DataSource } from 'typeorm';
 import { Transactional } from '@/shared/decorators/transactional.decorator';
-import { CACHE_CONFIG } from '@/shared/constants/cache-config.constant';
+import { CACHE_TTL } from '@/shared/constants/cache-ttl.constant';
 import { runAndIgnoreError } from '@/shared/helpers/functions';
 import { UseLock } from '@/shared/decorators/lock.decorator';
 import Redlock from 'redlock';
@@ -61,7 +61,7 @@ export class UsersService extends BaseService {
     }
 
     const emailExists = await this.userRepository.existsBy({
-      email: dto.email,
+      where: { email: dto.email },
     });
     if (emailExists) {
       throw new ConflictException('Email already exists');
@@ -84,7 +84,7 @@ export class UsersService extends BaseService {
     await this.cacheService.set(
       idempotencyKeyFormatted,
       userMapped,
-      CACHE_CONFIG.IDEMPOTENCY_TTL,
+      CACHE_TTL.IDEMPOTENCY,
     );
 
     this.logger.debug('User created and cached', {
@@ -93,7 +93,7 @@ export class UsersService extends BaseService {
     });
 
     await this.cacheService.deleteBulk({
-      patternsToDelete: [USER_KEY.CACHE_FIND_ALL_PATTERN()],
+      patterns: [USER_KEY.CACHE_FIND_ALL_PATTERN()],
     });
 
     return userMapped;
@@ -115,7 +115,7 @@ export class UsersService extends BaseService {
     const result = await this.userRepository.findAllWithFilters(query);
 
     await runAndIgnoreError(
-      () => this.cacheService.set(cacheKey, result, CACHE_CONFIG.LIST_TTL),
+      () => this.cacheService.set(cacheKey, result, CACHE_TTL.LIST),
       `caching users list with key: ${cacheKey}`,
       this.logger,
     );
@@ -158,7 +158,7 @@ export class UsersService extends BaseService {
         this.cacheService.set(
           USER_KEY.CACHE_FIND_ONE(id),
           userMapped,
-          CACHE_CONFIG.LIST_TTL,
+          CACHE_TTL.LIST,
         ),
       `caching user with ID: ${id}`,
       this.logger,
@@ -182,7 +182,7 @@ export class UsersService extends BaseService {
 
     this.logger.debug('Finding user by email', { email });
 
-    const user = await this.userRepository.findOneWhere({ email });
+    const user = await this.userRepository.findOne({ where: { email } });
     if (!user) {
       throw new NotFoundException(`User with email ${email} not found`);
     }
@@ -196,7 +196,7 @@ export class UsersService extends BaseService {
         this.cacheService.set(
           USER_KEY.CACHE_FIND_BY_EMAIL(email),
           userMapped,
-          CACHE_CONFIG.LIST_TTL,
+          CACHE_TTL.LIST,
         ),
       `caching user with email: ${email}`,
       this.logger,
@@ -219,7 +219,7 @@ export class UsersService extends BaseService {
     const newEmail = updateUserDto.email;
     if (newEmail && newEmail !== oldEmail) {
       const emailExists = await this.userRepository.existsBy({
-        email: newEmail,
+        where: { email: newEmail },
       });
       if (emailExists) {
         throw new ConflictException('Email already exists');
@@ -234,8 +234,8 @@ export class UsersService extends BaseService {
     this.logger.debug(`User updated successfully: ${updatedUser.id}`);
 
     await this.cacheService.deleteBulk({
-      keysToDelete: [USER_KEY.CACHE_FIND_BY_EMAIL(updatedUser.email)],
-      patternsToDelete: [USER_KEY.CACHE_FIND_ALL_PATTERN()],
+      keys: [USER_KEY.CACHE_FIND_BY_EMAIL(updatedUser.email)],
+      patterns: [USER_KEY.CACHE_FIND_ALL_PATTERN()],
     });
 
     return EntityMapper.map(updatedUser, UserResponseDto);
@@ -248,14 +248,7 @@ export class UsersService extends BaseService {
   ): Promise<UserResponseDto> {
     this.logger.debug('Updating login for user', { userId: id });
 
-    const user = await this.userRepository.findById(id, [
-      'id',
-      'name',
-      'email',
-      'password',
-      'createdAt',
-      'updatedAt',
-    ]);
+    const user = await this.userRepository.findById(id);
     if (!user) {
       throw new NotFoundException(`User with ID ${id} not found`);
     }
@@ -279,7 +272,7 @@ export class UsersService extends BaseService {
 
     if (updateLoginDto.email && updateLoginDto.email !== user.email) {
       const emailExists = await this.userRepository.existsBy({
-        email: updateLoginDto.email,
+        where: { email: updateLoginDto.email },
       });
       if (emailExists) {
         throw new ConflictException('Email already exists');
@@ -292,11 +285,11 @@ export class UsersService extends BaseService {
     const userMapped = EntityMapper.map(updatedUser, UserResponseDto);
 
     await this.cacheService.deleteBulk({
-      keysToDelete: [
+      keys: [
         USER_KEY.CACHE_FIND_ONE(updatedUser.id),
         USER_KEY.CACHE_FIND_BY_EMAIL(updatedUser.email),
       ],
-      patternsToDelete: [USER_KEY.CACHE_FIND_ALL_PATTERN()],
+      patterns: [USER_KEY.CACHE_FIND_ALL_PATTERN()],
     });
 
     this.logger.debug('Login updated successfully for user', {
@@ -320,11 +313,8 @@ export class UsersService extends BaseService {
     this.logger.debug('User deleted successfully', { userId: id });
 
     await this.cacheService.deleteBulk({
-      keysToDelete: [
-        USER_KEY.CACHE_FIND_ONE(id),
-        USER_KEY.CACHE_FIND_BY_EMAIL(user.email),
-      ],
-      patternsToDelete: [USER_KEY.CACHE_FIND_ALL_PATTERN()],
+      keys: [USER_KEY.CACHE_FIND_ONE(id), USER_KEY.CACHE_FIND_BY_EMAIL(user.email)],
+      patterns: [USER_KEY.CACHE_FIND_ALL_PATTERN()],
     });
   }
 }

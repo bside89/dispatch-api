@@ -7,8 +7,15 @@ import {
   EntityManager,
 } from 'typeorm';
 import { TransactionContext } from '../utils/transaction-context';
+import { BaseEntity } from '../entities/base.entity';
 
-export abstract class BaseRepository<T> {
+interface QueryOptions<T> {
+  where: Partial<T>;
+  select?: (keyof T)[];
+  relations?: (keyof T)[];
+}
+
+export abstract class BaseRepository<T extends BaseEntity> {
   protected constructor(protected readonly repository: Repository<T>) {}
 
   createEntity(entityData: Partial<T>): T {
@@ -26,56 +33,31 @@ export abstract class BaseRepository<T> {
     return manager.find(this.repository.target);
   }
 
-  async findById(id: any, select?: (keyof T)[]): Promise<T> {
+  async findById(id: any, params: Omit<QueryOptions<T>, 'where'> = {}): Promise<T> {
+    return this.findOne({ where: { id } as Partial<T>, ...params });
+  }
+
+  async findOne(params: QueryOptions<T>): Promise<T> {
     const manager = this.getManager();
-    if (select) {
+
+    // If select are not provided, include all columns by default
+    const select =
+      params.select ??
+      this.repository.metadata.columns.map((col) => col.propertyName as keyof T);
+
+    const relations = params.relations;
+    if (params.relations) {
       return manager.findOne(this.repository.target, {
-        where: { id },
+        where: params.where,
+        select,
+        relations,
+      } as any);
+    } else {
+      return manager.findOne(this.repository.target, {
+        where: params.where,
         select,
       } as any);
     }
-    return manager.findOne(this.repository.target, { where: { id } } as any);
-  }
-
-  async findOneWhere(params: Partial<T>, select?: (keyof T)[]): Promise<T> {
-    const manager = this.getManager();
-    if (select) {
-      return manager.findOne(this.repository.target, {
-        where: params,
-        select,
-      } as any);
-    }
-    return manager.findOne(this.repository.target, { where: params } as any);
-  }
-
-  /**
-   * Finds a single entity matching the given parameters and selects all columns.
-   * @param params The parameters to filter the entity.
-   * @returns The found entity or null if not found.
-   * @remarks This method is useful when you want to ensure that all columns of the
-   * entity are selected, regardless of any default select options defined in the
-   * entity metadata.
-   */
-  async findOneCompleteWhere(params: Partial<T>): Promise<T> {
-    const manager = this.getManager();
-    const select = this.repository.metadata.columns.map(
-      (col) => col.propertyName as keyof T,
-    );
-    return manager.findOne(this.repository.target, {
-      where: params,
-      select,
-    } as any);
-  }
-
-  async findOneWithRelations(params: Partial<T>): Promise<T> {
-    const manager = this.getManager();
-    const relations = this.repository.metadata.relations.map(
-      (rel) => rel.propertyName,
-    );
-    return manager.findOne(this.repository.target, {
-      where: params,
-      relations,
-    } as any);
   }
 
   async save(entity: T): Promise<T> {
@@ -83,7 +65,7 @@ export abstract class BaseRepository<T> {
     return manager.save(entity);
   }
 
-  async saveMany(entities: T[]): Promise<T[]> {
+  async saveBulk(entities: T[]): Promise<T[]> {
     if (entities.length === 0) return null;
     const manager = this.getManager();
     return manager.save(entities);
@@ -99,16 +81,16 @@ export abstract class BaseRepository<T> {
     return manager.delete(this.repository.target, id);
   }
 
-  async deleteMany(ids: string[]): Promise<DeleteResult> {
+  async deleteBulk(ids: string[]): Promise<DeleteResult> {
     if (ids.length === 0) return null;
     const manager = this.getManager();
     return manager.delete(this.repository.target, ids);
   }
 
-  async existsBy(params: Partial<T>): Promise<boolean> {
+  async existsBy(params: { where: Partial<T> }): Promise<boolean> {
     const manager = this.getManager();
     const count = await manager.count(this.repository.target, {
-      where: params as any,
+      where: params.where as any,
     });
     return count > 0;
   }

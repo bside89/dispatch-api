@@ -1,7 +1,7 @@
 import { ConfigService } from '@nestjs/config';
 import { CacheModuleOptions } from '@nestjs/cache-manager';
 import { createKeyv } from '@keyv/redis';
-import { CACHE_CONFIG } from '@/shared/constants/cache-config.constant';
+import { CACHE_TTL } from '@/shared/constants/cache-ttl.constant';
 import Redis from 'ioredis';
 
 export const cacheConfig = (configService: ConfigService): CacheModuleOptions => ({
@@ -11,7 +11,7 @@ export const cacheConfig = (configService: ConfigService): CacheModuleOptions =>
         `redis://${configService.get('REDIS_HOST') || 'localhost'}:${configService.get('REDIS_PORT') || 6379}`,
     ),
   ],
-  ttl: configService.get('CACHE_TTL') || CACHE_CONFIG.DEFAULT_TTL,
+  ttl: configService.get('CACHE_TTL') || CACHE_TTL.DEFAULT,
   isGlobal: true,
 });
 

@@ -8,6 +8,10 @@ import { DataSource } from 'typeorm';
 import { OutboxType } from './enums/outbox-type.enum';
 import { Outbox } from './entities/outbox.entity';
 import { RequestContext } from '@/shared/utils/request-context';
+import {
+  CancelOrderJobPayload,
+  ProcessOrderJobPayload,
+} from '@/modules/orders/processors/payloads/order-job.payload';
 
 const makeOutbox = (overrides: Partial<Outbox> = {}): Outbox =>
   ({
@@ -24,7 +28,7 @@ describe(OutboxService.name, () => {
   let repository: jest.Mocked<
     Pick<
       OutboxRepository,
-      'createEntity' | 'save' | 'findAndLockBatch' | 'deleteMany'
+      'createEntity' | 'save' | 'findAndLockBatch' | 'deleteBulk'
     >
   >;
   let orderQueue: { addBulk: jest.Mock };
@@ -40,7 +44,7 @@ describe(OutboxService.name, () => {
             createEntity: jest.fn(),
             save: jest.fn(),
             findAndLockBatch: jest.fn(),
-            deleteMany: jest.fn(),
+            deleteBulk: jest.fn(),
           },
         },
         {
@@ -102,7 +106,7 @@ describe(OutboxService.name, () => {
 
       await service.process();
 
-      expect(repository.deleteMany).not.toHaveBeenCalled();
+      expect(repository.deleteBulk).not.toHaveBeenCalled();
     });
 
     it('should dispatch order-type messages to the order queue and delete them', async () => {
@@ -120,7 +124,7 @@ describe(OutboxService.name, () => {
       ];
       (repository.findAndLockBatch as jest.Mock).mockResolvedValue(messages);
       (orderQueue.addBulk as jest.Mock).mockResolvedValue([]);
-      (repository.deleteMany as jest.Mock).mockResolvedValue(undefined);
+      (repository.deleteBulk as jest.Mock).mockResolvedValue(undefined);
 
       await service.process();
 
@@ -136,7 +140,7 @@ describe(OutboxService.name, () => {
           opts: { jobId: 'uuid-2' },
         },
       ]);
-      expect(repository.deleteMany).toHaveBeenCalledWith(['uuid-1', 'uuid-2']);
+      expect(repository.deleteBulk).toHaveBeenCalledWith(['uuid-1', 'uuid-2']);
     });
 
     it('should dispatch EVENTS_NOTIFY_USER messages to the event bus and delete them', async () => {
@@ -149,7 +153,7 @@ describe(OutboxService.name, () => {
       ];
       (repository.findAndLockBatch as jest.Mock).mockResolvedValue(messages);
       (eventBus.publishBulk as jest.Mock).mockResolvedValue(undefined);
-      (repository.deleteMany as jest.Mock).mockResolvedValue(undefined);
+      (repository.deleteBulk as jest.Mock).mockResolvedValue(undefined);
 
       await service.process();
 
@@ -160,7 +164,7 @@ describe(OutboxService.name, () => {
           opts: { jobId: 'uuid-3' },
         },
       ]);
-      expect(repository.deleteMany).toHaveBeenCalledWith(['uuid-3']);
+      expect(repository.deleteBulk).toHaveBeenCalledWith(['uuid-3']);
     });
 
     it('should schedule the next execution with setImmediate when batch is full', async () => {
@@ -170,7 +174,7 @@ describe(OutboxService.name, () => {
       );
       (repository.findAndLockBatch as jest.Mock).mockResolvedValue(messages);
       (orderQueue.addBulk as jest.Mock).mockResolvedValue([]);
-      (repository.deleteMany as jest.Mock).mockResolvedValue(undefined);
+      (repository.deleteBulk as jest.Mock).mockResolvedValue(undefined);
 
       const setImmediateSpy = jest
         .spyOn(global, 'setImmediate')
@@ -196,7 +200,7 @@ describe(OutboxService.name, () => {
   describe('add()', () => {
     it('should create and save an outbox entry using correlationId from context', async () => {
       const type = OutboxType.ORDER_PROCESS;
-      const payload = { orderId: '123' };
+      const payload = new ProcessOrderJobPayload('user-1', '123', 99.9);
       const correlationId = 'ctx-correlation-id';
       const mockEntry = makeOutbox({ type, payload, correlationId });
 
@@ -215,7 +219,7 @@ describe(OutboxService.name, () => {
 
     it('should generate a UUID correlationId when context has none', async () => {
       const type = OutboxType.ORDER_CANCEL;
-      const payload = { orderId: '456' };
+      const payload = new CancelOrderJobPayload('user-1', '456');
       const mockEntry = makeOutbox({ type, payload });
 
       (repository.createEntity as jest.Mock).mockReturnValue(mockEntry);

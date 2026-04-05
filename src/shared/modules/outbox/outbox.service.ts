@@ -13,10 +13,12 @@ import { InjectQueue } from '@nestjs/bullmq';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { Transactional } from '@/shared/decorators/transactional.decorator';
 import { ORDER_QUEUE_TOKEN } from '@/modules/orders/constants/order-queue.token';
+import { OutboxPayloadMap } from './types/outbox-payload.map';
 
 @Injectable()
 export class OutboxService extends BaseService implements OnModuleDestroy {
   private isProcessing = false;
+
   private isShuttingDown = false;
 
   constructor(
@@ -42,7 +44,7 @@ export class OutboxService extends BaseService implements OnModuleDestroy {
   @Cron(CronExpression.EVERY_5_SECONDS)
   @Transactional()
   async process() {
-    if (this.isShuttingDown || this.isShuttingDown || this.isProcessing) {
+    if (this.isShuttingDown || this.isProcessing) {
       // Outbox is already being processed or shutting down, skip this cycle
       return;
     }
@@ -58,7 +60,7 @@ export class OutboxService extends BaseService implements OnModuleDestroy {
 
       const dispatchedIds: string[] = messages.map((m) => m.id);
 
-      await this.outboxRepository.deleteMany(dispatchedIds);
+      await this.outboxRepository.deleteBulk(dispatchedIds);
 
       this.logger.log(
         `Successfully processed batch of ${messages.length} Outbox messages.`,
@@ -115,7 +117,10 @@ export class OutboxService extends BaseService implements OnModuleDestroy {
     }
   }
 
-  async add(type: OutboxType, payload: any): Promise<void> {
+  async add<T extends OutboxType>(
+    type: T,
+    payload: OutboxPayloadMap[T],
+  ): Promise<void> {
     const correlationId = RequestContext.getCorrelationId() ?? randomUUID();
     const outboxEntry = this.outboxRepository.createEntity({
       type,

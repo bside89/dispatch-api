@@ -42,11 +42,11 @@ export class CacheService implements OnModuleDestroy {
    * @param options Object containing keys and patterns to delete from the cache.
    */
   async deleteBulk(options: {
-    keysToDelete?: string[];
-    patternsToDelete?: string[];
+    keys?: string[];
+    patterns?: string[];
   }): Promise<void> {
-    const keysToDelete: string[] = options.keysToDelete || [];
-    const patternsToDelete: string[] = options.patternsToDelete || [];
+    const keysToDelete: string[] = options.keys || [];
+    const patternsToDelete: string[] = options.patterns || [];
 
     await Promise.all([
       // Delete specific keys

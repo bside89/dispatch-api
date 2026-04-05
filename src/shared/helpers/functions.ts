@@ -10,6 +10,18 @@ export async function delay(ms: number): Promise<void> {
 }
 
 /**
+ * Returns a function that produces a type-safe "alias.column" string for use in
+ * TypeORM QueryBuilder methods. The key is validated by TypeScript at compile time.
+ *
+ * @example
+ * const order = col<Order>('order');
+ * queryBuilder.orderBy(order('createdAt'), 'DESC');
+ */
+export function col<T>(alias: string) {
+  return (key: keyof T): string => `${alias}.${String(key)}`;
+}
+
+/**
  * Runs a function and ignores any errors that occur, logging them instead.
  * @param fn The function to run.
  * @param context A description of the context in which the function is run, used for

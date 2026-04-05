@@ -7,7 +7,7 @@ import type { JwtPayload } from './interfaces/jwt-payload.interface';
 import { CacheService } from '../../shared/modules/cache/cache.service';
 import { UserRepository } from '../users/repositories/user.repository';
 import { HashUtils } from '@/shared/utils/hash.utils';
-import { CACHE_CONFIG } from '@/shared/constants/cache-config.constant';
+import { CACHE_TTL } from '@/shared/constants/cache-ttl.constant';
 import { BaseService } from '@/shared/services/base.service';
 import { OutboxService } from '@/shared/modules/outbox/outbox.service';
 import { NotifyUserJobPayload } from '@/shared/modules/events/processors/payloads/notify-user.payload';
@@ -32,7 +32,7 @@ export class AuthService extends BaseService {
 
   @UseLock({ prefix: 'auth-login', key: ([email]) => email })
   async login(email: string, password: string): Promise<LoginResponseDto> {
-    const user = await this.userRepository.findOneCompleteWhere({ email });
+    const user = await this.userRepository.findOne({ where: { email } });
 
     if (!user) throw new UnauthorizedException();
 
@@ -61,8 +61,8 @@ export class AuthService extends BaseService {
     const refreshToken = reqUser.jwtPayload.refreshToken;
     if (!refreshToken) throw new UnauthorizedException('No refresh token found');
 
-    const user = await this.userRepository.findOneCompleteWhere({
-      email: reqUser.jwtPayload.email,
+    const user = await this.userRepository.findOne({
+      where: { email: reqUser.jwtPayload.email },
     });
     if (!user) throw new UnauthorizedException('User not found');
 
@@ -87,7 +87,7 @@ export class AuthService extends BaseService {
     await this.cacheService.set(
       AUTH_KEY.BLACKLIST(reqUser.jwtPayload.jti),
       true,
-      CACHE_CONFIG.AUTH_BLACKLIST_TTL,
+      CACHE_TTL.AUTH_BLACKLIST,
     );
   }
 

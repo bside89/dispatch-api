@@ -29,7 +29,7 @@ describe('AuthService', () => {
         },
         {
           provide: UserRepository,
-          useValue: { findOneCompleteWhere: jest.fn(), update: jest.fn() },
+          useValue: { findOne: jest.fn(), update: jest.fn() },
         },
         {
           provide: DataSource,

@@ -1,11 +1,9 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn } from 'typeorm';
+import { Entity, Column } from 'typeorm';
 import { OutboxType } from '../enums/outbox-type.enum';
+import { BaseEntity } from '@/shared/entities/base.entity';
 
 @Entity('outbox')
-export class Outbox {
-  @PrimaryGeneratedColumn('uuid')
-  id: string;
-
+export class Outbox extends BaseEntity {
   @Column({ type: 'varchar', nullable: false })
   correlationId: string;
 
@@ -18,7 +16,4 @@ export class Outbox {
 
   @Column('jsonb', { nullable: false })
   payload: any;
-
-  @CreateDateColumn()
-  createdAt: Date;
 }

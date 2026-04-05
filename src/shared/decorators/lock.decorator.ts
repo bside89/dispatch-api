@@ -1,6 +1,6 @@
 import { InternalServerErrorException } from '@nestjs/common';
 import Redlock from 'redlock';
-import { CACHE_CONFIG } from '../constants/cache-config.constant';
+import { CACHE_TTL } from '../constants/cache-ttl.constant';
 
 export type UseLockKeySelector<T = any> = (args: T) => string | number;
 
@@ -12,11 +12,13 @@ export interface UseLockOptions {
   ttl?: number;
 }
 
-export function UseLock({
-  ttl = CACHE_CONFIG.DEFAULT_LOCK_TTL,
-  prefix,
-  key,
-}: UseLockOptions) {
+/**
+ * A decorator that acquires a distributed lock using Redlock before executing the
+ * method. The Service MUST have the redlock injected for the decorator to work.
+ * @param param0 The options for the lock, including prefix, key selector, and TTL.
+ * @returns A method decorator.
+ */
+export function UseLock({ ttl = CACHE_TTL.LOCK, prefix, key }: UseLockOptions) {
   return function (
     _target: any,
     _propertyKey: string,
