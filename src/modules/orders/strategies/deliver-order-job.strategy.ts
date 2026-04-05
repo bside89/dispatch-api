@@ -10,16 +10,11 @@ import { CacheService } from '../../../shared/modules/cache/cache.service';
 import { OutboxService } from '@/shared/modules/outbox/outbox.service';
 import { OrderRepository } from '../repositories/order.repository';
 import { DataSource } from 'typeorm';
-import { JobStatus } from '@/shared/enums/job-status.enum';
 import { BaseOrderJobStrategy } from './base-order-job.strategy';
 import Redlock from 'redlock';
 
 @Injectable()
 export class DeliverOrderJobStrategy extends BaseOrderJobStrategy<DeliverOrderJobPayload> {
-  private readonly CACHE_KEYS = {
-    IDEMPOTENCY: (jobId: string) => `idempotency:order:deliver:${jobId}`,
-  };
-
   constructor(
     protected readonly cacheService: CacheService,
     protected readonly outboxService: OutboxService,
@@ -38,43 +33,25 @@ export class DeliverOrderJobStrategy extends BaseOrderJobStrategy<DeliverOrderJo
 
   @Transactional()
   async execute(job: Job<DeliverOrderJobPayload>): Promise<void> {
-    const { jobId, orderId } = job.data;
-    const idempotencyKey = this.CACHE_KEYS.IDEMPOTENCY(jobId);
+    const { orderId } = job.data;
 
-    const idempotencyValue = await this.getIdempotency(idempotencyKey);
-    if (idempotencyValue && idempotencyValue !== JobStatus.FAILED) {
+    if (!(await this.orderRepository.hasStatus(orderId, [OrderStatus.SHIPPED]))) {
+      this.logger.log(`Order ${orderId} is not in SHIPPED status or does not exist`);
       return;
     }
-    await this.setIdempotency(idempotencyKey, JobStatus.IN_PROGRESS);
 
-    try {
-      if (!(await this.orderRepository.hasStatus(orderId, [OrderStatus.SHIPPED]))) {
-        this.logger.log(
-          `Order ${orderId} is not in SHIPPED status or does not exist`,
-        );
-        await this.setIdempotency(idempotencyKey, JobStatus.COMPLETED);
-        return;
-      }
+    this.logger.log(
+      `Delivering order, attempt ${job.attemptsMade + 1} of ${job.opts.attempts}`,
+      { orderId },
+    );
 
-      this.logger.log(
-        `Delivering order, attempt ${job.attemptsMade + 1} of ${job.opts.attempts}`,
-        { orderId },
-      );
+    await this.simulateDelivery(job.data);
 
-      await this.simulateDelivery(job.data);
-
-      await this.finish(job.data);
-
-      await this.setIdempotency(idempotencyKey, JobStatus.COMPLETED);
-    } catch (error) {
-      await this.setIdempotency(idempotencyKey, JobStatus.FAILED);
-
-      throw error;
-    }
+    await this.finish(job.data);
   }
 
   @Transactional()
-  async executeOnFailed(
+  async executeAfterFail(
     job: Job<DeliverOrderJobPayload>,
     error: Error,
   ): Promise<void> {

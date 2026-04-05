@@ -3,39 +3,23 @@ import { Job } from 'bullmq';
 import { CacheService } from '../../cache/cache.service';
 import { delay } from '../../../helpers/functions';
 import { NotifyUserJobPayload } from '../processors/payloads/notify-user.payload';
-import { JobStatus } from '@/shared/enums/job-status.enum';
 import { Transactional } from '@/shared/decorators/transactional.decorator';
-import { IdempotentJobStrategy } from '@/shared/strategies/idempotent-job.strategy';
+import { BaseJobStrategy } from '@/shared/strategies/base-job.strategy';
 
 @Injectable()
-export class NotifyUserJobStrategy extends IdempotentJobStrategy<NotifyUserJobPayload> {
+export class NotifyUserJobStrategy extends BaseJobStrategy<NotifyUserJobPayload> {
   constructor(protected readonly cacheService: CacheService) {
-    super(NotifyUserJobStrategy.name, cacheService);
+    super(NotifyUserJobStrategy.name);
   }
 
   async execute(job: Job<NotifyUserJobPayload>): Promise<void> {
-    const { jobId, userId, message } = job.data;
-    const idempotencyKey = this.cacheKeyIdempotency(jobId);
+    const { userId, message } = job.data;
 
-    const idempotencyValue = await this.getIdempotency(idempotencyKey);
-    if (idempotencyValue && idempotencyValue !== JobStatus.FAILED) {
-      return;
-    }
-    await this.setIdempotency(idempotencyKey, JobStatus.IN_PROGRESS);
-
-    try {
-      await this.notifyUser(userId, message);
-
-      await this.setIdempotency(idempotencyKey, JobStatus.COMPLETED);
-    } catch (error) {
-      await this.setIdempotency(idempotencyKey, JobStatus.FAILED);
-
-      throw error;
-    }
+    await this.notifyUser(userId, message);
   }
 
   @Transactional()
-  async executeOnFailed(
+  async executeAfterFail(
     job: Job<NotifyUserJobPayload>,
     error: Error,
   ): Promise<void> {
@@ -52,9 +36,5 @@ export class NotifyUserJobStrategy extends IdempotentJobStrategy<NotifyUserJobPa
     this.logger.log(`Notification sent to user ${userId}:`);
 
     this.logger.log(message);
-  }
-
-  private cacheKeyIdempotency(jobId: string): string {
-    return `idempotency:event:notification:${jobId}`;
   }
 }

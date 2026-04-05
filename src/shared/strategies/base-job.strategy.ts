@@ -11,5 +11,5 @@ export abstract class BaseJobStrategy<T extends BaseJobPayload> {
 
   abstract execute(job: Job<T>): Promise<void>;
 
-  abstract executeOnFailed(job: Job<T>, error: Error): Promise<void>;
+  abstract executeAfterFail(job: Job<T>, error: Error): Promise<void>;
 }

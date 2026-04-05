@@ -16,10 +16,6 @@ import Redlock from 'redlock';
 
 @Injectable()
 export class CancelOrderJobStrategy extends BaseOrderJobStrategy<CancelOrderJobPayload> {
-  private readonly CACHE_KEYS = {
-    IDEMPOTENCY: (jobId: string) => `idempotency:order:cancel:${jobId}`,
-  };
-
   constructor(
     protected readonly cacheService: CacheService,
     protected readonly outboxService: OutboxService,
@@ -38,48 +34,32 @@ export class CancelOrderJobStrategy extends BaseOrderJobStrategy<CancelOrderJobP
 
   @Transactional()
   async execute(job: Job<CancelOrderJobPayload>): Promise<void> {
-    const { jobId, orderId } = job.data;
-    const idempotencyKey = this.CACHE_KEYS.IDEMPOTENCY(jobId);
+    const { orderId } = job.data;
 
-    const idempotencyValue = await this.getIdempotency(idempotencyKey);
-    if (idempotencyValue && idempotencyValue !== JobStatus.FAILED) {
+    if (
+      await this.orderRepository.hasStatus(orderId, [
+        OrderStatus.CANCELLED,
+        OrderStatus.REFUNDED,
+      ])
+    ) {
+      this.logger.log(
+        `Order ${orderId} is in CANCELLED or REFUNDED status or does not exist`,
+      );
       return;
     }
-    await this.setIdempotency(idempotencyKey, JobStatus.IN_PROGRESS);
 
-    try {
-      if (
-        await this.orderRepository.hasStatus(orderId, [
-          OrderStatus.CANCELLED,
-          OrderStatus.REFUNDED,
-        ])
-      ) {
-        this.logger.log(
-          `Order ${orderId} is in CANCELLED or REFUNDED status or does not exist`,
-        );
-        await this.setIdempotency(idempotencyKey, JobStatus.COMPLETED);
-        return;
-      }
+    this.logger.log(
+      `Cancelling order, attempt ${job.attemptsMade + 1} of ${job.opts.attempts}`,
+      { orderId },
+    );
 
-      this.logger.log(
-        `Cancelling order, attempt ${job.attemptsMade + 1} of ${job.opts.attempts}`,
-        { orderId },
-      );
+    await this.cancelOrder(job.data);
 
-      await this.cancelOrder(job.data);
-
-      await this.finish(job.data);
-    } catch (error) {
-      await this.setIdempotency(idempotencyKey, JobStatus.FAILED);
-
-      throw error;
-    } finally {
-      await this.setIdempotency(idempotencyKey, JobStatus.COMPLETED);
-    }
+    await this.finish(job.data);
   }
 
   @Transactional()
-  async executeOnFailed(
+  async executeAfterFail(
     job: Job<CancelOrderJobPayload>,
     error: Error,
   ): Promise<void> {

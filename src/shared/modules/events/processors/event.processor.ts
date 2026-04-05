@@ -10,6 +10,8 @@ import { CacheService } from '@/shared/modules/cache/cache.service';
 import { UseLock } from '@/shared/decorators/lock.decorator';
 import Redlock from 'redlock';
 import { EventJobHandlerFactory } from '../factories/event-job-handler.factory';
+import { JobStatus } from '@/shared/enums/job-status.enum';
+import { EVENT_KEY } from '../constants/event.key';
 
 @Processor('events', { maxStalledCount: 1 })
 export class EventProcessor
@@ -35,34 +37,56 @@ export class EventProcessor
     await this.worker.pause(true);
   }
 
+  // Main method
   async process(job: Job) {
-    await this.execute(job, 'process');
+    await this.processByEvent(job, 'process');
   }
 
   @OnWorkerEvent('failed')
-  async onJobFailed(job: Job, error: Error) {
+  async processFailed(job: Job, error: Error) {
     if (job.attemptsMade >= (job.opts.attempts || 1)) {
       // Execute after all retries have been exhausted
-      await this.execute(job, 'failed', error);
+      await this.processByEvent(job, 'failed', error);
     }
   }
 
   @UseLock({ prefix: 'job-execute', key: ([job]) => job.id })
-  async execute(job: Job, event: 'process' | 'failed', error?: Error) {
+  async processByEvent(job: Job, event: 'process' | 'failed', error?: Error) {
     const correlationId = job.data?.correlationId ?? randomUUID();
 
     return RequestContext.run(correlationId, async () => {
-      const handler = this.factory.createHandler(job.name);
+      const idempotencyKey = EVENT_KEY.IDEMPOTENCY(job.id);
 
-      if (!handler) {
-        this.logger.warn(`Unknown job: ${job.name}`);
+      const idempotencyValue = await this.cacheService.get(idempotencyKey);
+      if (idempotencyValue && idempotencyValue !== JobStatus.FAILED) {
         return;
       }
+      await this.cacheService.set(idempotencyKey, JobStatus.IN_PROGRESS);
 
-      if (event === 'process') {
-        await handler.execute(job);
-      } else {
-        await handler.executeOnFailed(job, error);
+      try {
+        const handler = this.factory.createHandler(job.name);
+
+        if (!handler) {
+          this.logger.warn(`Unknown job: ${job.name}`);
+          return;
+        }
+
+        if (event === 'process') {
+          await handler.execute(job);
+        } else {
+          await handler.executeAfterFail(job, error);
+        }
+
+        await this.cacheService.set(idempotencyKey, JobStatus.COMPLETED);
+      } catch (error: any) {
+        await this.cacheService.set(idempotencyKey, JobStatus.FAILED);
+
+        this.logger.error(
+          `Error executing job ${job.name} with id ${job.id}`,
+          error.message,
+        );
+
+        throw error;
       }
     });
   }

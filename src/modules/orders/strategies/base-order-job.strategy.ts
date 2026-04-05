@@ -4,13 +4,13 @@ import { OrderStatus } from '../enums/order-status.enum';
 import { DataSource } from 'typeorm';
 import { UseLock } from '@/shared/decorators/lock.decorator';
 import Redlock from 'redlock';
-import { IdempotentJobStrategy } from '@/shared/strategies/idempotent-job.strategy';
 import { BaseJobPayload } from '@/shared/jobs/base-job.payload';
 import { ORDER_KEY } from '../constants/order.key';
+import { BaseJobStrategy } from '@/shared/strategies/base-job.strategy';
 
 export abstract class BaseOrderJobStrategy<
   T extends BaseJobPayload,
-> extends IdempotentJobStrategy<T> {
+> extends BaseJobStrategy<T> {
   constructor(
     protected readonly jobName: string,
     protected readonly cacheService: CacheService,
@@ -18,7 +18,7 @@ export abstract class BaseOrderJobStrategy<
     protected readonly dataSource: DataSource, // Used in @Transactional()
     protected readonly redlock: Redlock, // Used in @UseLock()
   ) {
-    super(jobName, cacheService);
+    super(jobName);
   }
 
   @UseLock({ prefix: 'order-update', key: ([orderId]) => orderId })

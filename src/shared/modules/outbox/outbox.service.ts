@@ -80,12 +80,12 @@ export class OutboxService extends BaseService implements OnModuleDestroy {
     }
   }
 
-  private async dispatch(msg: Outbox[]): Promise<void> {
-    if (msg.length === 0) return;
+  private async dispatch(messages: Outbox[]): Promise<void> {
+    if (messages.length === 0) return;
 
     // Separate messages based on their type to determine the appropriate dispatch
     // method (queue vs event bus)
-    const orderQueueMsg = msg
+    const orderQueueMsg = messages
       .filter((m) =>
         [
           OutboxType.ORDER_PROCESS,
@@ -99,7 +99,7 @@ export class OutboxService extends BaseService implements OnModuleDestroy {
         data: msg.payload,
         opts: { jobId: msg.id },
       }));
-    const eventBusMsg = msg
+    const eventBusMsg = messages
       .filter((m) => m.type === OutboxType.EVENTS_NOTIFY_USER)
       .map((msg) => ({
         name: msg.type,

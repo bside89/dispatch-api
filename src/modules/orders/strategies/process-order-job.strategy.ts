@@ -13,7 +13,6 @@ import { CacheService } from '../../../shared/modules/cache/cache.service';
 import { OutboxService } from '@/shared/modules/outbox/outbox.service';
 import { OrderRepository } from '../repositories/order.repository';
 import { DataSource } from 'typeorm';
-import { JobStatus } from '@/shared/enums/job-status.enum';
 import { BaseOrderJobStrategy } from './base-order-job.strategy';
 import Redlock from 'redlock';
 import { ORDER_KEY } from '../constants/order.key';
@@ -40,53 +39,35 @@ export class ProcessOrderJobStrategy extends BaseOrderJobStrategy<ProcessOrderJo
 
   @Transactional()
   async execute(job: Job<ProcessOrderJobPayload>): Promise<void> {
-    const { jobId, orderId } = job.data;
-    const idempotencyKey = ORDER_KEY.IDEMPOTENCY('job', jobId);
+    const { orderId } = job.data;
 
-    const idempotencyValue = await this.getIdempotency(idempotencyKey);
-    if (idempotencyValue && idempotencyValue !== JobStatus.FAILED) {
+    if (!(await this.orderRepository.hasStatus(orderId, [OrderStatus.PENDING]))) {
+      this.logger.log(`Order ${orderId} is not in PENDING status or does not exist`);
       return;
     }
-    await this.setIdempotency(idempotencyKey, JobStatus.IN_PROGRESS);
 
-    try {
-      if (!(await this.orderRepository.hasStatus(orderId, [OrderStatus.PENDING]))) {
-        this.logger.log(
-          `Order ${orderId} is not in PENDING status or does not exist`,
-        );
-        await this.setIdempotency(idempotencyKey, JobStatus.COMPLETED);
-        return;
-      }
+    this.logger.log(
+      `Processing order, attempt ${job.attemptsMade + 1} of ${job.opts.attempts}`,
+      { orderId },
+    );
 
-      this.logger.log(
-        `Processing order, attempt ${job.attemptsMade + 1} of ${job.opts.attempts}`,
-        { orderId },
-      );
-
-      const isPaid = await this.cacheService.get<boolean>(
-        ORDER_KEY.VALIDATE_IF_PAID(orderId),
-      );
-      if (!isPaid) {
-        await this.processPayment(job.data);
-      }
-      await this.cacheService.set(
-        ORDER_KEY.VALIDATE_IF_PAID(orderId),
-        true,
-        this.PAYMENT_IDEMPOTENCY_TTL,
-      );
-
-      await this.finish(job.data);
-
-      await this.setIdempotency(idempotencyKey, JobStatus.COMPLETED);
-    } catch (error) {
-      await this.setIdempotency(idempotencyKey, JobStatus.FAILED);
-
-      throw error;
+    const isPaid = await this.cacheService.get<boolean>(
+      ORDER_KEY.VALIDATE_IF_PAID(orderId),
+    );
+    if (!isPaid) {
+      await this.processPayment(job.data);
     }
+    await this.cacheService.set(
+      ORDER_KEY.VALIDATE_IF_PAID(orderId),
+      true,
+      this.PAYMENT_IDEMPOTENCY_TTL,
+    );
+
+    await this.finish(job.data);
   }
 
   @Transactional()
-  async executeOnFailed(
+  async executeAfterFail(
     job: Job<ProcessOrderJobPayload>,
     error: Error,
   ): Promise<void> {
@@ -132,12 +113,12 @@ export class ProcessOrderJobStrategy extends BaseOrderJobStrategy<ProcessOrderJo
 
   private async refundPayment(data: ProcessOrderJobPayload) {
     await delay(1000);
-    this.logger.warn('Payment refunded', { orderId: data.orderId });
+    this.logger.log('Payment refunded', { orderId: data.orderId });
   }
 
   private async releaseInventory(data: ProcessOrderJobPayload) {
     await delay(1000);
-    this.logger.warn('Inventory released', { orderId: data.orderId });
+    this.logger.log('Inventory released', { orderId: data.orderId });
   }
 
   private async finish(data: ProcessOrderJobPayload) {
