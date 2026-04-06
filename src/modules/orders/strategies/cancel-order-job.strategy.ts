@@ -1,7 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { Job } from 'bullmq';
 import { OrderStatus } from '../enums/order-status.enum';
-import { CancelOrderJobPayload } from '../processors/payloads/order-job.payload';
+import {
+  CancelOrderJobPayload,
+  RefundOrderJobPayload,
+} from '../processors/payloads/order-job.payload';
 import { NotifyUserJobPayload } from '../../../shared/modules/events/processors/payloads/notify-user.payload';
 import { delay } from '../../../shared/helpers/functions';
 import { Transactional } from '@/shared/decorators/transactional.decorator';
@@ -36,24 +39,15 @@ export class CancelOrderJobStrategy extends BaseOrderJobStrategy<CancelOrderJobP
   async execute(job: Job<CancelOrderJobPayload>): Promise<void> {
     const { orderId } = job.data;
 
-    if (
-      await this.orderRepository.hasStatus(orderId, [
-        OrderStatus.CANCELLED,
-        OrderStatus.REFUNDED,
-      ])
-    ) {
-      this.logger.log(
-        `Order ${orderId} is in CANCELLED or REFUNDED status or does not exist`,
-      );
-      return;
-    }
+    const order = await this.getAndValidate(orderId, OrderStatus.CANCELLED);
+    if (!order) return;
 
     this.logger.log(
       `Cancelling order, attempt ${job.attemptsMade + 1} of ${job.opts.attempts}`,
       { orderId },
     );
 
-    await this.cancelOrder(job.data);
+    await this.releaseInventory(job.data);
 
     await this.finish(job.data);
   }
@@ -71,27 +65,25 @@ export class CancelOrderJobStrategy extends BaseOrderJobStrategy<CancelOrderJobP
     );
   }
 
-  private async cancelOrder(data: CancelOrderJobPayload) {
+  private async releaseInventory(data: CancelOrderJobPayload) {
     await delay(2000);
-    this.logger.log(`Cancel for order processed`, { orderId: data.orderId });
+    this.logger.log(`Inventory released for order`, { orderId: data.orderId });
   }
 
   private async finish(data: CancelOrderJobPayload) {
     const { orderId, userId, userName } = data;
 
-    await this.updateOrderStatus(orderId, OrderStatus.CANCELLED);
+    await this.lockAndUpdateOrder(orderId, { status: OrderStatus.CANCELLED });
 
-    // Add to the Outbox for sending notification to the user
+    // Notify the user
     await this.outboxService.add(
       OutboxType.EVENTS_NOTIFY_USER,
       new NotifyUserJobPayload(
         userId,
         userName,
-        `<To user ${userName}>: Your order with id ${orderId} has been cancelled successfully.`,
+        `<To user ${userName}>: Your order with id ${orderId} has been cancelled.`,
       ),
     );
-
-    // TODO: Add to the Outbox for refund the order (job)
 
     this.logger.log(`Order moved to CANCELLED`, { orderId });
   }

@@ -94,6 +94,7 @@ export class OutboxService extends BaseService implements OnModuleDestroy {
           OutboxType.ORDER_SHIP,
           OutboxType.ORDER_DELIVER,
           OutboxType.ORDER_CANCEL,
+          OutboxType.ORDER_REFUND,
         ].includes(m.type),
       )
       .map((msg) => ({
@@ -129,5 +130,8 @@ export class OutboxService extends BaseService implements OnModuleDestroy {
       createdAt: new Date(),
     });
     await this.outboxRepository.save(outboxEntry);
+
+    // Trigger immediate processing after adding a new message to the outbox
+    setImmediate(() => this.process());
   }
 }

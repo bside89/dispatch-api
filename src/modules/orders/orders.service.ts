@@ -4,7 +4,10 @@ import { UpdateOrderDto } from './dto/update-order.dto';
 import { OrderQueryDto } from './dto/order-query.dto';
 import { OrderStatus } from './enums/order-status.enum';
 import { CacheService } from '../../shared/modules/cache/cache.service';
-import { ProcessOrderJobPayload } from './processors/payloads/order-job.payload';
+import {
+  CancelOrderJobPayload,
+  ProcessOrderJobPayload,
+} from './processors/payloads/order-job.payload';
 import { NotifyUserJobPayload } from '@/shared/modules/events/processors/payloads/notify-user.payload';
 import { OrderRepository } from './repositories/order.repository';
 import { OrderItemRepository } from './repositories/order-item.repository';
@@ -93,7 +96,7 @@ export class OrdersService extends BaseService {
 
     const orderMapped = EntityMapper.map(completeOrder, OrderResponseDto);
 
-    // Add to the Outbox for processing the order (job)
+    // Add to the outbox for processing the order (job)
     await this.outboxService.add(
       OutboxType.ORDER_PROCESS,
       new ProcessOrderJobPayload(
@@ -283,13 +286,13 @@ export class OrdersService extends BaseService {
     order.status = status;
     await this.orderRepository.save(order);
 
-    // Add to the Outbox to notify the user about the status change (Event Bus)
+    // Notify the user
     await this.outboxService.add(
       OutboxType.EVENTS_NOTIFY_USER,
       new NotifyUserJobPayload(
-        order.user.id,
-        order.user.name,
-        `<To user ${order.user.name}>: Your order with id ${order.id} status has been updated to ${status}`,
+        order.user!.id,
+        order.user!.name,
+        `<To user ${order.user!.name}>: Your order with id ${order.id} status has been updated to ${status}`,
       ),
     );
 

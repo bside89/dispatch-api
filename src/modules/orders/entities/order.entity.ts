@@ -23,6 +23,9 @@ export class Order extends BaseEntity {
   @Column('integer')
   total: number;
 
+  @Column('boolean', { default: false })
+  paid: boolean;
+
   @OneToMany(() => OrderItem, (item) => item.order, {
     cascade: true,
     eager: true,

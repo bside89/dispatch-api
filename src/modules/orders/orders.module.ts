@@ -15,6 +15,7 @@ import {
   ProcessOrderJobStrategy,
   ShipOrderJobStrategy,
 } from './strategies';
+import { RefundOrderJobStrategy } from './strategies/refund-order-job.strategy';
 
 @Module({
   imports: [TypeOrmModule.forFeature([Order, OrderItem])],
@@ -29,6 +30,7 @@ import {
     ShipOrderJobStrategy,
     DeliverOrderJobStrategy,
     CancelOrderJobStrategy,
+    RefundOrderJobStrategy,
   ],
   exports: [OrdersService, OrderRepository, OrderItemRepository],
 })

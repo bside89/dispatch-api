@@ -66,7 +66,7 @@ export abstract class BaseRepository<T extends BaseEntity> {
   }
 
   async saveBulk(entities: T[]): Promise<T[]> {
-    if (entities.length === 0) return null;
+    if (entities.length === 0) return [];
     const manager = this.getManager();
     return manager.save(entities);
   }

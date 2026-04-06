@@ -2,6 +2,7 @@ import {
   CancelOrderJobPayload,
   DeliverOrderJobPayload,
   ProcessOrderJobPayload,
+  RefundOrderJobPayload,
   ShipOrderJobPayload,
 } from '@/modules/orders/processors/payloads/order-job.payload';
 import { NotifyUserJobPayload } from '@/shared/modules/events/processors/payloads/notify-user.payload';
@@ -12,5 +13,6 @@ export interface OutboxPayloadMap {
   [OutboxType.ORDER_SHIP]: ShipOrderJobPayload;
   [OutboxType.ORDER_DELIVER]: DeliverOrderJobPayload;
   [OutboxType.ORDER_CANCEL]: CancelOrderJobPayload;
+  [OutboxType.ORDER_REFUND]: RefundOrderJobPayload;
   [OutboxType.EVENTS_NOTIFY_USER]: NotifyUserJobPayload;
 }

@@ -13,6 +13,7 @@ import { getQueueToken } from '@nestjs/bullmq';
 import { waitFor } from './utils/wait-for';
 import { EVENT_QUEUE_TOKEN } from '@/shared/modules/events/constants/event-queue.token';
 import { ORDER_QUEUE_TOKEN } from '@/modules/orders/constants/order-queue.token';
+import { DeliverOrderJobStrategy } from '@/modules/orders/strategies/deliver-order-job.strategy';
 
 // Mock the delay function to resolve almost instantly.
 // This eliminates the simulated processing delays (1s-3s) used by
@@ -21,6 +22,17 @@ import { ORDER_QUEUE_TOKEN } from '@/modules/orders/constants/order-queue.token'
 jest.mock('@/shared/helpers/functions', () => ({
   ...jest.requireActual('@/shared/helpers/functions'),
   delay: () => Promise.resolve(),
+}));
+
+// Override BullMQ backoff delay to 0 so retries happen immediately in tests,
+// eliminating the exponential wait (2s, 4s, …) between job failure attempts.
+jest.mock('@/config/bullmq.config', () => ({
+  ...jest.requireActual('@/config/bullmq.config'),
+  bullmqDefaultJobOptions: {
+    attempts: 3,
+    backoff: { type: 'fixed', delay: 0 },
+    removeOnFail: { age: 24 * 3600 },
+  },
 }));
 
 describe('App (Integration)', () => {
@@ -260,5 +272,88 @@ describe('App (Integration)', () => {
       const completedEvents = await eventBusQueue.getCompletedCount();
       expect(completedEvents).toBeGreaterThanOrEqual(3);
     }, 120_000); // Jest timeout: 2 minutes (delay is mocked, only Outbox cron intervals remain)
+  });
+
+  describe('Order Compensation Flow', () => {
+    it('should do the compensation logic and refund the Order when some processing fails', async () => {
+      // Arrange: get DeliverOrderJobStrategy to force all delivery attempts to fail.
+      // This exhausts all BullMQ retries and triggers the executeAfterFail compensation
+      // path, which enqueues ORDER_CANCEL → CancelOrderJobStrategy updates order to
+      // CANCELLED and enqueues ORDER_REFUND → RefundOrderJobStrategy updates to REFUNDED.
+      const deliverOrderJobStrategy = app.get<DeliverOrderJobStrategy>(
+        DeliverOrderJobStrategy,
+      );
+
+      const deliverSpy = jest
+        .spyOn(deliverOrderJobStrategy, 'execute')
+        .mockRejectedValue(new Error('Simulated delivery failure'));
+
+      try {
+        // Arrange: create a real user
+        const createdUser = await usersService.create(
+          {
+            name: 'Compensation User',
+            email: 'compensation@test.com',
+            password: 'securePass123',
+          },
+          'idempotency-key-compensation-user',
+        );
+        const userId = createdUser.id;
+
+        // Act: create an order — returns with PENDING status
+        const createOrderDto = {
+          items: [{ productId: 'product-comp', quantity: 2, price: 3000 }],
+        };
+        const createdOrder = await ordersService.create(
+          createOrderDto,
+          userId,
+          'idempotency-key-compensation-order',
+        );
+
+        expect(createdOrder.status).toBe('PENDING');
+        const orderId = createdOrder.id;
+
+        // Wait for the full compensation pipeline to complete:
+        //   Outbox → ORDER_PROCESS → order = PAID
+        //   Outbox → ORDER_SHIP   → order = SHIPPED
+        //   Outbox → ORDER_DELIVER → fails 3 times (backoff mocked to 0ms)
+        //                         → executeAfterFail → compensationLogic
+        //   Outbox → ORDER_CANCEL → order = CANCELLED → Outbox → ORDER_REFUND
+        //   Outbox → ORDER_REFUND → order = REFUNDED
+        //
+        // ~5 Outbox cron cycles (up to 5s each) ≈ 25s worst case
+        await waitFor(
+          async () => {
+            const rows = await dataSource.query(
+              `SELECT status FROM orders WHERE id = $1`,
+              [orderId],
+            );
+            return rows.length === 1 && rows[0].status === 'REFUNDED';
+          },
+          90_000,
+          500,
+        );
+
+        // Assert: final order status is REFUNDED
+        const [finalOrder] = await dataSource.query(
+          `SELECT status FROM orders WHERE id = $1`,
+          [orderId],
+        );
+        expect(finalOrder.status).toBe('REFUNDED');
+
+        // Assert: outbox should be fully consumed (RefundOrderJobStrategy adds one
+        // final EVENTS_NOTIFY_USER entry; wait for the next Outbox cron to dispatch it)
+        await waitFor(
+          async () => {
+            const rows = await dataSource.query(`SELECT id FROM outbox`);
+            return rows.length === 0;
+          },
+          15_000,
+          500,
+        );
+      } finally {
+        deliverSpy.mockRestore();
+      }
+    }, 120_000);
   });
 });

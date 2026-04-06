@@ -1,12 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { Job } from 'bullmq';
 import { OrderStatus } from '../enums/order-status.enum';
-import {
-  CancelOrderJobPayload,
-  DeliverOrderJobPayload,
-  RefundOrderJobPayload,
-} from '../processors/payloads/order-job.payload';
-import { delay } from '@/shared/helpers/functions';
+import { RefundOrderJobPayload } from '../processors/payloads/order-job.payload';
 import { NotifyUserJobPayload } from '@/shared/modules/events/processors/payloads/notify-user.payload';
 import { Transactional } from '@/shared/decorators/transactional.decorator';
 import { OutboxType } from '@/shared/modules/outbox/enums/outbox-type.enum';
@@ -16,9 +11,13 @@ import { OrderRepository } from '../repositories/order.repository';
 import { DataSource } from 'typeorm';
 import { BaseOrderJobStrategy } from './base-order-job.strategy';
 import Redlock from 'redlock';
+import { ORDER_KEY } from '../constants/order.key';
+import { delay } from '@/shared/helpers/functions';
+import { CACHE_TTL } from '@/shared/constants/cache-ttl.constant';
+import { Order } from '../entities/order.entity';
 
 @Injectable()
-export class DeliverOrderJobStrategy extends BaseOrderJobStrategy<DeliverOrderJobPayload> {
+export class RefundOrderJobStrategy extends BaseOrderJobStrategy<RefundOrderJobPayload> {
   constructor(
     protected readonly cacheService: CacheService,
     protected readonly outboxService: OutboxService,
@@ -27,7 +26,7 @@ export class DeliverOrderJobStrategy extends BaseOrderJobStrategy<DeliverOrderJo
     protected readonly redlock: Redlock, // Used in @UseLock()
   ) {
     super(
-      DeliverOrderJobStrategy.name,
+      RefundOrderJobStrategy.name,
       cacheService,
       orderRepository,
       dataSource,
@@ -36,74 +35,65 @@ export class DeliverOrderJobStrategy extends BaseOrderJobStrategy<DeliverOrderJo
   }
 
   @Transactional()
-  async execute(job: Job<DeliverOrderJobPayload>): Promise<void> {
+  async execute(job: Job<RefundOrderJobPayload>): Promise<void> {
     const { orderId } = job.data;
 
-    const order = await this.getAndValidate(orderId, OrderStatus.DELIVERED);
+    const order = await this.getAndValidate(orderId, OrderStatus.REFUNDED);
     if (!order) return;
 
     this.logger.log(
-      `Delivering order, attempt ${job.attemptsMade + 1} of ${job.opts.attempts}`,
+      `Refunding order, attempt ${job.attemptsMade + 1} of ${job.opts.attempts}`,
       { orderId },
     );
 
-    await this.simulateDelivery(job.data);
+    await this.refundPayment(job.data, order);
 
     await this.finish(job.data);
   }
 
   @Transactional()
   async executeAfterFail(
-    job: Job<DeliverOrderJobPayload>,
+    job: Job<RefundOrderJobPayload>,
     error: Error,
   ): Promise<void> {
     const { orderId } = job.data;
 
     this.logger.error(
-      `Failed to deliver order after all retries: ${error.message}`,
+      `[CRITICAL] Failed to refund order after all retries: ${error.message}`,
       { orderId },
     );
+  }
 
-    try {
-      await this.compensationLogic(job.data);
-    } catch (error: any) {
-      this.logger.error(
-        `[CRITICAL] Compensation logic failed for delivering order: ${error.message}`,
-        { orderId },
-      );
+  private async refundPayment(data: RefundOrderJobPayload, order: Order) {
+    const { orderId } = data;
+
+    if (!order.paid) {
+      this.logger.log(`Order ${orderId} is not paid, skipping refund`);
+      return;
     }
+
+    await delay(1000);
+
+    await this.lockAndUpdateOrder(orderId, { paid: false });
+
+    this.logger.log(`Refund OK`, { orderId });
   }
 
-  private async compensationLogic(data: DeliverOrderJobPayload) {
+  private async finish(data: RefundOrderJobPayload) {
     const { orderId, userId, userName } = data;
 
-    // Refund job
-    await this.outboxService.add(
-      OutboxType.ORDER_REFUND,
-      new RefundOrderJobPayload(userId, orderId, userName),
-    );
-  }
+    await this.lockAndUpdateOrder(orderId, { status: OrderStatus.REFUNDED });
 
-  private async simulateDelivery(data: DeliverOrderJobPayload) {
-    await delay(3000);
-    this.logger.log(`Delivery OK`, { orderId: data.orderId });
-  }
-
-  private async finish(data: DeliverOrderJobPayload) {
-    const { orderId, userId, userName } = data;
-
-    await this.lockAndUpdateOrder(orderId, { status: OrderStatus.DELIVERED });
-
-    // Notify the user
+    // Add to the outbox for sending notification to the user (Event Bus)
     await this.outboxService.add(
       OutboxType.EVENTS_NOTIFY_USER,
       new NotifyUserJobPayload(
         userId,
         userName,
-        `<To user ${userName}>: Your order with id ${orderId} has been delivered successfully.`,
+        `<To user ${userName}>: Your order with id ${orderId} has been refunded successfully.`,
       ),
     );
 
-    this.logger.log(`Order moved to DELIVERED`, { orderId });
+    this.logger.log(`Order moved to REFUNDED`, { orderId });
   }
 }

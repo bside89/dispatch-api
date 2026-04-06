@@ -26,3 +26,5 @@ export class ShipOrderJobPayload extends OrderJobPayload {}
 export class DeliverOrderJobPayload extends OrderJobPayload {}
 
 export class CancelOrderJobPayload extends OrderJobPayload {}
+
+export class RefundOrderJobPayload extends OrderJobPayload {}

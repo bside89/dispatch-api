@@ -2,10 +2,9 @@ import { BaseRepository } from '@/shared/repositories/base.repository';
 import { Order } from '../entities/order.entity';
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { In, Repository } from 'typeorm';
+import { Repository } from 'typeorm';
 import { OrderQueryDto } from '../dto/order-query.dto';
 import { PaginatedResultDto } from '@/shared/dto/paginated-result.dto';
-import { OrderStatus } from '../enums/order-status.enum';
 import { col } from '@/shared/helpers/functions';
 
 const aliasOrder = 'order';
@@ -59,13 +58,5 @@ export class OrderRepository extends BaseRepository<Order> {
       .then(
         ([data, total]) => new PaginatedResultDto(total, query.page, limit, data),
       );
-  }
-
-  async hasStatus(orderId: string, statusArray: OrderStatus[]): Promise<boolean> {
-    const manager = this.getManager();
-    return manager.existsBy(Order, {
-      id: orderId,
-      status: In(statusArray),
-    });
   }
 }

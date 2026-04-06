@@ -43,7 +43,7 @@ export class AuthService extends BaseService {
 
     await this.updateRefreshToken(user.id, tokens.refreshToken);
 
-    // Add to the Outbox for notifying the user about the login (Event Bus)
+    // Add to the outbox for notifying the user about the login (Event Bus)
     await this.outboxService.add(
       OutboxType.EVENTS_NOTIFY_USER,
       new NotifyUserJobPayload(

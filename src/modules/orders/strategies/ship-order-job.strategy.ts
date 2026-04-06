@@ -3,6 +3,7 @@ import { Job } from 'bullmq';
 import { OrderStatus } from '../enums/order-status.enum';
 import {
   DeliverOrderJobPayload,
+  RefundOrderJobPayload,
   ShipOrderJobPayload,
 } from '../processors/payloads/order-job.payload';
 import { delay } from '../../../shared/helpers/functions';
@@ -38,10 +39,8 @@ export class ShipOrderJobStrategy extends BaseOrderJobStrategy<ShipOrderJobPaylo
   async execute(job: Job<ShipOrderJobPayload>): Promise<void> {
     const { orderId } = job.data;
 
-    if (!(await this.orderRepository.hasStatus(orderId, [OrderStatus.PAID]))) {
-      this.logger.log(`Order ${orderId} is not in PAID status or does not exist`);
-      return;
-    }
+    const order = await this.getAndValidate(orderId, OrderStatus.SHIPPED);
+    if (!order) return;
 
     this.logger.log(
       `Shipping order, attempt ${job.attemptsMade + 1} of ${job.opts.attempts}`,
@@ -65,7 +64,7 @@ export class ShipOrderJobStrategy extends BaseOrderJobStrategy<ShipOrderJobPaylo
     });
 
     try {
-      await this.compensationLogic(job.data);
+      await this.compensationLogic(job.data, error);
     } catch (error: any) {
       this.logger.error(
         `[CRITICAL] Compensation logic failed for shipping order: ${error.message}`,
@@ -74,9 +73,25 @@ export class ShipOrderJobStrategy extends BaseOrderJobStrategy<ShipOrderJobPaylo
     }
   }
 
-  private async compensationLogic(data: ShipOrderJobPayload) {
-    // TODO: Implement a RefundOrderStrategy and call it here instead of just logging
-    this.logger.log('Compensation logic executed', { orderId: data.orderId });
+  private async compensationLogic(data: ShipOrderJobPayload, error: Error) {
+    const { orderId, userId, userName } = data;
+
+    // Notify the user
+    await this.outboxService.add(
+      OutboxType.EVENTS_NOTIFY_USER,
+      new NotifyUserJobPayload(
+        userId,
+        userName,
+        `<To user ${userName}>: Your order with id ${orderId} has failed to ship.` +
+          `Reason: ${error.message}`,
+      ),
+    );
+
+    // Refund job
+    await this.outboxService.add(
+      OutboxType.ORDER_REFUND,
+      new RefundOrderJobPayload(userId, orderId, userName),
+    );
   }
 
   private async simulateShipping(data: ShipOrderJobPayload) {
@@ -87,9 +102,9 @@ export class ShipOrderJobStrategy extends BaseOrderJobStrategy<ShipOrderJobPaylo
   private async finish(data: ShipOrderJobPayload) {
     const { orderId, userId, userName } = data;
 
-    await this.updateOrderStatus(orderId, OrderStatus.SHIPPED);
+    await this.lockAndUpdateOrder(orderId, { status: OrderStatus.SHIPPED });
 
-    // Add to the Outbox for sending notification to the user (Event Bus)
+    // Notify the user
     await this.outboxService.add(
       OutboxType.EVENTS_NOTIFY_USER,
       new NotifyUserJobPayload(
@@ -99,7 +114,7 @@ export class ShipOrderJobStrategy extends BaseOrderJobStrategy<ShipOrderJobPaylo
       ),
     );
 
-    // Add to the Outbox for delivering the order (job)
+    // Deliver job
     await this.outboxService.add(
       OutboxType.ORDER_DELIVER,
       new DeliverOrderJobPayload(userId, orderId, userName),

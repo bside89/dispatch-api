@@ -2,7 +2,9 @@ import { Injectable } from '@nestjs/common';
 import { Job } from 'bullmq';
 import { OrderStatus } from '../enums/order-status.enum';
 import {
+  CancelOrderJobPayload,
   ProcessOrderJobPayload,
+  RefundOrderJobPayload,
   ShipOrderJobPayload,
 } from '../processors/payloads/order-job.payload';
 import { NotifyUserJobPayload } from '@/shared/modules/events/processors/payloads/notify-user.payload';
@@ -15,12 +17,9 @@ import { OrderRepository } from '../repositories/order.repository';
 import { DataSource } from 'typeorm';
 import { BaseOrderJobStrategy } from './base-order-job.strategy';
 import Redlock from 'redlock';
-import { ORDER_KEY } from '../constants/order.key';
 
 @Injectable()
 export class ProcessOrderJobStrategy extends BaseOrderJobStrategy<ProcessOrderJobPayload> {
-  private readonly PAYMENT_IDEMPOTENCY_TTL = 24 * 60 * 60 * 1000; // 24 hours
-
   constructor(
     protected readonly cacheService: CacheService,
     protected readonly outboxService: OutboxService,
@@ -41,27 +40,19 @@ export class ProcessOrderJobStrategy extends BaseOrderJobStrategy<ProcessOrderJo
   async execute(job: Job<ProcessOrderJobPayload>): Promise<void> {
     const { orderId } = job.data;
 
-    if (!(await this.orderRepository.hasStatus(orderId, [OrderStatus.PENDING]))) {
-      this.logger.log(`Order ${orderId} is not in PENDING status or does not exist`);
-      return;
-    }
+    const order = await this.getAndValidate(orderId, OrderStatus.PAID);
+    if (!order) return;
 
     this.logger.log(
       `Processing order, attempt ${job.attemptsMade + 1} of ${job.opts.attempts}`,
       { orderId },
     );
 
-    const isPaid = await this.cacheService.get<boolean>(
-      ORDER_KEY.VALIDATE_IF_PAID(orderId),
-    );
-    if (!isPaid) {
+    if (!order.paid) {
       await this.processPayment(job.data);
+
+      await this.lockAndUpdateOrder(orderId, { paid: true });
     }
-    await this.cacheService.set(
-      ORDER_KEY.VALIDATE_IF_PAID(orderId),
-      true,
-      this.PAYMENT_IDEMPOTENCY_TTL,
-    );
 
     await this.finish(job.data);
   }
@@ -79,7 +70,7 @@ export class ProcessOrderJobStrategy extends BaseOrderJobStrategy<ProcessOrderJo
     );
 
     try {
-      await this.compensationLogic(job.data);
+      await this.compensationLogic(job.data, error);
     } catch (error: any) {
       this.logger.error(
         `[CRITICAL] Compensation logic failed for processing order: ${error.message}`,
@@ -88,21 +79,38 @@ export class ProcessOrderJobStrategy extends BaseOrderJobStrategy<ProcessOrderJo
     }
   }
 
-  private async compensationLogic(data: ProcessOrderJobPayload) {
-    // TODO: Implement a RefundOrderStrategy and call it here instead of just logging
-    const isPaid = await this.cacheService.get<boolean>(
-      ORDER_KEY.VALIDATE_IF_PAID(data.orderId),
-    );
-    if (isPaid) {
-      await this.refundPayment(data);
-    }
-    await this.cacheService.set(
-      ORDER_KEY.VALIDATE_IF_PAID(data.orderId),
-      false,
-      this.PAYMENT_IDEMPOTENCY_TTL,
-    );
+  private async compensationLogic(data: ProcessOrderJobPayload, error: Error) {
+    const { orderId, userId, userName } = data;
 
-    await this.releaseInventory(data);
+    const order = await this.orderRepository.findById(orderId);
+    if (!order) {
+      this.logger.log(`Order ${orderId} does not exist, skipping compensation`);
+      return;
+    }
+    if (order.paid) {
+      // Refund job
+      await this.outboxService.add(
+        OutboxType.ORDER_REFUND,
+        new RefundOrderJobPayload(userId, orderId, userName),
+      );
+    } else {
+      // Cancel job
+      await this.outboxService.add(
+        OutboxType.ORDER_CANCEL,
+        new CancelOrderJobPayload(userId, orderId, userName),
+      );
+    }
+
+    // Notify the user about the failure
+    await this.outboxService.add(
+      OutboxType.EVENTS_NOTIFY_USER,
+      new NotifyUserJobPayload(
+        userId,
+        userName,
+        `<To user ${userName}>: Your order with id ${orderId} has failed to process.` +
+          `Reason: ${error.message}`,
+      ),
+    );
   }
 
   private async processPayment(data: ProcessOrderJobPayload) {
@@ -111,22 +119,12 @@ export class ProcessOrderJobStrategy extends BaseOrderJobStrategy<ProcessOrderJo
     this.logger.log('Payment OK', { orderId: data.orderId });
   }
 
-  private async refundPayment(data: ProcessOrderJobPayload) {
-    await delay(1000);
-    this.logger.log('Payment refunded', { orderId: data.orderId });
-  }
-
-  private async releaseInventory(data: ProcessOrderJobPayload) {
-    await delay(1000);
-    this.logger.log('Inventory released', { orderId: data.orderId });
-  }
-
   private async finish(data: ProcessOrderJobPayload) {
     const { orderId, userId, userName } = data;
 
-    await this.updateOrderStatus(orderId, OrderStatus.PAID);
+    await this.lockAndUpdateOrder(orderId, { status: OrderStatus.PAID });
 
-    // Add to the Outbox for sending notification to the user (Event Bus)
+    // Notify the user
     await this.outboxService.add(
       OutboxType.EVENTS_NOTIFY_USER,
       new NotifyUserJobPayload(
@@ -136,7 +134,7 @@ export class ProcessOrderJobStrategy extends BaseOrderJobStrategy<ProcessOrderJo
       ),
     );
 
-    // Add to the Outbox for shipping the order (job)
+    // Ship job
     await this.outboxService.add(
       OutboxType.ORDER_SHIP,
       new ShipOrderJobPayload(userId, orderId, userName),

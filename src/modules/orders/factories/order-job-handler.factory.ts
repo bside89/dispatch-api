@@ -9,6 +9,7 @@ import {
   ProcessOrderJobStrategy,
   ShipOrderJobStrategy,
 } from '../strategies';
+import { RefundOrderJobStrategy } from '../strategies/refund-order-job.strategy';
 
 @Injectable()
 export class OrderJobHandlerFactory {
@@ -17,6 +18,7 @@ export class OrderJobHandlerFactory {
     private readonly shipOrderJobStrategy: ShipOrderJobStrategy,
     private readonly deliverOrderJobStrategy: DeliverOrderJobStrategy,
     private readonly cancelOrderJobStrategy: CancelOrderJobStrategy,
+    private readonly refundOrderJobStrategy: RefundOrderJobStrategy,
   ) {}
 
   createHandler(jobType: string): BaseJobStrategy<BaseJobPayload> | null {
@@ -25,6 +27,7 @@ export class OrderJobHandlerFactory {
       [OrderJob.ORDER_SHIP]: this.shipOrderJobStrategy,
       [OrderJob.ORDER_DELIVER]: this.deliverOrderJobStrategy,
       [OrderJob.ORDER_CANCEL]: this.cancelOrderJobStrategy,
+      [OrderJob.ORDER_REFUND]: this.refundOrderJobStrategy,
     };
 
     return map[jobType] ?? null;
