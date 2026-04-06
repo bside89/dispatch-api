@@ -14,6 +14,7 @@ import { waitFor } from './utils/wait-for';
 import { EVENT_QUEUE_TOKEN } from '@/shared/modules/events/constants/event-queue.token';
 import { ORDER_QUEUE_TOKEN } from '@/modules/orders/constants/order-queue.token';
 import { DeliverOrderJobStrategy } from '@/modules/orders/strategies/deliver-order-job.strategy';
+import { ProcessOrderJobStrategy } from '@/modules/orders/strategies/process-order-job.strategy';
 
 // Mock the delay function to resolve almost instantly.
 // This eliminates the simulated processing delays (1s-3s) used by
@@ -35,7 +36,7 @@ jest.mock('@/config/bullmq.config', () => ({
   },
 }));
 
-describe('App (Integration)', () => {
+describe('Orders (Integration)', () => {
   let app: INestApplication;
   let usersService: UsersService;
   let ordersService: OrdersService;
@@ -275,7 +276,7 @@ describe('App (Integration)', () => {
   });
 
   describe('Order Compensation Flow', () => {
-    it('should do the compensation logic and refund the Order when some processing fails', async () => {
+    it('should do the compensation logic and refund the Order when post-payment processing fails', async () => {
       // Arrange: get DeliverOrderJobStrategy to force all delivery attempts to fail.
       // This exhausts all BullMQ retries and triggers the executeAfterFail compensation
       // path, which enqueues ORDER_CANCEL → CancelOrderJobStrategy updates order to
@@ -353,6 +354,88 @@ describe('App (Integration)', () => {
         );
       } finally {
         deliverSpy.mockRestore();
+      }
+    }, 120_000);
+
+    it('should do the compensation logic and cancel the Order when pre-payment processing fails', async () => {
+      // Arrange: spy on the private processPayment method to always throw.
+      // Since paid is never set to true, the compensation logic in executeAfterFail
+      // enqueues ORDER_CANCEL instead of ORDER_REFUND.
+      // CancelOrderJobStrategy then sets the order to CANCELLED and enqueues ORDER_REFUND,
+      // but RefundOrderJobStrategy.getAndValidate rejects the transition because
+      // REFUNDED preconditions are [PAID, SHIPPED, DELIVERED] — CANCELLED is not included —
+      // so the order stays in CANCELLED.
+      const processOrderJobStrategy = app.get<ProcessOrderJobStrategy>(
+        ProcessOrderJobStrategy,
+      );
+
+      const paymentSpy = jest
+        .spyOn(processOrderJobStrategy as any, 'processPayment')
+        .mockRejectedValue(new Error('Simulated payment failure'));
+
+      try {
+        // Arrange: create a real user
+        const createdUser = await usersService.create(
+          {
+            name: 'Payment Failure User',
+            email: 'payment-failure@test.com',
+            password: 'securePass123',
+          },
+          'idempotency-key-payment-failure-user',
+        );
+        const userId = createdUser.id;
+
+        // Act: create an order — returns with PENDING status
+        const createOrderDto = {
+          items: [{ productId: 'product-fail', quantity: 1, price: 5000 }],
+        };
+        const createdOrder = await ordersService.create(
+          createOrderDto,
+          userId,
+          'idempotency-key-payment-failure-order',
+        );
+
+        expect(createdOrder.status).toBe('PENDING');
+        const orderId = createdOrder.id;
+
+        // Wait for the compensation pipeline to complete:
+        //   Outbox → ORDER_PROCESS → processPayment throws 3× (backoff mocked to 0ms)
+        //                         → executeAfterFail → compensationLogic (order.paid=false)
+        //   Outbox → ORDER_CANCEL → order = CANCELLED
+        //   Outbox → ORDER_REFUND → getAndValidate fails (CANCELLED ∉ REFUNDED preconditions)
+        //                        → no-op, order stays CANCELLED
+        //
+        // ~3 Outbox cron cycles (up to 5s each) ≈ 15s worst case
+        await waitFor(
+          async () => {
+            const rows = await dataSource.query(
+              `SELECT status FROM orders WHERE id = $1`,
+              [orderId],
+            );
+            return rows.length === 1 && rows[0].status === 'CANCELLED';
+          },
+          60_000,
+          500,
+        );
+
+        // Assert: final order status is CANCELLED
+        const [finalOrder] = await dataSource.query(
+          `SELECT status FROM orders WHERE id = $1`,
+          [orderId],
+        );
+        expect(finalOrder.status).toBe('CANCELLED');
+
+        // Assert: outbox should be fully consumed
+        await waitFor(
+          async () => {
+            const rows = await dataSource.query(`SELECT id FROM outbox`);
+            return rows.length === 0;
+          },
+          15_000,
+          500,
+        );
+      } finally {
+        paymentSpy.mockRestore();
       }
     }, 120_000);
   });
