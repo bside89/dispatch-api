@@ -114,6 +114,7 @@
     "typescript": "^5.1.3"
   },
   "jest": {
+    "forceExit": true,
     "projects": [
       {
         "displayName": "unit",

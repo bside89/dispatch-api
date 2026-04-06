@@ -1,5 +1,5 @@
 import { AppModule } from '@/app.module';
-import { INestApplication, ValidationPipe } from '@nestjs/common';
+import { HttpStatus, INestApplication, ValidationPipe } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import request from 'supertest';
 import { ADMIN_USER } from './constants/admin-user.constant';
@@ -44,6 +44,23 @@ describe('Orders (E2E)', () => {
   });
 
   describe('POST /v1/orders', () => {
+    it('should return 401 if no jwt token is provided', async () => {
+      const payload = {
+        items: [
+          {
+            productId: 'product-100',
+            quantity: 3,
+            price: 15999,
+          },
+        ],
+      };
+
+      return request(app.getHttpServer())
+        .post('/v1/orders')
+        .send(payload)
+        .expect(HttpStatus.UNAUTHORIZED);
+    });
+
     it('should return 400 if payload is empty', async () => {
       // First obtain the jwt token
       const { body } = await request(app.getHttpServer())
@@ -61,7 +78,7 @@ describe('Orders (E2E)', () => {
         .post('/v1/orders')
         .set('Authorization', `Bearer ${token}`)
         .send({})
-        .expect(400);
+        .expect(HttpStatus.BAD_REQUEST);
     });
 
     it('should create order and return 201', async () => {
@@ -81,7 +98,7 @@ describe('Orders (E2E)', () => {
           email: ADMIN_USER.email,
           password: ADMIN_USER.password,
         })
-        .expect(201);
+        .expect(HttpStatus.CREATED);
 
       const token = authBody.data.accessToken;
 
@@ -90,7 +107,7 @@ describe('Orders (E2E)', () => {
         .set('idempotency-key', 'e2e-test-key')
         .set('Authorization', `Bearer ${token}`)
         .send(payload)
-        .expect(201);
+        .expect(HttpStatus.CREATED);
 
       expect(orderBody.data.id).toBeDefined();
       expect(orderBody.data.status).toBe('PENDING');
@@ -114,7 +131,7 @@ describe('Orders (E2E)', () => {
           email: ADMIN_USER.email,
           password: ADMIN_USER.password,
         })
-        .expect(201);
+        .expect(HttpStatus.CREATED);
 
       const token = authBody.data.accessToken;
 
@@ -122,14 +139,16 @@ describe('Orders (E2E)', () => {
         .post('/v1/orders')
         .set('idempotency-key', key)
         .set('Authorization', `Bearer ${token}`)
-        .send(payload);
+        .send(payload)
+        .expect(HttpStatus.CREATED);
 
       // Segunda tentativa com a mesma chave
       const { body: result2 } = await request(app.getHttpServer())
         .post('/v1/orders')
         .set('idempotency-key', key)
         .set('Authorization', `Bearer ${token}`)
-        .send(payload);
+        .send(payload)
+        .expect(HttpStatus.CREATED);
 
       expect(result2.data.id).toBe(result1.data.id);
       expect(result2.data.status).toBe(result1.data.status);
