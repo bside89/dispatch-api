@@ -14,6 +14,8 @@ import { Cron, CronExpression } from '@nestjs/schedule';
 import { Transactional } from '@/shared/decorators/transactional.decorator';
 import { ORDER_QUEUE_TOKEN } from '@/modules/orders/constants/order-queue.token';
 import { OutboxPayloadMap } from './types/outbox-payload.map';
+import { ensureError } from '@/shared/helpers/functions';
+import { EventBusJob } from '../events/interfaces/event-bus-job.interface';
 
 @Injectable()
 export class OutboxService extends BaseService implements OnModuleDestroy {
@@ -75,8 +77,10 @@ export class OutboxService extends BaseService implements OnModuleDestroy {
 
         return;
       }
-    } catch (error: any) {
-      this.logger.error('Error during Outbox processing cycle', error);
+    } catch (e) {
+      const error = ensureError(e);
+
+      this.logger.error(`Error during Outbox processing cycle: ${error.message}`);
     } finally {
       this.isProcessing = false;
     }
@@ -97,18 +101,24 @@ export class OutboxService extends BaseService implements OnModuleDestroy {
           OutboxType.ORDER_REFUND,
         ].includes(m.type),
       )
-      .map((msg) => ({
-        name: msg.type,
-        data: msg.payload,
-        opts: { jobId: msg.id },
-      }));
+      .map(
+        (msg) =>
+          ({
+            name: msg.type,
+            data: msg.payload,
+            jobId: msg.id,
+          }) as EventBusJob,
+      );
     const eventBusMsg = messages
       .filter((m) => m.type === OutboxType.EVENTS_NOTIFY_USER)
-      .map((msg) => ({
-        name: msg.type,
-        data: msg.payload,
-        opts: { jobId: msg.id },
-      }));
+      .map(
+        (msg) =>
+          ({
+            name: msg.type,
+            data: msg.payload,
+            jobId: msg.id,
+          }) as EventBusJob,
+      );
 
     if (orderQueueMsg.length > 0) {
       await this.orderQueue.addBulk(orderQueueMsg);

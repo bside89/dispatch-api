@@ -12,6 +12,7 @@ import Redlock from 'redlock';
 import { EventJobHandlerFactory } from '../factories/event-job-handler.factory';
 import { JobStatus } from '@/shared/enums/job-status.enum';
 import { EVENT_KEY } from '../constants/event.key';
+import { ensureError } from '@/shared/helpers/functions';
 
 @Processor('events', { maxStalledCount: 1 })
 export class EventProcessor
@@ -78,12 +79,13 @@ export class EventProcessor
         }
 
         await this.cacheService.set(idempotencyKey, JobStatus.COMPLETED);
-      } catch (error: any) {
+      } catch (e) {
+        const error = ensureError(e);
+
         await this.cacheService.set(idempotencyKey, JobStatus.FAILED);
 
         this.logger.error(
-          `Error executing job ${job.name} with id ${job.id}`,
-          error.message,
+          `Error executing job ${job.name} with id ${job.id}: ${error.message}`,
         );
 
         throw error;

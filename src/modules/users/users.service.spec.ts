@@ -8,10 +8,6 @@ import Redlock from 'redlock';
 
 describe('UsersService', () => {
   let service: UsersService;
-  let userRepository: jest.Mocked<UserRepository>;
-  let cacheService: jest.Mocked<CacheService>;
-  let outboxService: jest.Mocked<OutboxService>;
-  let dataSource: jest.Mocked<DataSource>;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -51,10 +47,6 @@ describe('UsersService', () => {
     }).compile();
 
     service = module.get<UsersService>(UsersService);
-    userRepository = module.get(UserRepository) as jest.Mocked<UserRepository>;
-    cacheService = module.get(CacheService) as jest.Mocked<CacheService>;
-    outboxService = module.get(OutboxService) as jest.Mocked<OutboxService>;
-    dataSource = module.get(DataSource) as jest.Mocked<DataSource>;
   });
 
   it('should be defined', () => {

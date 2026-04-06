@@ -1,6 +1,7 @@
 import { Controller, Get, VERSION_NEUTRAL, Inject } from '@nestjs/common';
 import { Public } from './modules/auth/decorators/public.decorator';
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { ensureError } from '@/shared/helpers/functions';
 import {
   HealthCheck,
   HealthCheckService,
@@ -38,8 +39,9 @@ export class AppController {
               .down('Redis ping failed');
           }
           return this.healthIndicatorService.check('redis').up();
-        } catch (e: any) {
-          return this.healthIndicatorService.check('redis').down(e.message);
+        } catch (e) {
+          const error = ensureError(e);
+          return this.healthIndicatorService.check('redis').down(error.message);
         }
       },
     ]);

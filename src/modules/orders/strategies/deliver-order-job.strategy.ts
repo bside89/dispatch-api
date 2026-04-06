@@ -2,11 +2,10 @@ import { Injectable } from '@nestjs/common';
 import { Job } from 'bullmq';
 import { OrderStatus } from '../enums/order-status.enum';
 import {
-  CancelOrderJobPayload,
   DeliverOrderJobPayload,
   RefundOrderJobPayload,
 } from '../processors/payloads/order-job.payload';
-import { delay } from '@/shared/helpers/functions';
+import { delay, ensureError } from '@/shared/helpers/functions';
 import { NotifyUserJobPayload } from '@/shared/modules/events/processors/payloads/notify-user.payload';
 import { Transactional } from '@/shared/decorators/transactional.decorator';
 import { OutboxType } from '@/shared/modules/outbox/enums/outbox-type.enum';
@@ -66,7 +65,9 @@ export class DeliverOrderJobStrategy extends BaseOrderJobStrategy<DeliverOrderJo
 
     try {
       await this.compensationLogic(job.data);
-    } catch (error: any) {
+    } catch (e) {
+      const error = ensureError(e);
+
       this.logger.error(
         `[CRITICAL] Compensation logic failed for delivering order: ${error.message}`,
         { orderId },

@@ -37,9 +37,33 @@ export async function runAndIgnoreError<T>(
 ): Promise<T | null> {
   try {
     return await fn();
-  } catch (error: any) {
+  } catch (e) {
+    const error = ensureError(e);
     const message = `Non-critical error ignored in ${context}: ${error.message}`;
-    logger ? logger.warn(message) : console.warn(message);
+    if (logger) {
+      logger.warn(message);
+    } else {
+      console.warn(message);
+    }
     return null;
   }
+}
+
+/**
+ * Ensures that a value is an instance of Error. If the value is not an Error,
+ * it attempts to convert it to an Error with a meaningful message.
+ * @param value The value to ensure as an Error.
+ * @returns An Error instance.
+ */
+export function ensureError(value: unknown): Error {
+  if (value instanceof Error) return value;
+
+  let stringified = '[Unable to extract error message]';
+  try {
+    stringified = JSON.stringify(value);
+  } catch {
+    stringified = String(value);
+  }
+
+  return new Error(`Unexpected error: ${stringified}`);
 }

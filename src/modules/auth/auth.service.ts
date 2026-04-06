@@ -16,6 +16,7 @@ import { UseLock } from '@/shared/decorators/lock.decorator';
 import Redlock from 'redlock';
 import type { RequestUser } from './interfaces/request-user.interface';
 import { AUTH_KEY } from './constants/auth.key';
+import type ms from 'ms';
 
 @Injectable()
 export class AuthService extends BaseService {
@@ -99,18 +100,18 @@ export class AuthService extends BaseService {
       jti: crypto.randomUUID(),
     };
 
-    const accessTokenExpiry =
-      this.configService.get<string>('JWT_ACCESS_EXPIRES_IN') || '15m';
-    const refreshTokenExpiry =
-      this.configService.get<string>('JWT_REFRESH_EXPIRES_IN') || '7d';
+    const accessTokenExpiry = (this.configService.get('JWT_ACCESS_EXPIRES_IN') ??
+      '15m') as ms.StringValue;
+    const refreshTokenExpiry = (this.configService.get('JWT_REFRESH_EXPIRES_IN') ??
+      '7d') as ms.StringValue;
 
     const accessToken = this.jwtService.sign(payload, {
-      secret: this.configService.get<string>('JWT_ACCESS_SECRET'),
-      expiresIn: accessTokenExpiry as any,
+      secret: this.configService.getOrThrow<string>('JWT_ACCESS_SECRET'),
+      expiresIn: accessTokenExpiry,
     });
     const refreshToken = this.jwtService.sign(payload, {
-      secret: this.configService.get<string>('JWT_REFRESH_SECRET'),
-      expiresIn: refreshTokenExpiry as any,
+      secret: this.configService.getOrThrow<string>('JWT_REFRESH_SECRET'),
+      expiresIn: refreshTokenExpiry,
     });
 
     const result: LoginResponseDto = {

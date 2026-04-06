@@ -5,6 +5,8 @@ import {
   DeleteResult,
   UpdateResult,
   EntityManager,
+  FindOptionsWhere,
+  QueryDeepPartialEntity,
 } from 'typeorm';
 import { TransactionContext } from '../utils/transaction-context';
 import { BaseEntity } from '../entities/base.entity';
@@ -12,7 +14,7 @@ import { BaseEntity } from '../entities/base.entity';
 interface QueryOptions<T> {
   where: Partial<T>;
   select?: (keyof T)[];
-  relations?: (keyof T)[];
+  relations?: string[];
 }
 
 export abstract class BaseRepository<T extends BaseEntity> {
@@ -33,7 +35,10 @@ export abstract class BaseRepository<T extends BaseEntity> {
     return manager.find(this.repository.target);
   }
 
-  async findById(id: any, params: Omit<QueryOptions<T>, 'where'> = {}): Promise<T> {
+  async findById(
+    id: string,
+    params: Omit<QueryOptions<T>, 'where'> = {},
+  ): Promise<T> {
     return this.findOne({ where: { id } as Partial<T>, ...params });
   }
 
@@ -45,19 +50,11 @@ export abstract class BaseRepository<T extends BaseEntity> {
       params.select ??
       this.repository.metadata.columns.map((col) => col.propertyName as keyof T);
 
-    const relations = params.relations;
-    if (params.relations) {
-      return manager.findOne(this.repository.target, {
-        where: params.where,
-        select,
-        relations,
-      } as any);
-    } else {
-      return manager.findOne(this.repository.target, {
-        where: params.where,
-        select,
-      } as any);
-    }
+    return manager.findOne(this.repository.target, {
+      where: params.where as FindOptionsWhere<T>,
+      select,
+      ...(params.relations && { relations: params.relations }),
+    });
   }
 
   async save(entity: T): Promise<T> {
@@ -71,12 +68,21 @@ export abstract class BaseRepository<T extends BaseEntity> {
     return manager.save(entities);
   }
 
-  async update(id: any, updateData: Partial<T>): Promise<UpdateResult> {
+  async update(id: string, updateData: Partial<T>): Promise<UpdateResult> {
     const manager = this.getManager();
-    return manager.update(this.repository.target, id, updateData as any);
+    return manager.update(
+      this.repository.target,
+      id,
+      updateData as QueryDeepPartialEntity<T>,
+    );
   }
 
-  async delete(id: any): Promise<DeleteResult> {
+  async delete(criteria: Partial<T>): Promise<DeleteResult> {
+    const manager = this.getManager();
+    return manager.delete(this.repository.target, criteria);
+  }
+
+  async deleteById(id: string): Promise<DeleteResult> {
     const manager = this.getManager();
     return manager.delete(this.repository.target, id);
   }
@@ -90,7 +96,7 @@ export abstract class BaseRepository<T extends BaseEntity> {
   async existsBy(params: { where: Partial<T> }): Promise<boolean> {
     const manager = this.getManager();
     const count = await manager.count(this.repository.target, {
-      where: params.where as any,
+      where: params.where as FindOptionsWhere<T>,
     });
     return count > 0;
   }

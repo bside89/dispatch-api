@@ -11,9 +11,7 @@ import { OrderRepository } from '../repositories/order.repository';
 import { DataSource } from 'typeorm';
 import { BaseOrderJobStrategy } from './base-order-job.strategy';
 import Redlock from 'redlock';
-import { ORDER_KEY } from '../constants/order.key';
 import { delay } from '@/shared/helpers/functions';
-import { CACHE_TTL } from '@/shared/constants/cache-ttl.constant';
 import { Order } from '../entities/order.entity';
 
 @Injectable()

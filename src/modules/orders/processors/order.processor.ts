@@ -12,6 +12,7 @@ import { UseLock } from '@/shared/decorators/lock.decorator';
 import Redlock from 'redlock';
 import { ORDER_KEY } from '../constants/order.key';
 import { JobStatus } from '@/shared/enums/job-status.enum';
+import { ensureError } from '@/shared/helpers/functions';
 
 @Processor('orders', { maxStalledCount: 1 })
 export class OrderProcessor
@@ -78,12 +79,13 @@ export class OrderProcessor
         }
 
         await this.cacheService.set(idempotencyKey, JobStatus.COMPLETED);
-      } catch (error: any) {
+      } catch (e) {
+        const error = ensureError(e);
+
         await this.cacheService.set(idempotencyKey, JobStatus.FAILED);
 
         this.logger.error(
-          `Error executing job ${job.name} with id ${job.id}`,
-          error.message,
+          `Error executing job ${job.name} with id ${job.id}: ${error.message}`,
         );
 
         throw error;

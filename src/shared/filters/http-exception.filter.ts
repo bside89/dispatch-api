@@ -1,3 +1,4 @@
+/*eslint-disable @typescript-eslint/no-explicit-any */
 import {
   ExceptionFilter,
   Catch,
@@ -26,7 +27,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
     const message =
       exception instanceof HttpException
         ? (exception.getResponse() as any).message || exception.message
-        : 'Erro interno do servidor';
+        : 'Internal server error';
 
     this.logger.error(
       `HTTP Status: ${status} Error: ${JSON.stringify(message)} Path: ${request.url}`,

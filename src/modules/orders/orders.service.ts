@@ -4,10 +4,7 @@ import { UpdateOrderDto } from './dto/update-order.dto';
 import { OrderQueryDto } from './dto/order-query.dto';
 import { OrderStatus } from './enums/order-status.enum';
 import { CacheService } from '../../shared/modules/cache/cache.service';
-import {
-  CancelOrderJobPayload,
-  ProcessOrderJobPayload,
-} from './processors/payloads/order-job.payload';
+import { ProcessOrderJobPayload } from './processors/payloads/order-job.payload';
 import { NotifyUserJobPayload } from '@/shared/modules/events/processors/payloads/notify-user.payload';
 import { OrderRepository } from './repositories/order.repository';
 import { OrderItemRepository } from './repositories/order-item.repository';
@@ -252,7 +249,7 @@ export class OrdersService extends BaseService {
       throw new NotFoundException(`Order with ID ${id} not found`);
     }
 
-    await this.orderRepository.delete(order.id);
+    await this.orderRepository.deleteById(order.id);
 
     await this.cacheService.deleteBulk({
       keys: [ORDER_KEY.CACHE_FIND_ONE(id)],

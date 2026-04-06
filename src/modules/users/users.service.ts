@@ -308,7 +308,7 @@ export class UsersService extends BaseService {
       throw new NotFoundException(`User with ID ${id} not found`);
     }
 
-    await this.userRepository.delete(id);
+    await this.userRepository.deleteById(id);
 
     this.logger.debug('User deleted successfully', { userId: id });
 

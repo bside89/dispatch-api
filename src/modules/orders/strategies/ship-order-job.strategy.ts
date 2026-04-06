@@ -6,7 +6,7 @@ import {
   RefundOrderJobPayload,
   ShipOrderJobPayload,
 } from '../processors/payloads/order-job.payload';
-import { delay } from '../../../shared/helpers/functions';
+import { delay, ensureError } from '../../../shared/helpers/functions';
 import { NotifyUserJobPayload } from '../../../shared/modules/events/processors/payloads/notify-user.payload';
 import { Transactional } from '@/shared/decorators/transactional.decorator';
 import { OutboxType } from '@/shared/modules/outbox/enums/outbox-type.enum';
@@ -65,7 +65,9 @@ export class ShipOrderJobStrategy extends BaseOrderJobStrategy<ShipOrderJobPaylo
 
     try {
       await this.compensationLogic(job.data, error);
-    } catch (error: any) {
+    } catch (e) {
+      const error = ensureError(e);
+
       this.logger.error(
         `[CRITICAL] Compensation logic failed for shipping order: ${error.message}`,
         { orderId },

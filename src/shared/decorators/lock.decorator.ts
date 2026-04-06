@@ -1,3 +1,4 @@
+/*eslint-disable @typescript-eslint/no-explicit-any */
 import { InternalServerErrorException } from '@nestjs/common';
 import Redlock from 'redlock';
 import { CACHE_TTL } from '../constants/cache-ttl.constant';

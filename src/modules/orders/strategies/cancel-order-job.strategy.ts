@@ -1,10 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { Job } from 'bullmq';
 import { OrderStatus } from '../enums/order-status.enum';
-import {
-  CancelOrderJobPayload,
-  RefundOrderJobPayload,
-} from '../processors/payloads/order-job.payload';
+import { CancelOrderJobPayload } from '../processors/payloads/order-job.payload';
 import { NotifyUserJobPayload } from '../../../shared/modules/events/processors/payloads/notify-user.payload';
 import { delay } from '../../../shared/helpers/functions';
 import { Transactional } from '@/shared/decorators/transactional.decorator';
@@ -13,7 +10,6 @@ import { CacheService } from '../../../shared/modules/cache/cache.service';
 import { OutboxService } from '@/shared/modules/outbox/outbox.service';
 import { OrderRepository } from '../repositories/order.repository';
 import { DataSource } from 'typeorm';
-import { JobStatus } from '@/shared/enums/job-status.enum';
 import { BaseOrderJobStrategy } from './base-order-job.strategy';
 import Redlock from 'redlock';
 

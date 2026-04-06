@@ -3,22 +3,26 @@ import { Injectable } from '@nestjs/common';
 import { BulkJobOptions, Queue } from 'bullmq';
 import { EventBus } from '../interfaces/event-bus.interface';
 import { EVENT_QUEUE_TOKEN } from '../constants/event-queue.token';
+import { EventBusJob } from '../interfaces/event-bus-job.interface';
 
 @Injectable()
 export class BullEventBus implements EventBus {
   constructor(@InjectQueue(EVENT_QUEUE_TOKEN) private readonly queue: Queue) {}
 
-  async publish(name: string, event: any): Promise<void> {
-    await this.queue.add(name, event);
+  async publish(events: EventBusJob[]): Promise<void> {
+    for (const event of events) {
+      await this.queue.add(event.name, event.data, { jobId: event.jobId });
+    }
   }
 
-  async publishBulk(
-    events: {
-      name: string;
-      data: any;
-      opts?: BulkJobOptions;
-    }[],
-  ): Promise<void> {
-    await this.queue.addBulk(events);
+  async publishBulk(events: EventBusJob[]): Promise<void> {
+    const eventsFormatted = events.map((event) => ({
+      name: event.name,
+      data: event.data,
+      opts: {
+        jobId: event.jobId,
+      } as BulkJobOptions,
+    }));
+    await this.queue.addBulk(eventsFormatted);
   }
 }

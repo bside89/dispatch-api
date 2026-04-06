@@ -1,3 +1,4 @@
+/*eslint-disable @typescript-eslint/no-explicit-any */
 import { Test, TestingModule } from '@nestjs/testing';
 import { AppModule } from '@/app.module';
 import { DataSource } from 'typeorm';
@@ -12,7 +13,6 @@ import { Queue } from 'bullmq';
 import { getQueueToken } from '@nestjs/bullmq';
 import { waitFor } from './utils/wait-for';
 import { EVENT_QUEUE_TOKEN } from '@/shared/modules/events/constants/event-queue.token';
-import { ORDER_QUEUE_TOKEN } from '@/modules/orders/constants/order-queue.token';
 import { DeliverOrderJobStrategy } from '@/modules/orders/strategies/deliver-order-job.strategy';
 import { ProcessOrderJobStrategy } from '@/modules/orders/strategies/process-order-job.strategy';
 
@@ -41,7 +41,6 @@ describe('Orders (Integration)', () => {
   let usersService: UsersService;
   let ordersService: OrdersService;
   let outboxRepository: OutboxRepository;
-  let orderQueue: Queue;
   let eventBusQueue: Queue;
   let dataSource: DataSource;
   let redisClient: Redis;
@@ -57,7 +56,6 @@ describe('Orders (Integration)', () => {
     usersService = module.get<UsersService>(UsersService);
     ordersService = module.get<OrdersService>(OrdersService);
     outboxRepository = module.get<OutboxRepository>(OutboxRepository);
-    orderQueue = module.get<Queue>(getQueueToken(ORDER_QUEUE_TOKEN));
     eventBusQueue = module.get<Queue>(getQueueToken(EVENT_QUEUE_TOKEN));
     dataSource = module.get<DataSource>(DataSource);
     redisClient = module.get<Redis>(REDIS_CLIENT);

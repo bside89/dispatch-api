@@ -8,7 +8,7 @@ import {
   ShipOrderJobPayload,
 } from '../processors/payloads/order-job.payload';
 import { NotifyUserJobPayload } from '@/shared/modules/events/processors/payloads/notify-user.payload';
-import { delay } from '../../../shared/helpers/functions';
+import { delay, ensureError } from '../../../shared/helpers/functions';
 import { Transactional } from '@/shared/decorators/transactional.decorator';
 import { OutboxType } from '@/shared/modules/outbox/enums/outbox-type.enum';
 import { CacheService } from '../../../shared/modules/cache/cache.service';
@@ -71,7 +71,9 @@ export class ProcessOrderJobStrategy extends BaseOrderJobStrategy<ProcessOrderJo
 
     try {
       await this.compensationLogic(job.data, error);
-    } catch (error: any) {
+    } catch (e) {
+      const error = ensureError(e);
+
       this.logger.error(
         `[CRITICAL] Compensation logic failed for processing order: ${error.message}`,
         { orderId },

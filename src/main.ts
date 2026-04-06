@@ -8,11 +8,6 @@ import helmet from 'helmet';
 import { Logger } from 'nestjs-pino';
 import { AllExceptionsFilter } from './shared/filters/http-exception.filter';
 
-// Fix for crypto module issue in TypeORM
-if (typeof (global as any).crypto === 'undefined') {
-  (global as any).crypto = require('crypto');
-}
-
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
     bufferLogs: true,

@@ -1,3 +1,4 @@
+/*eslint-disable @typescript-eslint/no-explicit-any */
 import { Test, TestingModule } from '@nestjs/testing';
 import { RefundOrderJobStrategy } from './refund-order-job.strategy';
 import { CacheService } from '../../../shared/modules/cache/cache.service';

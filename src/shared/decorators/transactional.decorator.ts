@@ -1,6 +1,8 @@
+/*eslint-disable @typescript-eslint/no-explicit-any */
 import { InternalServerErrorException } from '@nestjs/common';
 import { DataSource } from 'typeorm';
 import { TransactionContext } from '../utils/transaction-context';
+import { ensureError } from '../helpers/functions';
 
 /**
  * A decorator that wraps a method in a TypeORM transaction.
@@ -29,7 +31,8 @@ export function Transactional() {
         return await TransactionContext.run(manager, async () => {
           try {
             return await originalMethod.apply(this, args);
-          } catch (error) {
+          } catch (e) {
+            const error = ensureError(e);
             // TypeORM will automatically roll back when it detects the thrown error
             throw error;
           }

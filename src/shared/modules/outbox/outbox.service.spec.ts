@@ -1,3 +1,4 @@
+/*eslint-disable @typescript-eslint/no-explicit-any */
 import { Test, TestingModule } from '@nestjs/testing';
 import { OutboxService } from './outbox.service';
 import { OutboxRepository } from './repositories/outbox.repository';
@@ -132,12 +133,12 @@ describe(OutboxService.name, () => {
         {
           name: OutboxType.ORDER_PROCESS,
           data: { orderId: '1' },
-          opts: { jobId: 'uuid-1' },
+          jobId: 'uuid-1',
         },
         {
           name: OutboxType.ORDER_SHIP,
           data: { orderId: '2' },
-          opts: { jobId: 'uuid-2' },
+          jobId: 'uuid-2',
         },
       ]);
       expect(repository.deleteBulk).toHaveBeenCalledWith(['uuid-1', 'uuid-2']);
@@ -161,7 +162,7 @@ describe(OutboxService.name, () => {
         {
           name: OutboxType.EVENTS_NOTIFY_USER,
           data: { userId: 'u1' },
-          opts: { jobId: 'uuid-3' },
+          jobId: 'uuid-3',
         },
       ]);
       expect(repository.deleteBulk).toHaveBeenCalledWith(['uuid-3']);

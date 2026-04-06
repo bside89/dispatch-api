@@ -1,8 +1,3 @@
-// Fix for crypto module issue in TypeORM
-if (typeof (global as any).crypto === 'undefined') {
-  (global as any).crypto = require('crypto');
-}
-
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
