@@ -26,8 +26,11 @@ export default async () => {
   process.env.REDIS_PORT = redis.getMappedPort(6379).toString();
 
   process.env.APP_ENV = 'test';
+  process.env.TEST_ENV = 'true';
   process.env.JWT_ACCESS_SECRET = 'test-jwt-access-secret';
   process.env.JWT_REFRESH_SECRET = 'test-jwt-refresh-secret';
+  process.env.QUEUE_ORDER_CONCURRENCY = '1';
+  process.env.QUEUE_EVENT_CONCURRENCY = '1';
 
   console.log('Containers are ready.');
 

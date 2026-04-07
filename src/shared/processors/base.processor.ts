@@ -17,7 +17,12 @@ export abstract class BaseProcessor extends WorkerHost {
    */
   protected setupConcurrency(concurrency?: number) {
     const multiplier = this.getConcurrencyMultiplier();
-    this.worker.concurrency = concurrency ?? os.cpus().length * multiplier;
+    const cpuCount = os.cpus().length || 1;
+    const resolved =
+      Number.isFinite(concurrency) && concurrency > 0
+        ? concurrency
+        : cpuCount * multiplier;
+    this.worker.concurrency = resolved;
   }
 
   /**
