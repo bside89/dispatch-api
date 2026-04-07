@@ -6,8 +6,8 @@ import {
   ProcessOrderJobPayload,
   RefundOrderJobPayload,
   ShipOrderJobPayload,
-} from '../processors/payloads/order-job.payload';
-import { NotifyUserJobPayload } from '@/shared/modules/events/processors/payloads/event-job.payload';
+} from '../../../shared/payloads/order-job.payload';
+import { NotifyUserJobPayload } from '@/shared/payloads/event-job.payload';
 import { delay, ensureError } from '../../../shared/helpers/functions';
 import { Transactional } from '@/shared/decorators/transactional.decorator';
 import { OutboxType } from '@/shared/modules/outbox/enums/outbox-type.enum';

@@ -8,8 +8,8 @@ import {
   DeliverOrderJobStrategy,
   ProcessOrderJobStrategy,
   ShipOrderJobStrategy,
+  RefundOrderJobStrategy,
 } from '../strategies';
-import { RefundOrderJobStrategy } from '../strategies/refund-order-job.strategy';
 
 @Injectable()
 export class OrderJobHandlerFactory {

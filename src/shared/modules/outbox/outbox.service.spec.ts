@@ -12,17 +12,24 @@ import { RequestContext } from '@/shared/utils/request-context';
 import {
   CancelOrderJobPayload,
   ProcessOrderJobPayload,
-} from '@/modules/orders/processors/payloads/order-job.payload';
+} from '@/shared/payloads/order-job.payload';
+import { OutboxPayload } from './types/outbox.payload';
 
 const makeOutbox = (overrides: Partial<Outbox> = {}): Outbox =>
   ({
     id: 'uuid-1',
     type: OutboxType.ORDER_PROCESS,
-    payload: { orderId: '1' },
+    payload: makeOutboxPayload({ orderId: '1' }),
     correlationId: 'corr-1',
     createdAt: new Date(),
     ...overrides,
   }) as Outbox;
+
+const makeOutboxPayload = (overrides: Partial<OutboxPayload> = {}): OutboxPayload =>
+  ({
+    orderId: '1',
+    ...overrides,
+  }) as OutboxPayload;
 
 describe(OutboxService.name, () => {
   let service: OutboxService;
@@ -115,12 +122,12 @@ describe(OutboxService.name, () => {
         makeOutbox({
           id: 'uuid-1',
           type: OutboxType.ORDER_PROCESS,
-          payload: { orderId: '1' },
+          payload: makeOutboxPayload({ orderId: '1' }),
         }),
         makeOutbox({
           id: 'uuid-2',
           type: OutboxType.ORDER_SHIP,
-          payload: { orderId: '2' },
+          payload: makeOutboxPayload({ orderId: '2' }),
         }),
       ];
       (repository.findAndLockBatch as jest.Mock).mockResolvedValue(messages);
@@ -149,7 +156,7 @@ describe(OutboxService.name, () => {
         makeOutbox({
           id: 'uuid-3',
           type: OutboxType.EVENTS_NOTIFY_USER,
-          payload: { userId: 'u1' },
+          payload: makeOutboxPayload({ userId: 'u1' }),
         }),
       ];
       (repository.findAndLockBatch as jest.Mock).mockResolvedValue(messages);
@@ -161,7 +168,7 @@ describe(OutboxService.name, () => {
       expect(eventBus.publishBulk).toHaveBeenCalledWith([
         {
           name: OutboxType.EVENTS_NOTIFY_USER,
-          data: { userId: 'u1' },
+          data: { orderId: '1', userId: 'u1' },
           jobId: 'uuid-3',
         },
       ]);

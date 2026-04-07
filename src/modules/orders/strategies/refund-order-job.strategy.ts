@@ -1,8 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { Job } from 'bullmq';
 import { OrderStatus } from '../enums/order-status.enum';
-import { RefundOrderJobPayload } from '../processors/payloads/order-job.payload';
-import { NotifyUserJobPayload } from '@/shared/modules/events/processors/payloads/event-job.payload';
+import { RefundOrderJobPayload } from '../../../shared/payloads/order-job.payload';
+import { NotifyUserJobPayload } from '@/shared/payloads/event-job.payload';
 import { Transactional } from '@/shared/decorators/transactional.decorator';
 import { OutboxType } from '@/shared/modules/outbox/enums/outbox-type.enum';
 import { CacheService } from '../../../shared/modules/cache/cache.service';

@@ -6,7 +6,7 @@ import { OutboxService } from '../../shared/modules/outbox/outbox.service';
 import { DataSource } from 'typeorm';
 import Redlock from 'redlock';
 
-describe('UsersService', () => {
+describe(UsersService.name, () => {
   let service: UsersService;
 
   beforeEach(async () => {
