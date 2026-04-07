@@ -5,7 +5,7 @@ import { OrderQueryDto } from './dto/order-query.dto';
 import { OrderStatus } from './enums/order-status.enum';
 import { CacheService } from '../../shared/modules/cache/cache.service';
 import { ProcessOrderJobPayload } from './processors/payloads/order-job.payload';
-import { NotifyUserJobPayload } from '@/shared/modules/events/processors/payloads/notify-user.payload';
+import { NotifyUserJobPayload } from '@/shared/modules/events/processors/payloads/event-job.payload';
 import { OrderRepository } from './repositories/order.repository';
 import { OrderItemRepository } from './repositories/order-item.repository';
 import { PaginatedResultDto } from '@/shared/dto/paginated-result.dto';

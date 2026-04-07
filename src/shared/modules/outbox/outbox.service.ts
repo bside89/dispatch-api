@@ -12,7 +12,7 @@ import { EVENT_BUS } from '../events/constants/event-bus.token';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { Transactional } from '@/shared/decorators/transactional.decorator';
-import { ORDER_QUEUE_TOKEN } from '@/modules/orders/constants/order-queue.token';
+import { ORDER_QUEUE_TOKEN } from '@/shared/constants/queue-tokens';
 import { OutboxPayloadMap } from './types/outbox-payload.map';
 import { ensureError } from '@/shared/helpers/functions';
 import { EventBusJob } from '../events/interfaces/event-bus-job.interface';

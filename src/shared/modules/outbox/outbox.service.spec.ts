@@ -3,7 +3,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { OutboxService } from './outbox.service';
 import { OutboxRepository } from './repositories/outbox.repository';
 import { getQueueToken } from '@nestjs/bullmq';
-import { ORDER_QUEUE_TOKEN } from '@/modules/orders/constants/order-queue.token';
+import { ORDER_QUEUE_TOKEN } from '@/shared/constants/queue-tokens';
 import { EVENT_BUS } from '../events/constants/event-bus.token';
 import { DataSource } from 'typeorm';
 import { OutboxType } from './enums/outbox-type.enum';
@@ -201,7 +201,7 @@ describe(OutboxService.name, () => {
   describe('add()', () => {
     it('should create and save an outbox entry using correlationId from context', async () => {
       const type = OutboxType.ORDER_PROCESS;
-      const payload = new ProcessOrderJobPayload('user-1', '123', 99.9);
+      const payload = new ProcessOrderJobPayload('user-1', '123', 'user-name-1');
       const correlationId = 'ctx-correlation-id';
       const mockEntry = makeOutbox({ type, payload, correlationId });
 
@@ -220,7 +220,7 @@ describe(OutboxService.name, () => {
 
     it('should generate a UUID correlationId when context has none', async () => {
       const type = OutboxType.ORDER_CANCEL;
-      const payload = new CancelOrderJobPayload('user-1', '456');
+      const payload = new CancelOrderJobPayload('user-1', '456', 'user-name-1');
       const mockEntry = makeOutbox({ type, payload });
 
       (repository.createEntity as jest.Mock).mockReturnValue(mockEntry);

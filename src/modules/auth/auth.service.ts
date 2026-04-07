@@ -10,7 +10,7 @@ import { HashUtils } from '@/shared/utils/hash.utils';
 import { CACHE_TTL } from '@/shared/constants/cache-ttl.constant';
 import { BaseService } from '@/shared/services/base.service';
 import { OutboxService } from '@/shared/modules/outbox/outbox.service';
-import { NotifyUserJobPayload } from '@/shared/modules/events/processors/payloads/notify-user.payload';
+import { NotifyUserJobPayload } from '@/shared/modules/events/processors/payloads/event-job.payload';
 import { OutboxType } from '@/shared/modules/outbox/enums/outbox-type.enum';
 import { UseLock } from '@/shared/decorators/lock.decorator';
 import Redlock from 'redlock';

@@ -7,7 +7,7 @@ import {
   RefundOrderJobPayload,
   ShipOrderJobPayload,
 } from '../processors/payloads/order-job.payload';
-import { NotifyUserJobPayload } from '@/shared/modules/events/processors/payloads/notify-user.payload';
+import { NotifyUserJobPayload } from '@/shared/modules/events/processors/payloads/event-job.payload';
 import { delay, ensureError } from '../../../shared/helpers/functions';
 import { Transactional } from '@/shared/decorators/transactional.decorator';
 import { OutboxType } from '@/shared/modules/outbox/enums/outbox-type.enum';
@@ -17,6 +17,7 @@ import { OrderRepository } from '../repositories/order.repository';
 import { DataSource } from 'typeorm';
 import { BaseOrderJobStrategy } from './base-order-job.strategy';
 import Redlock from 'redlock';
+import { Order } from '../entities/order.entity';
 
 @Injectable()
 export class ProcessOrderJobStrategy extends BaseOrderJobStrategy<ProcessOrderJobPayload> {
@@ -49,7 +50,7 @@ export class ProcessOrderJobStrategy extends BaseOrderJobStrategy<ProcessOrderJo
     );
 
     if (!order.paid) {
-      await this.processPayment(job.data);
+      await this.processPayment(job.data, order);
 
       await this.lockAndUpdateOrder(orderId, { paid: true });
     }
@@ -115,10 +116,12 @@ export class ProcessOrderJobStrategy extends BaseOrderJobStrategy<ProcessOrderJo
     );
   }
 
-  private async processPayment(data: ProcessOrderJobPayload) {
+  private async processPayment(data: ProcessOrderJobPayload, order: Order) {
     if (Math.random() < 0.1) throw new Error('Random payment error');
     await delay(2000);
-    this.logger.log('Payment OK', { orderId: data.orderId });
+    this.logger.log(`Payment OK. Total: R$ ${(order.total / 100).toFixed(2)}`, {
+      orderId: data.orderId,
+    });
   }
 
   private async finish(data: ProcessOrderJobPayload) {

@@ -13,8 +13,9 @@ import { EventJobHandlerFactory } from '../factories/event-job-handler.factory';
 import { JobStatus } from '@/shared/enums/job-status.enum';
 import { EVENT_KEY } from '../constants/event.key';
 import { ensureError } from '@/shared/helpers/functions';
+import { EVENT_QUEUE_TOKEN } from '@/shared/constants/queue-tokens';
 
-@Processor('events', { maxStalledCount: 1 })
+@Processor(EVENT_QUEUE_TOKEN, { maxStalledCount: 1 })
 export class EventProcessor
   extends BaseProcessor
   implements OnApplicationBootstrap, BeforeApplicationShutdown

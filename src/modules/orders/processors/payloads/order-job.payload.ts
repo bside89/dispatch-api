@@ -4,22 +4,13 @@ export class OrderJobPayload extends BaseJobPayload {
   constructor(
     public readonly userId: string,
     public readonly orderId: string,
-    public readonly userName: string = '',
+    public readonly userName: string,
   ) {
     super();
   }
 }
 
-export class ProcessOrderJobPayload extends OrderJobPayload {
-  constructor(
-    public readonly userId: string,
-    public readonly orderId: string,
-    public readonly total: number,
-    public readonly userName: string = '',
-  ) {
-    super(userId, orderId, userName);
-  }
-}
+export class ProcessOrderJobPayload extends OrderJobPayload {}
 
 export class ShipOrderJobPayload extends OrderJobPayload {}
 

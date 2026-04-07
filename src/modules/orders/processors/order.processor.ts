@@ -13,8 +13,9 @@ import Redlock from 'redlock';
 import { ORDER_KEY } from '../constants/order.key';
 import { JobStatus } from '@/shared/enums/job-status.enum';
 import { ensureError } from '@/shared/helpers/functions';
+import { ORDER_QUEUE_TOKEN } from '@/shared/constants/queue-tokens';
 
-@Processor('orders', { maxStalledCount: 1 })
+@Processor(ORDER_QUEUE_TOKEN, { maxStalledCount: 1 })
 export class OrderProcessor
   extends BaseProcessor
   implements OnApplicationBootstrap, BeforeApplicationShutdown

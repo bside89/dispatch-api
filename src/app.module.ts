@@ -25,8 +25,10 @@ import { MiddlewareConsumer, NestModule } from '@nestjs/common';
 import { CorrelationIdMiddleware } from './middleware/correlation-id.middleware';
 import { TerminusModule } from '@nestjs/terminus';
 import { throttleConfig } from './config/throttle.config';
-import { EVENT_QUEUE_TOKEN } from './shared/modules/events/constants/event-queue.token';
-import { ORDER_QUEUE_TOKEN } from './modules/orders/constants/order-queue.token';
+import {
+  EVENT_QUEUE_TOKEN,
+  ORDER_QUEUE_TOKEN,
+} from './shared/constants/queue-tokens';
 
 @Module({
   imports: [

@@ -5,7 +5,7 @@ import {
   RefundOrderJobPayload,
   ShipOrderJobPayload,
 } from '@/modules/orders/processors/payloads/order-job.payload';
-import { NotifyUserJobPayload } from '@/shared/modules/events/processors/payloads/notify-user.payload';
+import { NotifyUserJobPayload } from '@/shared/modules/events/processors/payloads/event-job.payload';
 import { OutboxType } from '../enums/outbox-type.enum';
 
 export interface OutboxPayloadMap {

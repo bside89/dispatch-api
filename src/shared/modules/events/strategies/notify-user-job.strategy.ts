@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { Job } from 'bullmq';
 import { CacheService } from '../../cache/cache.service';
 import { delay } from '../../../helpers/functions';
-import { NotifyUserJobPayload } from '../processors/payloads/notify-user.payload';
+import { NotifyUserJobPayload } from '../processors/payloads/event-job.payload';
 import { Transactional } from '@/shared/decorators/transactional.decorator';
 import { BaseJobStrategy } from '@/shared/strategies/base-job.strategy';
 

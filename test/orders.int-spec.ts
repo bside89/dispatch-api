@@ -12,14 +12,13 @@ import { INestApplication } from '@nestjs/common';
 import { Queue } from 'bullmq';
 import { getQueueToken } from '@nestjs/bullmq';
 import { waitFor } from './utils/wait-for';
-import { EVENT_QUEUE_TOKEN } from '@/shared/modules/events/constants/event-queue.token';
+import { EVENT_QUEUE_TOKEN } from '@/shared/constants/queue-tokens';
 import { DeliverOrderJobStrategy } from '@/modules/orders/strategies/deliver-order-job.strategy';
 import { ProcessOrderJobStrategy } from '@/modules/orders/strategies/process-order-job.strategy';
 
 // Mock the delay function to resolve almost instantly.
 // This eliminates the simulated processing delays (1s-3s) used by
-// ProcessPaymentOrderStrategy, ShipOrderStrategy, DeliverOrderStrategy,
-// and NotificationStrategy, making the pipeline tests much faster.
+// Job Strategies, making the pipeline tests much faster.
 jest.mock('@/shared/helpers/functions', () => ({
   ...jest.requireActual('@/shared/helpers/functions'),
   delay: () => Promise.resolve(),
@@ -249,16 +248,17 @@ describe('Orders (Integration)', () => {
 
       // Assert: all notification events have been processed by the events queue.
       // Expected notifications:
-      //   1. ProcessPaymentOrderStrategy  → "order has been paid"
+      //   1. ProcessOrderStrategy  → "order has been paid"
       //   2. ShipOrderStrategy     → "order has been shipped"
       //   3. DeliverOrderStrategy  → "order has been delivered"
-      //   4. updateStatus (called by ProcessPaymentOrderStrategy via Outbox→EVENTS_NOTIFY_USER
-      //      during the PAID status change) — note: this is the notification from
-      //      the Outbox EVENTS_NOTIFY_USER added by the strategy, NOT from updateStatus.
+      //   4. updateStatus (called by ProcessOrderStrategy via
+      //      Outbox→EVENTS_NOTIFY_USER during the PAID status change) — note: this
+      //      is the notification from the Outbox EVENTS_NOTIFY_USER added by the
+      //      strategy, NOT from updateStatus.
       //
-      // The flow produces exactly 3 EVENTS_NOTIFY_USER outbox entries
-      // (one per strategy: process, ship, deliver).
-      // Wait for all events to complete processing in the events queue.
+      // The flow produces exactly 3 EVENTS_NOTIFY_USER outbox entries (one per
+      // strategy: process, ship, deliver). Wait for all events to complete
+      // processing in the events queue.
       await waitFor(
         async () => {
           const completedCount = await eventBusQueue.getCompletedCount();
@@ -276,9 +276,10 @@ describe('Orders (Integration)', () => {
   describe('Order Compensation Flow', () => {
     it('should do the compensation logic and refund the Order when post-payment processing fails', async () => {
       // Arrange: get DeliverOrderJobStrategy to force all delivery attempts to fail.
-      // This exhausts all BullMQ retries and triggers the executeAfterFail compensation
-      // path, which enqueues ORDER_CANCEL → CancelOrderJobStrategy updates order to
-      // CANCELLED and enqueues ORDER_REFUND → RefundOrderJobStrategy updates to REFUNDED.
+      // This exhausts all BullMQ retries and triggers the executeAfterFail
+      // compensation path, which enqueues ORDER_CANCEL → CancelOrderJobStrategy
+      // updates order to CANCELLED and enqueues ORDER_REFUND →
+      // RefundOrderJobStrategy updates to REFUNDED.
       const deliverOrderJobStrategy = app.get<DeliverOrderJobStrategy>(
         DeliverOrderJobStrategy,
       );
@@ -356,13 +357,13 @@ describe('Orders (Integration)', () => {
     }, 120_000);
 
     it('should do the compensation logic and cancel the Order when pre-payment processing fails', async () => {
-      // Arrange: spy on the private processPayment method to always throw.
-      // Since paid is never set to true, the compensation logic in executeAfterFail
-      // enqueues ORDER_CANCEL instead of ORDER_REFUND.
-      // CancelOrderJobStrategy then sets the order to CANCELLED and enqueues ORDER_REFUND,
-      // but RefundOrderJobStrategy.getAndValidate rejects the transition because
-      // REFUNDED preconditions are [PAID, SHIPPED, DELIVERED] — CANCELLED is not included —
-      // so the order stays in CANCELLED.
+      // Arrange: spy on the private processPayment method to always throw. Since
+      // paid is never set to true, the compensation logic in executeAfterFail
+      // enqueues ORDER_CANCEL instead of ORDER_REFUND. CancelOrderJobStrategy then
+      // sets the order to CANCELLED and enqueues ORDER_REFUND, but
+      // RefundOrderJobStrategy.getAndValidate rejects the transition because
+      // REFUNDED preconditions are [PAID, SHIPPED, DELIVERED] — CANCELLED is not
+      // included — so the order stays in CANCELLED.
       const processOrderJobStrategy = app.get<ProcessOrderJobStrategy>(
         ProcessOrderJobStrategy,
       );
@@ -398,10 +399,10 @@ describe('Orders (Integration)', () => {
 
         // Wait for the compensation pipeline to complete:
         //   Outbox → ORDER_PROCESS → processPayment throws 3× (backoff mocked to 0ms)
-        //                         → executeAfterFail → compensationLogic (order.paid=false)
-        //   Outbox → ORDER_CANCEL → order = CANCELLED
-        //   Outbox → ORDER_REFUND → getAndValidate fails (CANCELLED ∉ REFUNDED preconditions)
-        //                        → no-op, order stays CANCELLED
+        //                          → executeAfterFail → compensationLogic (order.paid=false)
+        //   Outbox → ORDER_CANCEL  → order = CANCELLED
+        //   Outbox → ORDER_REFUND  → getAndValidate fails (CANCELLED ∉ REFUNDED preconditions)
+        //                          → no-op, order stays CANCELLED
         //
         // ~3 Outbox cron cycles (up to 5s each) ≈ 15s worst case
         await waitFor(
