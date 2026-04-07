@@ -20,7 +20,7 @@
     "test:e2e": "jest --selectProjects e2e --runInBand",
     "test:load": "docker run --rm -i --network=order-flow-api_order-flow-network grafana/k6 run -e BASE_URL=http://order-flow-api:3000 - <test/load-test.js",
     "test:load:local": "docker run --rm -i grafana/k6 run -e BASE_URL=http://host.docker.internal:3000 - <test/load-test.js",
-    "typeorm": "typeorm-ts-node-commonjs",
+    "typeorm": "ts-node -r tsconfig-paths/register ./node_modules/typeorm/cli.js",
     "migration:create": "npm run typeorm -- migration:create",
     "migration:generate": "npm run typeorm -- migration:generate -d src/config/typeorm.config.ts",
     "migration:show:": "npm run typeorm -- migration:show -d src/config/typeorm.config.ts",
