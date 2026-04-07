@@ -96,12 +96,7 @@ export class OrdersService extends BaseService {
     // Add to the outbox for processing the order (job)
     await this.outboxService.add(
       OutboxType.ORDER_PROCESS,
-      new ProcessOrderJobPayload(
-        userId,
-        completeOrder.id,
-        total,
-        completeOrder.user.name,
-      ),
+      new ProcessOrderJobPayload(userId, completeOrder.id, completeOrder.user.name),
     );
 
     await this.cacheService.set(
