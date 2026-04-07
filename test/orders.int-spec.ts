@@ -9,12 +9,13 @@ import { OrdersService } from '@/modules/orders/orders.service';
 import { OutboxRepository } from '@/shared/modules/outbox/repositories/outbox.repository';
 import { cleanDatabase, cleanRedis } from './utils/database-cleaner';
 import { INestApplication } from '@nestjs/common';
-import { Queue } from 'bullmq';
+import { Queue, Job } from 'bullmq';
 import { getQueueToken } from '@nestjs/bullmq';
 import { waitFor } from './utils/wait-for';
 import { EVENT_QUEUE_TOKEN } from '@/shared/constants/queue-tokens';
 import { DeliverOrderJobStrategy } from '@/modules/orders/strategies/deliver-order-job.strategy';
 import { ProcessOrderJobStrategy } from '@/modules/orders/strategies/process-order-job.strategy';
+import { OrderProcessor } from '@/modules/orders/processors/order.processor';
 
 // Mock the delay function to resolve almost instantly.
 // This eliminates the simulated processing delays (1s-3s) used by
@@ -428,5 +429,51 @@ describe('Orders (Integration)', () => {
         paymentSpy.mockRestore();
       }
     }, 30_000);
+  });
+
+  describe('Concurrency and Locking', () => {
+    it('should not execute the same Job twice simultaneously due to job-execute lock', async () => {
+      const orderProcessor = app.get<OrderProcessor>(OrderProcessor);
+      const processOrderJobStrategy = app.get<ProcessOrderJobStrategy>(
+        ProcessOrderJobStrategy,
+      );
+
+      // We use a custom sleep since `delay` is mocked to resolve instantly
+      const sleep = (ms: number) =>
+        new Promise((resolve) => setTimeout(resolve, ms));
+
+      const executeSpy = jest
+        .spyOn(processOrderJobStrategy, 'execute')
+        .mockImplementation(async () => {
+          await sleep(100); // Simulate processing time to hold the lock
+        });
+
+      const fakeJob = {
+        id: 'concurrent-job-123',
+        name: 'ORDER_PROCESS',
+        data: {
+          orderId: 'fake-order-id',
+          userId: 'fake-user-id',
+          userName: 'Test User',
+        },
+        opts: { attempts: 3 },
+        attemptsMade: 0,
+      } as Job<any>;
+
+      try {
+        // Execute the same job multiple times simultaneously
+        await Promise.all([
+          orderProcessor.process(fakeJob),
+          orderProcessor.process(fakeJob),
+          orderProcessor.process(fakeJob),
+        ]);
+
+        // The lock combined with idempotency should guarantee the strategy is
+        // executed exactly once for the same job ID.
+        expect(executeSpy).toHaveBeenCalledTimes(1);
+      } finally {
+        executeSpy.mockRestore();
+      }
+    });
   });
 });
