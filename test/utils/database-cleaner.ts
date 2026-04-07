@@ -1,6 +1,5 @@
 import { DataSource } from 'typeorm';
 import { Redis } from 'ioredis';
-import { HashUtils } from '@/shared/utils/hash.utils';
 import { ADMIN_USER } from '../constants/admin-user.constant';
 
 export async function cleanDatabase(dataSource: DataSource) {
@@ -10,10 +9,11 @@ export async function cleanDatabase(dataSource: DataSource) {
   await dataSource.query(`TRUNCATE ${tableNames} RESTART IDENTITY CASCADE;`);
 
   // Add a Admin test user for some endpoints
-  const passwordHashed = await HashUtils.hash(ADMIN_USER.password);
+  const hashedPassword =
+    '$argon2id$v=19$m=65536,t=3,p=1$IDLXlbsUuUn15tmwMQPaUQ$xwXQGL/RHE9PlJ7xyXZD0yFSGFrPFEqNPUcr1JJue10';
   await dataSource.query(
     `INSERT INTO "users" (id, name, email, password, role) ` +
-      `VALUES ('${ADMIN_USER.id}', '${ADMIN_USER.name}', '${ADMIN_USER.email}', '${passwordHashed}', '${ADMIN_USER.role}')`,
+      `VALUES ('${ADMIN_USER.id}', '${ADMIN_USER.name}', '${ADMIN_USER.email}', '${hashedPassword}', '${ADMIN_USER.role}')`,
   );
 }
 

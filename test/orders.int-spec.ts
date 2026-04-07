@@ -211,8 +211,8 @@ describe('Orders (Integration)', () => {
       //   Outbox → ORDER_SHIP → SHIPPED
       //   Outbox → ORDER_DELIVER → DELIVERED
       //
-      // Each strategy has simulated delays (1s-3s) and the Outbox cron
-      // runs every 5 seconds, so this may take up to ~60 seconds.
+      // delay() is mocked and setImmediate triggers process() after each add(),
+      // so each step resolves in ~10-50ms (BullMQ + Redis latency).
       await waitFor(
         async () => {
           const rows = await dataSource.query(
@@ -221,8 +221,8 @@ describe('Orders (Integration)', () => {
           );
           return rows.length === 1 && rows[0].status === 'DELIVERED';
         },
-        60_000, // 60s timeout (delay is mocked; bottleneck is Outbox cron ~5s × 3 cycles)
-        500, // poll every 500ms
+        15_000, // 15s timeout (3 steps × ~50ms + CI margin)
+        250, // poll every 250ms
       );
 
       // Assert: final order status is DELIVERED
@@ -235,27 +235,18 @@ describe('Orders (Integration)', () => {
 
       // Assert: outbox should be fully consumed (no pending entries).
       // When the order reaches DELIVERED, the DeliverOrderStrategy adds one
-      // last EVENTS_NOTIFY_USER to the Outbox. We need to wait for the next
-      // Outbox cron cycle (~5s) to dispatch it before asserting emptiness.
+      // last EVENTS_NOTIFY_USER to the Outbox. setImmediate triggers process()
+      // immediately after add(), so this resolves within milliseconds.
       await waitFor(
         async () => {
           const rows = await dataSource.query(`SELECT id FROM outbox`);
           return rows.length === 0;
         },
-        15_000, // 15s — enough for one more Outbox cron cycle
-        500,
+        5_000, // 5s — enough for one extra setImmediate cycle
+        250,
       );
 
       // Assert: all notification events have been processed by the events queue.
-      // Expected notifications:
-      //   1. ProcessOrderStrategy  → "order has been paid"
-      //   2. ShipOrderStrategy     → "order has been shipped"
-      //   3. DeliverOrderStrategy  → "order has been delivered"
-      //   4. updateStatus (called by ProcessOrderStrategy via
-      //      Outbox→EVENTS_NOTIFY_USER during the PAID status change) — note: this
-      //      is the notification from the Outbox EVENTS_NOTIFY_USER added by the
-      //      strategy, NOT from updateStatus.
-      //
       // The flow produces exactly 3 EVENTS_NOTIFY_USER outbox entries (one per
       // strategy: process, ship, deliver). Wait for all events to complete
       // processing in the events queue.
@@ -264,13 +255,13 @@ describe('Orders (Integration)', () => {
           const completedCount = await eventBusQueue.getCompletedCount();
           return completedCount >= 3;
         },
-        30_000, // 30s extra buffer for event processing
-        500,
+        10_000, // 10s buffer for event processing
+        250,
       );
 
       const completedEvents = await eventBusQueue.getCompletedCount();
       expect(completedEvents).toBeGreaterThanOrEqual(3);
-    }, 120_000); // Jest timeout: 2 minutes (delay is mocked, only Outbox cron intervals remain)
+    }, 30_000); // Jest timeout: 30s (delay mocked + setImmediate replaces cron bottleneck)
   });
 
   describe('Order Compensation Flow', () => {
@@ -321,7 +312,7 @@ describe('Orders (Integration)', () => {
         //   Outbox → ORDER_CANCEL → order = CANCELLED → Outbox → ORDER_REFUND
         //   Outbox → ORDER_REFUND → order = REFUNDED
         //
-        // ~5 Outbox cron cycles (up to 5s each) ≈ 25s worst case
+        // delay() is mocked and setImmediate triggers process() after each add().
         await waitFor(
           async () => {
             const rows = await dataSource.query(
@@ -330,8 +321,8 @@ describe('Orders (Integration)', () => {
             );
             return rows.length === 1 && rows[0].status === 'REFUNDED';
           },
-          90_000,
-          500,
+          30_000, // 30s (5 steps + 3 BullMQ retries × ~50ms + CI margin)
+          250,
         );
 
         // Assert: final order status is REFUNDED
@@ -342,19 +333,19 @@ describe('Orders (Integration)', () => {
         expect(finalOrder.status).toBe('REFUNDED');
 
         // Assert: outbox should be fully consumed (RefundOrderJobStrategy adds one
-        // final EVENTS_NOTIFY_USER entry; wait for the next Outbox cron to dispatch it)
+        // final EVENTS_NOTIFY_USER entry; setImmediate dispatches it immediately)
         await waitFor(
           async () => {
             const rows = await dataSource.query(`SELECT id FROM outbox`);
             return rows.length === 0;
           },
-          15_000,
-          500,
+          5_000,
+          250,
         );
       } finally {
         deliverSpy.mockRestore();
       }
-    }, 120_000);
+    }, 45_000);
 
     it('should do the compensation logic and cancel the Order when pre-payment processing fails', async () => {
       // Arrange: spy on the private processPayment method to always throw. Since
@@ -404,7 +395,7 @@ describe('Orders (Integration)', () => {
         //   Outbox → ORDER_REFUND  → getAndValidate fails (CANCELLED ∉ REFUNDED preconditions)
         //                          → no-op, order stays CANCELLED
         //
-        // ~3 Outbox cron cycles (up to 5s each) ≈ 15s worst case
+        // delay() is mocked and setImmediate triggers process() after each add().
         await waitFor(
           async () => {
             const rows = await dataSource.query(
@@ -413,8 +404,8 @@ describe('Orders (Integration)', () => {
             );
             return rows.length === 1 && rows[0].status === 'CANCELLED';
           },
-          60_000,
-          500,
+          15_000, // 15s (3 steps + 3 BullMQ retries × ~50ms + CI margin)
+          250,
         );
 
         // Assert: final order status is CANCELLED
@@ -430,12 +421,12 @@ describe('Orders (Integration)', () => {
             const rows = await dataSource.query(`SELECT id FROM outbox`);
             return rows.length === 0;
           },
-          15_000,
-          500,
+          5_000,
+          250,
         );
       } finally {
         paymentSpy.mockRestore();
       }
-    }, 120_000);
+    }, 30_000);
   });
 });

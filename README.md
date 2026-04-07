@@ -152,7 +152,7 @@ sequenceDiagram
     activate API
     Note over API, DB: Start Transaction
     API->>DB: Save Order (Status: PENDING)
-    API->>DB: Save Outbox (Event: ORDER_CREATED)
+    API->>DB: Save Outbox (Event: ORDER_PROCESS)
     DB-->>API: Success
     API-->>Client: 201 Created (Correlation-ID)
     deactivate API
@@ -170,15 +170,15 @@ sequenceDiagram
     rect rgba(128, 128, 128, 0.1)
         Note right of Queue: Order Queue Worker
         Queue->>DB: Update Order to "PAID"
-        Queue->>DB: Save Outbox (Event: PAID & SEND_NOTIFICATION)
+        Queue->>DB: Save Outbox (Event: ORDER_PROCESS & EVENTS_NOTIFY_USER)
 
         Note right of Queue: Next Step
         Queue->>DB: Update Order to "SHIPPED"
-        Queue->>DB: Save Outbox (Event: ORDER_SHIPPED & SEND_NOTIFICATION)
+        Queue->>DB: Save Outbox (Event: ORDER_SHIPPED & EVENTS_NOTIFY_USER)
 
         Note right of Queue: Final Step
         Queue->>DB: Update Order to "DELIVERED"
-        Queue->>DB: Save Outbox (Event: ORDER_DELIVERED & SEND_NOTIFICATION)
+        Queue->>DB: Save Outbox (Event: ORDER_DELIVERED & EVENTS_NOTIFY_USER)
     end
 ```
 

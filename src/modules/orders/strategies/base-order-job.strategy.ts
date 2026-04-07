@@ -65,8 +65,8 @@ export abstract class BaseOrderJobStrategy<
     const preconditions = this.VALID_PRECONDITIONS[newStatus];
     if (!preconditions.includes(order.status)) {
       this.logger.error(
-        `Order ${orderId} must be: ${preconditions.join(' or ')} ` +
-          `to be processed, current status: ${order!.status}`,
+        `Order ${orderId} must be ${preconditions.join(' or ')} ` +
+          `to proceed; current status: ${order!.status}`,
       );
       return null;
     }

@@ -35,10 +35,10 @@ export class AuthService extends BaseService {
   async login(email: string, password: string): Promise<LoginResponseDto> {
     const user = await this.userRepository.findOne({ where: { email } });
 
-    if (!user) throw new UnauthorizedException();
+    if (!user) throw new UnauthorizedException('User not found');
 
     const isValid = await HashUtils.compare(user.password, password);
-    if (!isValid) throw new UnauthorizedException();
+    if (!isValid) throw new UnauthorizedException('Invalid password');
 
     const tokens = await this.generateTokens(user);
 
