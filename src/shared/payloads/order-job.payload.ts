@@ -1,4 +1,4 @@
-import { BaseJobPayload } from '@/shared/jobs/base-job.payload';
+import { BaseJobPayload } from '@/shared/payloads/base-job.payload';
 
 export class OrderJobPayload extends BaseJobPayload {
   constructor(

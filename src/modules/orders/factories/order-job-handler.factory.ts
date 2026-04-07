@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 
 import { OutboxType as OrderJob } from '@/shared/modules/outbox/enums/outbox-type.enum';
 import { BaseJobStrategy } from '@/shared/strategies/base-job.strategy';
-import { BaseJobPayload } from '@/shared/jobs/base-job.payload';
+import { BaseJobPayload } from '@/shared/payloads/base-job.payload';
 import {
   CancelOrderJobStrategy,
   DeliverOrderJobStrategy,

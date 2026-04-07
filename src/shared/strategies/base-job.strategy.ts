@@ -1,5 +1,5 @@
 import { Job } from 'bullmq';
-import { BaseJobPayload } from '../jobs/base-job.payload';
+import { BaseJobPayload } from '../payloads/base-job.payload';
 import { AppLogger } from '../utils/app-logger';
 
 export abstract class BaseJobStrategy<T extends BaseJobPayload> {

@@ -4,7 +4,7 @@ import { OrderStatus } from '../enums/order-status.enum';
 import { DataSource } from 'typeorm';
 import { UseLock } from '@/shared/decorators/lock.decorator';
 import Redlock from 'redlock';
-import { BaseJobPayload } from '@/shared/jobs/base-job.payload';
+import { BaseJobPayload } from '@/shared/payloads/base-job.payload';
 import { ORDER_KEY } from '../constants/order.key';
 import { BaseJobStrategy } from '@/shared/strategies/base-job.strategy';
 import { Order } from '../entities/order.entity';
