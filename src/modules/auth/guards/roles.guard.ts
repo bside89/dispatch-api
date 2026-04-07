@@ -44,6 +44,7 @@ export class RolesGuard implements CanActivate {
       return false;
     }
 
-    return requiredRoles.includes(user.role);
+    const userRole = user.jwtPayload?.role || user.role;
+    return requiredRoles.includes(userRole);
   }
 }

@@ -13,6 +13,9 @@ describe('Orders (E2E)', () => {
   let dataSource: DataSource;
   let redisClient: Redis;
 
+  let adminToken: string;
+  let userToken: string;
+
   beforeAll(async () => {
     const module: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
@@ -41,10 +44,45 @@ describe('Orders (E2E)', () => {
   beforeEach(async () => {
     await cleanDatabase(dataSource);
     await cleanRedis(redisClient);
+
+    // Login as admin
+    const { body: adminAuth } = await request(app.getHttpServer())
+      .post('/v1/auth/login')
+      .send({
+        email: ADMIN_USER.email,
+        password: ADMIN_USER.password,
+      })
+      .expect(HttpStatus.CREATED);
+    adminToken = adminAuth.data.accessToken;
+
+    // Create a regular user for tests
+    const randomSuffix = Math.random().toString(36).substring(7);
+    const uniqueEmail = `regular-${randomSuffix}@test.com`;
+    const userPayload = {
+      name: 'Regular Test User',
+      email: uniqueEmail,
+      password: 'StrongPassword123!',
+    };
+
+    await request(app.getHttpServer())
+      .post('/v1/users')
+      .set('idempotency-key', `setup-${randomSuffix}`)
+      .send(userPayload)
+      .expect(HttpStatus.CREATED);
+
+    // Login as regular user
+    const { body: userAuth } = await request(app.getHttpServer())
+      .post('/v1/auth/login')
+      .send({
+        email: uniqueEmail,
+        password: userPayload.password,
+      })
+      .expect(HttpStatus.CREATED);
+    userToken = userAuth.data.accessToken;
   });
 
-  describe('POST /v1/orders', () => {
-    it('should return 401 if no jwt token is provided', async () => {
+  describe('REST Endpoints', () => {
+    it('POST /v1/orders - should return 401 if no jwt token is provided', async () => {
       const payload = {
         items: [
           {
@@ -61,27 +99,15 @@ describe('Orders (E2E)', () => {
         .expect(HttpStatus.UNAUTHORIZED);
     });
 
-    it('should return 400 if payload is empty', async () => {
-      // First obtain the jwt token
-      const { body } = await request(app.getHttpServer())
-        .post('/v1/auth/login')
-        .send({
-          email: ADMIN_USER.email,
-          password: ADMIN_USER.password,
-        })
-        .expect(201);
-
-      const token = body.data.accessToken;
-
-      // Then make the request to create an order with the token
+    it('POST /v1/orders - should return 400 if payload is empty', async () => {
       return request(app.getHttpServer())
         .post('/v1/orders')
-        .set('Authorization', `Bearer ${token}`)
+        .set('Authorization', `Bearer ${adminToken}`)
         .send({})
         .expect(HttpStatus.BAD_REQUEST);
     });
 
-    it('should create order and return 201', async () => {
+    it('POST /v1/orders - should create order and return 201', async () => {
       const payload = {
         items: [
           {
@@ -92,28 +118,18 @@ describe('Orders (E2E)', () => {
         ],
       };
 
-      const { body: authBody } = await request(app.getHttpServer())
-        .post('/v1/auth/login')
-        .send({
-          email: ADMIN_USER.email,
-          password: ADMIN_USER.password,
-        })
-        .expect(HttpStatus.CREATED);
-
-      const token = authBody.data.accessToken;
-
-      const { body: orderBody } = await request(app.getHttpServer())
+      const res = await request(app.getHttpServer())
         .post('/v1/orders')
         .set('idempotency-key', 'e2e-test-key')
-        .set('Authorization', `Bearer ${token}`)
+        .set('Authorization', `Bearer ${adminToken}`)
         .send(payload)
         .expect(HttpStatus.CREATED);
 
-      expect(orderBody.data.id).toBeDefined();
-      expect(orderBody.data.status).toBe('PENDING');
+      expect(res.body.data.id).toBeDefined();
+      expect(res.body.data.status).toBe('PENDING');
     });
 
-    it('should return the same order on duplicate idempotency key', async () => {
+    it('POST /v1/orders - should return the same order on duplicate idempotency key', async () => {
       const payload = {
         items: [
           {
@@ -123,35 +139,169 @@ describe('Orders (E2E)', () => {
           },
         ],
       };
-      const key = 'duplicate-key';
+      const key = 'duplicate-key-orders';
 
-      const { body: authBody } = await request(app.getHttpServer())
-        .post('/v1/auth/login')
-        .send({
-          email: ADMIN_USER.email,
-          password: ADMIN_USER.password,
-        })
-        .expect(HttpStatus.CREATED);
-
-      const token = authBody.data.accessToken;
-
-      const { body: result1 } = await request(app.getHttpServer())
+      const result1 = await request(app.getHttpServer())
         .post('/v1/orders')
         .set('idempotency-key', key)
-        .set('Authorization', `Bearer ${token}`)
+        .set('Authorization', `Bearer ${adminToken}`)
         .send(payload)
         .expect(HttpStatus.CREATED);
 
       // Segunda tentativa com a mesma chave
-      const { body: result2 } = await request(app.getHttpServer())
+      const result2 = await request(app.getHttpServer())
         .post('/v1/orders')
         .set('idempotency-key', key)
-        .set('Authorization', `Bearer ${token}`)
+        .set('Authorization', `Bearer ${adminToken}`)
         .send(payload)
         .expect(HttpStatus.CREATED);
 
-      expect(result2.data.id).toBe(result1.data.id);
-      expect(result2.data.status).toBe(result1.data.status);
+      expect(result2.body.data.id).toBe(result1.body.data.id);
+      expect(result2.body.data.status).toBe(result1.body.data.status);
+    });
+
+    it('GET /v1/orders - should return orders list (requires auth)', async () => {
+      await request(app.getHttpServer())
+        .get('/v1/orders')
+        .expect(HttpStatus.UNAUTHORIZED);
+
+      const res = await request(app.getHttpServer())
+        .get('/v1/orders')
+        .set('Authorization', `Bearer ${adminToken}`)
+        .expect(HttpStatus.OK);
+
+      expect(res.body.data).toBeInstanceOf(Array);
+    });
+
+    it('GET /v1/orders/:id - should get a specific order', async () => {
+      // First create
+      const payload = {
+        items: [{ productId: 'product-xyz', quantity: 1, price: 5000 }],
+      };
+      const created = await request(app.getHttpServer())
+        .post('/v1/orders')
+        .set('idempotency-key', 'order-get-key')
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send(payload)
+        .expect(HttpStatus.CREATED);
+
+      const orderId = created.body.data.id;
+
+      const res = await request(app.getHttpServer())
+        .get(`/v1/orders/${orderId}`)
+        .set('Authorization', `Bearer ${userToken}`)
+        .expect(HttpStatus.OK);
+
+      expect(res.body.data.id).toBe(orderId);
+    });
+
+    it('PATCH /v1/orders/:id - should block normal user (403 Forbidden)', async () => {
+      // Temporarily set TEST_ENV to false so RolesGuard won't bypass the check
+      const originalTestEnv = process.env.TEST_ENV;
+      process.env.TEST_ENV = 'false';
+
+      await request(app.getHttpServer())
+        .patch('/v1/orders/123e4567-e89b-12d3-a456-426614174000')
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({ items: [] })
+        .expect(HttpStatus.FORBIDDEN);
+
+      process.env.TEST_ENV = originalTestEnv;
+    });
+
+    it('PATCH /v1/orders/:id - should allow admin user', async () => {
+      // Temporarily set TEST_ENV to false so RolesGuard won't bypass the check
+      const originalTestEnv = process.env.TEST_ENV;
+      process.env.TEST_ENV = 'false';
+
+      const payload = {
+        items: [{ productId: 'product-xyz', quantity: 1, price: 5000 }],
+      };
+      const created = await request(app.getHttpServer())
+        .post('/v1/orders')
+        .set('idempotency-key', 'order-update-key')
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send(payload)
+        .expect(HttpStatus.CREATED);
+      const orderId = created.body.data.id;
+
+      await request(app.getHttpServer())
+        .patch(`/v1/orders/${orderId}`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ items: [{ productId: 'product-xyz-2', quantity: 1, price: 6000 }] })
+        .expect(HttpStatus.OK);
+
+      process.env.TEST_ENV = originalTestEnv;
+    });
+
+    it('PATCH /v1/orders/:id/status - should block normal user (403 Forbidden)', async () => {
+      const originalTestEnv = process.env.TEST_ENV;
+      process.env.TEST_ENV = 'false';
+
+      await request(app.getHttpServer())
+        .patch('/v1/orders/123e4567-e89b-12d3-a456-426614174000/status')
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({ status: 'PAID' })
+        .expect(HttpStatus.FORBIDDEN);
+
+      process.env.TEST_ENV = originalTestEnv;
+    });
+
+    it('PATCH /v1/orders/:id/status - should allow admin user', async () => {
+      const originalTestEnv = process.env.TEST_ENV;
+      process.env.TEST_ENV = 'false';
+
+      const payload = {
+        items: [{ productId: 'product-xyz', quantity: 1, price: 5000 }],
+      };
+      const created = await request(app.getHttpServer())
+        .post('/v1/orders')
+        .set('idempotency-key', 'order-update-status-key')
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send(payload)
+        .expect(HttpStatus.CREATED);
+      const orderId = created.body.data.id;
+
+      await request(app.getHttpServer())
+        .patch(`/v1/orders/${orderId}/status`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ status: 'PAID' })
+        .expect(HttpStatus.OK);
+
+      process.env.TEST_ENV = originalTestEnv;
+    });
+
+    it('DELETE /v1/orders/:id - should block normal user (403 Forbidden)', async () => {
+      const originalTestEnv = process.env.TEST_ENV;
+      process.env.TEST_ENV = 'false';
+
+      await request(app.getHttpServer())
+        .delete('/v1/orders/123e4567-e89b-12d3-a456-426614174000')
+        .set('Authorization', `Bearer ${userToken}`)
+        .expect(HttpStatus.FORBIDDEN);
+
+      process.env.TEST_ENV = originalTestEnv;
+    });
+
+    it('DELETE /v1/orders/:id - should allow admin user', async () => {
+      const originalTestEnv = process.env.TEST_ENV;
+      process.env.TEST_ENV = 'false';
+
+      const payload = { items: [{ productId: 'delete', quantity: 1, price: 10 }] };
+      const created = await request(app.getHttpServer())
+        .post('/v1/orders')
+        .set('idempotency-key', 'order-delete-key')
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send(payload)
+        .expect(HttpStatus.CREATED);
+      const orderId = created.body.data.id;
+
+      await request(app.getHttpServer())
+        .delete(`/v1/orders/${orderId}`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .expect(HttpStatus.OK); // Orders remove endpoint returns 200 OK, not 204.
+
+      process.env.TEST_ENV = originalTestEnv;
     });
   });
 });
