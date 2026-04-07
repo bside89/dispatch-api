@@ -29,6 +29,7 @@
     "debug": "chmod +x scripts/debug.sh && scripts/debug.sh",
     "stop": "chmod +x scripts/stop.sh && scripts/stop.sh",
     "reset": "chmod +x scripts/reset.sh && scripts/reset.sh",
+    "reset-db": "chmod +x scripts/reset-db.sh && scripts/reset-db.sh",
     "fix-db": "chmod +x scripts/fix-db.sh && scripts/fix-db.sh",
     "create-db": "chmod +x scripts/create-db.sh && scripts/create-db.sh",
     "docker:up": "docker compose up -d",
