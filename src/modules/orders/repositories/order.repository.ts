@@ -18,9 +18,7 @@ export class OrderRepository extends BaseRepository<Order> {
     super(repository);
   }
 
-  async findAllWithFilters(
-    query: Partial<OrderQueryDto>,
-  ): Promise<PaginatedResultDto<Order>> {
+  async filter(query: Partial<OrderQueryDto>): Promise<PaginatedResultDto<Order>> {
     const queryBuilder = this.createQueryBuilder(aliasOrder).leftJoinAndSelect(
       order('items'),
       'items',

@@ -35,7 +35,7 @@ export class OrderProcessor
   }
 
   async beforeApplicationShutdown(): Promise<void> {
-    await this.worker.pause(true);
+    await this.worker.close();
   }
 
   // Main method

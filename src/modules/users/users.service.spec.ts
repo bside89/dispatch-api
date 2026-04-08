@@ -17,11 +17,11 @@ describe(UsersService.name, () => {
           provide: UserRepository,
           useValue: {
             findById: jest.fn(),
-            findOneWhere: jest.fn(),
+            findOne: jest.fn(),
             createEntity: jest.fn(),
             save: jest.fn(),
             delete: jest.fn(),
-            findAllWithFilters: jest.fn(),
+            filter: jest.fn(),
           },
         },
         {

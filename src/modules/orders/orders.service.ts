@@ -127,7 +127,7 @@ export class OrdersService extends BaseService {
       return cachedResult;
     }
 
-    const result = await this.orderRepository.findAllWithFilters(queryDto);
+    const result = await this.orderRepository.filter(queryDto);
 
     this.logger.debug(`Found ${result.data.length} orders`, {
       page: queryDto.page,

@@ -19,9 +19,7 @@ export class UserRepository extends BaseRepository<User> {
     super(repository);
   }
 
-  async findAllWithFilters(
-    query: Partial<UserQueryDto>,
-  ): Promise<PaginatedResultDto<User>> {
+  async filter(query: Partial<UserQueryDto>): Promise<PaginatedResultDto<User>> {
     const queryBuilder = this.createQueryBuilder(aliasUser);
 
     if (query.name) {

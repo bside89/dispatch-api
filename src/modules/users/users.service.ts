@@ -112,7 +112,7 @@ export class UsersService extends BaseService {
       return cachedResult;
     }
 
-    const result = await this.userRepository.findAllWithFilters(query);
+    const result = await this.userRepository.filter(query);
 
     await runAndIgnoreError(
       () => this.cacheService.set(cacheKey, result, CACHE_TTL.LIST),

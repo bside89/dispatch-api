@@ -3,7 +3,7 @@ import { PostgreSqlContainer } from '@testcontainers/postgresql';
 import { RedisContainer } from '@testcontainers/redis';
 
 export default async () => {
-  console.log('\nStarting Testcontainers for Integration Tests...');
+  console.log('\nStarting Testcontainers...');
 
   const postgres = await new PostgreSqlContainer('postgres:15')
     .withDatabase('test_db')
