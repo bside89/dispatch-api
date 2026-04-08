@@ -11,7 +11,7 @@ export abstract class BaseController {
 
   protected success<T>(
     data: T,
-    message = 'Opperation successful',
+    message = 'Operation successful',
   ): SuccessResponseDto<T> {
     return {
       success: true,
