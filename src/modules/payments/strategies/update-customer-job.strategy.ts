@@ -7,18 +7,18 @@ import { DataSource } from 'typeorm';
 import { UserRepository } from '@/modules/users/repositories/user.repository';
 import { OrderRepository } from '@/modules/orders/repositories/order.repository';
 import { CacheService } from '@/shared/modules/cache/cache.service';
-import { PaymentsService } from '../payments.service';
+import { plainToInstance } from 'class-transformer';
+import { PaymentsGatewayService } from '@/modules/payments-gateway/payments-gateway.service';
+import { CustomerResponseDto } from '@/modules/payments-gateway/dto/customer-response.dto';
 import {
   UpdateCustomerAddressDto,
   UpdateCustomerDto,
-} from '../dto/update-customer.dto';
-import { plainToInstance } from 'class-transformer';
-import { CustomerResponseDto } from '../dto/customer-response.dto';
+} from '@/modules/payments-gateway/dto/update-customer.dto';
 
 @Injectable()
 export class UpdateCustomerJobStrategy extends BasePaymentJobStrategy<UpdateCustomerJobPayload> {
   constructor(
-    protected readonly paymentsService: PaymentsService,
+    protected readonly paymentsGatewayService: PaymentsGatewayService,
     protected readonly cacheService: CacheService,
     protected readonly orderRepository: OrderRepository,
     protected readonly userRepository: UserRepository,
@@ -27,7 +27,7 @@ export class UpdateCustomerJobStrategy extends BasePaymentJobStrategy<UpdateCust
   ) {
     super(
       UpdateCustomerJobStrategy.name,
-      paymentsService,
+      paymentsGatewayService,
       cacheService,
       orderRepository,
       userRepository,
@@ -68,7 +68,10 @@ export class UpdateCustomerJobStrategy extends BasePaymentJobStrategy<UpdateCust
     data: UpdateCustomerJobPayload,
   ): Promise<CustomerResponseDto> {
     const updateCustomerDto = this.toUpdateCustomerDto(data);
-    return this.paymentsService.customersUpdate(data.customerId, updateCustomerDto);
+    return this.paymentsGatewayService.customersUpdate(
+      data.customerId,
+      updateCustomerDto,
+    );
   }
 
   private toUpdateCustomerDto(data: UpdateCustomerJobPayload): UpdateCustomerDto {

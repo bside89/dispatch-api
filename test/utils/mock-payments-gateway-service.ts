@@ -1,4 +1,4 @@
-import { PaymentsService } from '@/modules/payments/payments.service';
+import { PaymentsGatewayService } from '@/modules/payments-gateway/payments-gateway.service';
 
 const makeCustomer = (id: string) => ({
   id,
@@ -21,8 +21,8 @@ const makeCustomer = (id: string) => ({
   livemode: false,
 });
 
-export const paymentsServiceMock: Pick<
-  PaymentsService,
+export const paymentsGatewayServiceMock: Pick<
+  PaymentsGatewayService,
   | 'customersCreate'
   | 'customersUpdate'
   | 'customersDelete'

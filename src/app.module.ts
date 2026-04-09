@@ -30,6 +30,7 @@ import {
   ORDER_QUEUE_TOKEN,
 } from './shared/constants/queue-tokens';
 import { PaymentsModule } from './modules/payments/payments.module';
+import { PaymentsGatewayModule } from './modules/payments-gateway/payments-gateway.module';
 
 @Module({
   imports: [
@@ -96,6 +97,7 @@ import { PaymentsModule } from './modules/payments/payments.module';
     OutboxModule,
     TerminusModule,
     PaymentsModule,
+    PaymentsGatewayModule,
   ],
   controllers: [AppController],
   providers: [

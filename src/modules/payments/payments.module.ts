@@ -1,8 +1,6 @@
 import { Module } from '@nestjs/common';
 import { PaymentsController } from './payments.controller';
 import { PaymentsService } from './payments.service';
-import { StripeCustomersGateway } from './gateways/stripe-customers.gateway';
-import { stripeClientProvider } from './providers/stripe-client.provider';
 import { PaymentsProcessor } from './processors/payments.processor';
 import { UsersModule } from '../users/users.module';
 import { OrdersModule } from '../orders/orders.module';
@@ -12,14 +10,13 @@ import {
   UpdateCustomerJobStrategy,
 } from './strategies';
 import { PaymentJobHandlerFactory } from './factories/payment-job-handler.factory';
+import { PaymentsGatewayModule } from '../payments-gateway/payments-gateway.module';
 
 @Module({
-  imports: [UsersModule, OrdersModule],
+  imports: [UsersModule, OrdersModule, PaymentsGatewayModule],
   controllers: [PaymentsController],
   providers: [
     PaymentsService,
-    StripeCustomersGateway,
-    stripeClientProvider,
     PaymentsProcessor,
     PaymentJobHandlerFactory,
     CreateCustomerJobStrategy,

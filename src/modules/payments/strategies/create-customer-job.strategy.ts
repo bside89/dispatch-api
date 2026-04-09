@@ -3,23 +3,23 @@ import { CreateCustomerJobPayload } from '@/shared/payloads/payment-job.payload'
 import { BasePaymentJobStrategy } from './base-payment-job.strategy';
 import { Job } from 'bullmq';
 import { plainToInstance } from 'class-transformer';
-import {
-  CreateCustomerAddressDto,
-  CreateCustomerDto,
-} from '../dto/create-customer.dto';
 import { BaseAddressDto } from '@/shared/dto/base-address.dto';
-import { PaymentsService } from '../payments.service';
 import { CacheService } from '@/shared/modules/cache/cache.service';
 import { OrderRepository } from '@/modules/orders/repositories/order.repository';
 import { UserRepository } from '@/modules/users/repositories/user.repository';
 import { DataSource } from 'typeorm';
 import Redlock from 'redlock';
-import { CustomerResponseDto } from '../dto/customer-response.dto';
+import { PaymentsGatewayService } from '@/modules/payments-gateway/payments-gateway.service';
+import { CustomerResponseDto } from '@/modules/payments-gateway/dto/customer-response.dto';
+import {
+  CreateCustomerAddressDto,
+  CreateCustomerDto,
+} from '@/modules/payments-gateway/dto/create-customer.dto';
 
 @Injectable()
 export class CreateCustomerJobStrategy extends BasePaymentJobStrategy<CreateCustomerJobPayload> {
   constructor(
-    protected readonly paymentsService: PaymentsService,
+    protected readonly paymentsGatewayService: PaymentsGatewayService,
     protected readonly cacheService: CacheService,
     protected readonly orderRepository: OrderRepository,
     protected readonly userRepository: UserRepository,
@@ -28,7 +28,7 @@ export class CreateCustomerJobStrategy extends BasePaymentJobStrategy<CreateCust
   ) {
     super(
       CreateCustomerJobStrategy.name,
-      paymentsService,
+      paymentsGatewayService,
       cacheService,
       orderRepository,
       userRepository,
@@ -73,7 +73,7 @@ export class CreateCustomerJobStrategy extends BasePaymentJobStrategy<CreateCust
     data: CreateCustomerJobPayload,
   ): Promise<CustomerResponseDto> {
     const createCustomerDto = this.toCreateCustomerDto(data);
-    return this.paymentsService.customersCreate(createCustomerDto);
+    return this.paymentsGatewayService.customersCreate(createCustomerDto);
   }
 
   private toCreateCustomerDto(data: CreateCustomerJobPayload): CreateCustomerDto {

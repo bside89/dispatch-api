@@ -6,10 +6,9 @@ import Redis from 'ioredis';
 import { REDIS_CLIENT } from '@/shared/constants/redis-client.constant';
 import { UsersService } from '@/modules/users/users.service';
 import { OrdersService } from '@/modules/orders/orders.service';
-import { PaymentsService } from '@/modules/payments/payments.service';
 import { OutboxRepository } from '@/shared/modules/outbox/repositories/outbox.repository';
 import { cleanDatabase, cleanRedis } from './utils/database-cleaner';
-import { paymentsServiceMock } from './utils/mock-payments-service';
+import { paymentsGatewayServiceMock } from './utils/mock-payments-gateway-service';
 import { INestApplication } from '@nestjs/common';
 import { Queue, Job } from 'bullmq';
 import { getQueueToken } from '@nestjs/bullmq';
@@ -18,6 +17,7 @@ import { EVENT_QUEUE_TOKEN } from '@/shared/constants/queue-tokens';
 import { DeliverOrderJobStrategy } from '@/modules/orders/strategies/deliver-order-job.strategy';
 import { ProcessOrderJobStrategy } from '@/modules/orders/strategies/process-order-job.strategy';
 import { OrderProcessor } from '@/modules/orders/processors/order.processor';
+import { PaymentsGatewayService } from '@/modules/payments-gateway/payments-gateway.service';
 
 // Mock the delay function to resolve almost instantly.
 // This eliminates the simulated processing delays (1s-3s) used by
@@ -51,8 +51,8 @@ describe('Orders (Integration)', () => {
     const module: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
     })
-      .overrideProvider(PaymentsService)
-      .useValue(paymentsServiceMock)
+      .overrideProvider(PaymentsGatewayService)
+      .useValue(paymentsGatewayServiceMock)
       .compile();
 
     app = module.createNestApplication();

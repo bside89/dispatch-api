@@ -8,7 +8,9 @@ import Redlock from 'redlock';
 import { EventJobHandlerFactory } from '../factories/event-job-handler.factory';
 import { EVENT_KEY } from '../constants/event.key';
 import { EVENT_QUEUE_TOKEN } from '@/shared/constants/queue-tokens';
+import { Injectable } from '@nestjs/common';
 
+@Injectable()
 @Processor(EVENT_QUEUE_TOKEN, { maxStalledCount: 1 })
 export class EventProcessor extends BaseProcessor {
   constructor(

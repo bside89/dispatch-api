@@ -7,8 +7,8 @@ import { cleanDatabase, cleanRedis } from './utils/database-cleaner';
 import { DataSource } from 'typeorm';
 import Redis from 'ioredis';
 import { REDIS_CLIENT } from '@/shared/constants/redis-client.constant';
-import { PaymentsService } from '@/modules/payments/payments.service';
-import { paymentsServiceMock } from './utils/mock-payments-service';
+import { paymentsGatewayServiceMock } from './utils/mock-payments-gateway-service';
+import { PaymentsGatewayService } from '@/modules/payments-gateway/payments-gateway.service';
 
 describe('Users (E2E)', () => {
   let app: INestApplication;
@@ -23,8 +23,8 @@ describe('Users (E2E)', () => {
     const module: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
     })
-      .overrideProvider(PaymentsService)
-      .useValue(paymentsServiceMock)
+      .overrideProvider(PaymentsGatewayService)
+      .useValue(paymentsGatewayServiceMock)
       .compile();
 
     app = module.createNestApplication();

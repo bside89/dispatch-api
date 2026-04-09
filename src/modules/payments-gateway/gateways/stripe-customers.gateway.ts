@@ -1,0 +1,72 @@
+import { Injectable, NotFoundException, Inject } from '@nestjs/common';
+import Stripe from 'stripe';
+import { BaseService } from '@/shared/services/base.service';
+import {
+  StripeCustomerResponse,
+  DeletedStripeCustomer,
+} from '../types/payments.types';
+import { PaymentCustomer } from '../types/customer.types';
+import { STRIPE_CLIENT } from '../constants/stripe-client.token';
+import { CreateCustomerDto } from '@/modules/payments-gateway/dto/create-customer.dto';
+import { UpdateCustomerDto } from '@/modules/payments-gateway/dto/update-customer.dto';
+import { StripeCustomerMapper } from '../utils/stripe-customer-mapper';
+
+@Injectable()
+export class StripeCustomersGateway extends BaseService {
+  constructor(@Inject(STRIPE_CLIENT) private readonly stripe: Stripe.Stripe) {
+    super(StripeCustomersGateway.name);
+  }
+
+  async create(createCustomerDto: CreateCustomerDto): Promise<PaymentCustomer> {
+    const customer = await this.stripe.customers.create(
+      StripeCustomerMapper.mapToStripeCustomerCreateParams(createCustomerDto),
+    );
+    return StripeCustomerMapper.mapToPaymentCustomer(customer);
+  }
+
+  async list(): Promise<PaymentCustomer[]> {
+    const customers = await this.stripe.customers.list();
+    return StripeCustomerMapper.mapToPaymentCustomerList(customers.data);
+  }
+
+  async retrieve(customerId: string): Promise<PaymentCustomer> {
+    const customer = await this.stripe.customers.retrieve(customerId);
+
+    if (this.isDeletedCustomer(customer)) {
+      throw new NotFoundException(`Stripe customer ${customerId} was deleted`);
+    }
+
+    return StripeCustomerMapper.mapToPaymentCustomer(customer);
+  }
+
+  async update(
+    customerId: string,
+    updateParams: Partial<UpdateCustomerDto>,
+  ): Promise<PaymentCustomer> {
+    const customer = await this.stripe.customers.update(
+      customerId,
+      StripeCustomerMapper.mapToStripeCustomerCreateParams(
+        updateParams as CreateCustomerDto,
+      ),
+    );
+
+    if (this.isDeletedCustomer(customer)) {
+      throw new NotFoundException(`Stripe customer ${customerId} was deleted`);
+    }
+
+    return StripeCustomerMapper.mapToPaymentCustomer(customer);
+  }
+
+  async delete(customerId: string): Promise<void> {
+    const result = await this.stripe.customers.del(customerId);
+    if (!result.deleted) {
+      throw new NotFoundException(`Stripe customer ${customerId} not found`);
+    }
+  }
+
+  private isDeletedCustomer(
+    customer: StripeCustomerResponse,
+  ): customer is DeletedStripeCustomer {
+    return 'deleted' in customer && customer.deleted === true;
+  }
+}

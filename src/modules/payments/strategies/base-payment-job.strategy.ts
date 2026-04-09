@@ -5,19 +5,19 @@ import { BaseJobPayload } from '@/shared/payloads/base-job.payload';
 import { BaseJobStrategy } from '@/shared/strategies/base-job.strategy';
 import Redlock from 'redlock';
 import { DataSource } from 'typeorm';
-import { PaymentsService } from '../payments.service';
 import { ORDER_KEY } from '@/shared/modules/cache/constants/order.key';
 import { Order } from '@/modules/orders/entities/order.entity';
 import { UseLock } from '@/shared/decorators/lock.decorator';
 import { User } from '@/modules/users/entities/user.entity';
 import { USER_KEY } from '@/shared/modules/cache/constants/user.key';
+import { PaymentsGatewayService } from '@/modules/payments-gateway/payments-gateway.service';
 
 export abstract class BasePaymentJobStrategy<
   T extends BaseJobPayload,
 > extends BaseJobStrategy<T> {
   constructor(
     protected readonly jobName: string,
-    protected readonly paymentsService: PaymentsService,
+    protected readonly paymentsGatewayService: PaymentsGatewayService,
     protected readonly cacheService: CacheService,
     protected readonly orderRepository: OrderRepository,
     protected readonly userRepository: UserRepository,

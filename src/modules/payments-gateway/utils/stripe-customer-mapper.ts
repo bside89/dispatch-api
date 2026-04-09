@@ -1,74 +1,24 @@
-import { Injectable, NotFoundException, Inject } from '@nestjs/common';
-import Stripe from 'stripe';
-import { BaseService } from '@/shared/services/base.service';
 import {
   CreateCustomerDto,
   CreateCustomerShippingDto,
-} from '../dto/create-customer.dto';
+} from '@/modules/payments-gateway/dto/create-customer.dto';
+import { PaymentCustomer } from '../types/customer.types';
 import {
-  StripeCustomerCreateParams,
   StripeCustomer,
+  StripeCustomerCreateParams,
+  StripeCustomerCreateTaxIdType,
   StripeCustomerList,
   StripeCustomerListItem,
-  StripeCustomerResponse,
-  DeletedStripeCustomer,
-  StripeCustomerCreateTaxIdType,
 } from '../types/payments.types';
-import { PaymentCustomer } from '../types/customer.types';
-import { STRIPE_CLIENT } from '../constants/stripe-client.token';
 
-@Injectable()
-export class StripeCustomersGateway extends BaseService {
-  constructor(@Inject(STRIPE_CLIENT) private readonly stripe: Stripe.Stripe) {
-    super(StripeCustomersGateway.name);
-  }
-
-  async create(createCustomerDto: CreateCustomerDto): Promise<PaymentCustomer> {
-    const customer = await this.stripe.customers.create(
-      this.mapToStripeCustomerCreateParams(createCustomerDto),
-    );
-    return this.mapToPaymentCustomer(customer);
-  }
-
-  async list(): Promise<PaymentCustomer[]> {
-    const customers = await this.stripe.customers.list();
-    return this.mapToPaymentCustomerList(customers.data);
-  }
-
-  async retrieve(customerId: string): Promise<PaymentCustomer> {
-    const customer = await this.stripe.customers.retrieve(customerId);
-
-    if (this.isDeletedCustomer(customer)) {
-      throw new NotFoundException(`Stripe customer ${customerId} was deleted`);
-    }
-
-    return this.mapToPaymentCustomer(customer);
-  }
-
-  async update(
-    customerId: string,
-    updateParams: Partial<CreateCustomerDto>,
-  ): Promise<PaymentCustomer> {
-    const customer = await this.stripe.customers.update(
-      customerId,
-      this.mapToStripeCustomerCreateParams(updateParams as CreateCustomerDto),
-    );
-
-    if (this.isDeletedCustomer(customer)) {
-      throw new NotFoundException(`Stripe customer ${customerId} was deleted`);
-    }
-
-    return this.mapToPaymentCustomer(customer);
-  }
-
-  async delete(customerId: string): Promise<void> {
-    const result = await this.stripe.customers.del(customerId);
-    if (!result.deleted) {
-      throw new NotFoundException(`Stripe customer ${customerId} not found`);
-    }
-  }
-
-  private mapToStripeCustomerCreateParams(
+/**
+ * Mapper class to convert between Stripe types and internal application types
+ * related to customers. This class provides static methods to map data for creating
+ * customers, as well as mapping Stripe customer objects to the internal
+ * PaymentCustomer type used within the application.
+ */
+export class StripeCustomerMapper {
+  static mapToStripeCustomerCreateParams(
     createCustomerDto: CreateCustomerDto,
   ): StripeCustomerCreateParams {
     return {
@@ -140,7 +90,7 @@ export class StripeCustomersGateway extends BaseService {
     };
   }
 
-  private mapToStripeAddress(
+  static mapToStripeAddress(
     address?: CreateCustomerDto['address'],
   ): StripeCustomerCreateParams['address'] {
     if (!address) {
@@ -157,7 +107,7 @@ export class StripeCustomersGateway extends BaseService {
     };
   }
 
-  private mapToStripeShippingAddress(
+  static mapToStripeShippingAddress(
     address: CreateCustomerShippingDto['address'],
   ): Exclude<NonNullable<StripeCustomerCreateParams['shipping']>, ''>['address'] {
     return {
@@ -170,13 +120,11 @@ export class StripeCustomersGateway extends BaseService {
     };
   }
 
-  private mapToPaymentCustomerList(
-    customers: StripeCustomerList,
-  ): PaymentCustomer[] {
+  static mapToPaymentCustomerList(customers: StripeCustomerList): PaymentCustomer[] {
     return customers.map((customer) => this.mapToPaymentCustomer(customer));
   }
 
-  private mapToPaymentCustomer(
+  static mapToPaymentCustomer(
     customer: StripeCustomer | StripeCustomerListItem,
   ): PaymentCustomer {
     return {
@@ -231,11 +179,5 @@ export class StripeCustomersGateway extends BaseService {
       createdAt: new Date(customer.created * 1000),
       livemode: customer.livemode,
     };
-  }
-
-  private isDeletedCustomer(
-    customer: StripeCustomerResponse,
-  ): customer is DeletedStripeCustomer {
-    return 'deleted' in customer && customer.deleted === true;
   }
 }

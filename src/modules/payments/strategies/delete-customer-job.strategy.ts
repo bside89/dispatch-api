@@ -7,12 +7,12 @@ import { DataSource } from 'typeorm';
 import { UserRepository } from '@/modules/users/repositories/user.repository';
 import { OrderRepository } from '@/modules/orders/repositories/order.repository';
 import { CacheService } from '@/shared/modules/cache/cache.service';
-import { PaymentsService } from '../payments.service';
+import { PaymentsGatewayService } from '@/modules/payments-gateway/payments-gateway.service';
 
 @Injectable()
 export class DeleteCustomerJobStrategy extends BasePaymentJobStrategy<DeleteCustomerJobPayload> {
   constructor(
-    protected readonly paymentsService: PaymentsService,
+    protected readonly paymentsGatewayService: PaymentsGatewayService,
     protected readonly cacheService: CacheService,
     protected readonly orderRepository: OrderRepository,
     protected readonly userRepository: UserRepository,
@@ -21,7 +21,7 @@ export class DeleteCustomerJobStrategy extends BasePaymentJobStrategy<DeleteCust
   ) {
     super(
       DeleteCustomerJobStrategy.name,
-      paymentsService,
+      paymentsGatewayService,
       cacheService,
       orderRepository,
       userRepository,
@@ -63,6 +63,6 @@ export class DeleteCustomerJobStrategy extends BasePaymentJobStrategy<DeleteCust
   }
 
   private async deleteCustomer(data: DeleteCustomerJobPayload): Promise<void> {
-    await this.paymentsService.customersDelete(data.customerId);
+    await this.paymentsGatewayService.customersDelete(data.customerId);
   }
 }
