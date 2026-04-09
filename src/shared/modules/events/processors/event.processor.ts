@@ -48,4 +48,8 @@ export class EventProcessor extends BaseProcessor {
   get concurrencyMultiplier(): number {
     return 2;
   }
+
+  get concurrency(): number {
+    return Number(this.configService.get<string>('QUEUE_EVENT_CONCURRENCY')) || 30;
+  }
 }

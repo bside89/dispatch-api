@@ -30,8 +30,7 @@ export abstract class BaseProcessor
   }
 
   onApplicationBootstrap() {
-    const concurrency = this.configService.get<string>('QUEUE_ORDER_CONCURRENCY');
-    this.setupConcurrency(Number(concurrency));
+    this.setupConcurrency();
   }
 
   async beforeApplicationShutdown(): Promise<void> {
@@ -87,15 +86,14 @@ export abstract class BaseProcessor
 
   /**
    * Sets up the concurrency for the worker.
-   * @param concurrency The desired concurrency level. If not provided, it will be
-   * calculated based on the number of CPU cores and a multiplier.
+   * The concurrency level is determined by the processor's `concurrency` property.
    */
-  protected setupConcurrency(concurrency?: number) {
+  protected setupConcurrency() {
     const multiplier = this.concurrencyMultiplier;
     const cpuCount = os.cpus().length || 1;
     const resolved =
-      Number.isFinite(concurrency) && concurrency > 0
-        ? concurrency
+      Number.isFinite(this.concurrency) && this.concurrency > 0
+        ? this.concurrency
         : cpuCount * multiplier;
     this.worker.concurrency = resolved;
   }
@@ -108,4 +106,11 @@ export abstract class BaseProcessor
    * overwhelming the system.
    */
   protected abstract get concurrencyMultiplier(): number;
+
+  /**
+   * Each processor can define its own concurrency level. This allows for fine-tuned
+   * control over how many jobs a processor can handle simultaneously, based on the
+   * expected workload and resource intensity of the jobs it processes.
+   */
+  protected abstract get concurrency(): number;
 }

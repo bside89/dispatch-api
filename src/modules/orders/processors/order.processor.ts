@@ -46,4 +46,8 @@ export class OrderProcessor extends BaseProcessor {
   get concurrencyMultiplier(): number {
     return 4;
   }
+
+  get concurrency(): number {
+    return Number(this.configService.get<string>('QUEUE_ORDER_CONCURRENCY')) || 15;
+  }
 }
