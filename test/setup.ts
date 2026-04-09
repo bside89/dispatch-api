@@ -29,6 +29,7 @@ export default async () => {
   process.env.TEST_ENV = 'true';
   process.env.JWT_ACCESS_SECRET = 'test-jwt-access-secret';
   process.env.JWT_REFRESH_SECRET = 'test-jwt-refresh-secret';
+  process.env.STRIPE_SECRET_KEY = 'sk_test_your_secret_key_here';
   process.env.QUEUE_ORDER_CONCURRENCY = '1';
   process.env.QUEUE_EVENT_CONCURRENCY = '1';
 
