@@ -56,7 +56,7 @@ export class UsersController extends BaseController {
     summary: 'Create a new user',
     description:
       'Creates a new user with the provided information. ' +
-      'Requires Idempotency-Key header to prevent duplicate users.',
+      'Requires idempotency-key header to prevent duplicate users.',
   })
   @ApiHeader({
     name: 'idempotency-key',
@@ -73,7 +73,7 @@ export class UsersController extends BaseController {
     description: 'Email already exists',
   })
   @ApiBadRequestResponse({
-    description: 'Invalid user data or missing Idempotency-Key header',
+    description: 'Invalid user data or missing idempotency-key header',
   })
   @ApiBody({
     type: CreateUserDto,
@@ -84,7 +84,7 @@ export class UsersController extends BaseController {
     @Headers('idempotency-key') idempotencyKey?: string,
   ) {
     if (!idempotencyKey) {
-      throw new BadRequestException('Idempotency-Key header is required');
+      throw new BadRequestException('idempotency-key header is required');
     }
 
     this.logger.debug('POST /users - Creating user', {

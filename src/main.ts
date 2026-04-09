@@ -46,9 +46,9 @@ async function bootstrap() {
 
   // CORS configuration
   app.enableCors({
-    origin: true,
+    origin: configService.get('TEST_ENV') === 'true' ? '*' : 'http://localhost:5173',
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'idempotency-key'],
   });
 
   // Swagger configuration

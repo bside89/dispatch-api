@@ -54,7 +54,7 @@ export class OrdersController extends BaseController {
   @ApiOperation({
     summary: 'Create a new order',
     description:
-      'Creates a new order with items and adds it to the processing queue. Requires Idempotency-Key header to prevent duplicate orders.',
+      'Creates a new order with items and adds it to the processing queue. Requires idempotency-key header to prevent duplicate orders.',
   })
   @ApiHeader({
     name: 'idempotency-key',
@@ -68,7 +68,7 @@ export class OrdersController extends BaseController {
     type: SuccessResponseDto<OrderResponseDto>,
   })
   @ApiBadRequestResponse({
-    description: 'Invalid input data or missing Idempotency-Key header',
+    description: 'Invalid input data or missing idempotency-key header',
   })
   @ApiBody({
     type: CreateOrderDto,
@@ -80,7 +80,7 @@ export class OrdersController extends BaseController {
     @GetUser() user: RequestUser,
   ) {
     if (!idempotencyKey) {
-      throw new BadRequestException('Idempotency-Key header is required');
+      throw new BadRequestException('idempotency-key header is required');
     }
 
     this.logger.debug('POST /orders - Creating order', {

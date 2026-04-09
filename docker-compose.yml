@@ -3,6 +3,7 @@ version: '3.8'
 services:
   postgres:
     image: postgres:15
+    container_name: postgres
     restart: always
     env_file:
       - .env.docker
@@ -27,6 +28,7 @@ services:
 
   redis:
     image: redis:7-alpine
+    container_name: redis
     restart: always
     env_file:
       - .env.docker
@@ -39,7 +41,7 @@ services:
 
   promtail:
     image: grafana/promtail:3.6.8
-    container_name: promtail
+    container_name: grafana-promtail
     environment:
       - DOCKER_API_VERSION=1.44
     volumes:
@@ -51,6 +53,7 @@ services:
 
   loki:
     image: grafana/loki:2.9.0
+    container_name: grafana-loki
     ports:
       - '3100:3100'
     volumes:
@@ -60,6 +63,7 @@ services:
 
   grafana:
     image: grafana/grafana:12.4.2
+    container_name: grafana
     ports:
       - '3001:3000'
     environment:
@@ -71,6 +75,7 @@ services:
 
   stripe-mock:
     image: stripe/stripe-mock:v0.197.0
+    container_name: stripe-mock
     ports:
       - '12111:12111'
     networks:
