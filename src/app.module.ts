@@ -29,6 +29,7 @@ import {
   EVENT_QUEUE_TOKEN,
   ORDER_QUEUE_TOKEN,
 } from './shared/constants/queue-tokens';
+import { PaymentsModule } from './modules/payments/payments.module';
 
 @Module({
   imports: [
@@ -94,6 +95,7 @@ import {
     CacheModule,
     OutboxModule,
     TerminusModule,
+    PaymentsModule,
   ],
   controllers: [AppController],
   providers: [

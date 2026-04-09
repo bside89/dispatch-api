@@ -6,6 +6,11 @@ import {
   RefundOrderJobPayload,
   ShipOrderJobPayload,
 } from '@/shared/payloads/order-job.payload';
+import {
+  CreateCustomerJobPayload,
+  DeleteCustomerJobPayload,
+  UpdateCustomerJobPayload,
+} from '@/shared/payloads/payment-job.payload';
 
 export type OutboxPayload =
   | ProcessOrderJobPayload
@@ -13,4 +18,7 @@ export type OutboxPayload =
   | DeliverOrderJobPayload
   | CancelOrderJobPayload
   | RefundOrderJobPayload
-  | NotifyUserJobPayload;
+  | NotifyUserJobPayload
+  | CreateCustomerJobPayload
+  | UpdateCustomerJobPayload
+  | DeleteCustomerJobPayload;

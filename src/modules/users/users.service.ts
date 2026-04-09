@@ -21,13 +21,21 @@ import { runAndIgnoreError } from '@/shared/helpers/functions';
 import { UseLock } from '@/shared/decorators/lock.decorator';
 import Redlock from 'redlock';
 import { BaseService } from '@/shared/services/base.service';
-import { USER_KEY } from './constants/user.key';
+import { USER_KEY } from '../../shared/modules/cache/constants/user.key';
+import { OutboxService } from '@/shared/modules/outbox/outbox.service';
+import { OutboxType } from '@/shared/modules/outbox/enums/outbox-type.enum';
+import {
+  CreateCustomerJobPayload,
+  DeleteCustomerJobPayload,
+  UpdateCustomerJobPayload,
+} from '@/shared/payloads/payment-job.payload';
 
 @Injectable()
 export class UsersService extends BaseService {
   constructor(
     private readonly userRepository: UserRepository,
     protected readonly cacheService: CacheService,
+    protected readonly outboxService: OutboxService,
     protected readonly dataSource: DataSource, // Used in @Transactional()
     protected readonly redlock: Redlock, // Used in @UseLock()
   ) {
@@ -80,6 +88,17 @@ export class UsersService extends BaseService {
     const savedUser = await this.userRepository.save(user);
 
     const userMapped = EntityMapper.map(savedUser, UserResponseDto);
+
+    // Add outbox message for creating Stripe customer (job)
+    await this.outboxService.add(
+      OutboxType.PAYMENT_CREATE_CUSTOMER,
+      new CreateCustomerJobPayload(
+        savedUser.id,
+        savedUser.name,
+        savedUser.email,
+        dto.address,
+      ),
+    );
 
     await this.cacheService.set(
       idempotencyKeyFormatted,
@@ -233,6 +252,18 @@ export class UsersService extends BaseService {
 
     this.logger.debug(`User updated successfully: ${updatedUser.id}`);
 
+    // Add outbox message for updating Stripe customer (job)
+    await this.outboxService.add(
+      OutboxType.PAYMENT_UPDATE_CUSTOMER,
+      new UpdateCustomerJobPayload(
+        updatedUser.id,
+        updatedUser.customerId,
+        updatedUser.name,
+        updatedUser.email,
+        updateUserDto.address,
+      ),
+    );
+
     await this.cacheService.deleteBulk({
       keys: [USER_KEY.CACHE_FIND_BY_EMAIL(updatedUser.email)],
       patterns: [USER_KEY.CACHE_FIND_ALL_PATTERN()],
@@ -311,6 +342,12 @@ export class UsersService extends BaseService {
     await this.userRepository.deleteById(id);
 
     this.logger.debug('User deleted successfully', { userId: id });
+
+    // Add outbox message for deleting Stripe customer (job)
+    await this.outboxService.add(
+      OutboxType.PAYMENT_DELETE_CUSTOMER,
+      new DeleteCustomerJobPayload(user.id, user.customerId, user.name, user.email),
+    );
 
     await this.cacheService.deleteBulk({
       keys: [USER_KEY.CACHE_FIND_ONE(id), USER_KEY.CACHE_FIND_BY_EMAIL(user.email)],

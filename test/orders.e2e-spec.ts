@@ -7,11 +7,15 @@ import { cleanDatabase, cleanRedis } from './utils/database-cleaner';
 import { DataSource } from 'typeorm';
 import Redis from 'ioredis';
 import { REDIS_CLIENT } from '@/shared/constants/redis-client.constant';
+import { PaymentsService } from '@/modules/payments/payments.service';
+import { OutboxRepository } from '@/shared/modules/outbox/repositories/outbox.repository';
+import { paymentsServiceMock } from './utils/mock-payments-service';
 
 describe('Orders (E2E)', () => {
   let app: INestApplication;
   let dataSource: DataSource;
   let redisClient: Redis;
+  let outboxRepository: OutboxRepository;
 
   let adminToken: string;
   let userToken: string;
@@ -19,7 +23,10 @@ describe('Orders (E2E)', () => {
   beforeAll(async () => {
     const module: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
-    }).compile();
+    })
+      .overrideProvider(PaymentsService)
+      .useValue(paymentsServiceMock)
+      .compile();
 
     app = module.createNestApplication();
 
@@ -35,11 +42,12 @@ describe('Orders (E2E)', () => {
 
     dataSource = app.get<DataSource>(DataSource);
     redisClient = app.get<Redis>(REDIS_CLIENT);
+    outboxRepository = app.get<OutboxRepository>(OutboxRepository);
   });
 
   afterAll(async () => {
     await app.close();
-  });
+  }, 30000);
 
   beforeEach(async () => {
     await cleanDatabase(dataSource);
@@ -158,6 +166,38 @@ describe('Orders (E2E)', () => {
 
       expect(result2.body.data.id).toBe(result1.body.data.id);
       expect(result2.body.data.status).toBe(result1.body.data.status);
+    });
+
+    it('POST /v1/orders - should rollback the Order when Outbox insertion fails', async () => {
+      const saveSpy = jest
+        .spyOn(outboxRepository, 'save')
+        .mockRejectedValueOnce(new Error('Simulated Outbox insertion failure'));
+
+      try {
+        const payload = {
+          items: [{ productId: 'product-rollback', quantity: 1, price: 7500 }],
+        };
+
+        await request(app.getHttpServer())
+          .post('/v1/orders')
+          .set('idempotency-key', 'e2e-order-rollback-key')
+          .set('Authorization', `Bearer ${adminToken}`)
+          .send(payload)
+          .expect(HttpStatus.INTERNAL_SERVER_ERROR);
+
+        const orders = await dataSource.query(
+          `SELECT id FROM orders WHERE "userId" = $1`,
+          [ADMIN_USER.id],
+        );
+        expect(orders).toHaveLength(0);
+
+        const outboxEntries = await dataSource.query(
+          `SELECT id FROM outbox WHERE type = 'ORDER_PROCESS'`,
+        );
+        expect(outboxEntries).toHaveLength(0);
+      } finally {
+        saveSpy.mockRestore();
+      }
     });
 
     it('GET /v1/orders - should return orders list (requires auth)', async () => {

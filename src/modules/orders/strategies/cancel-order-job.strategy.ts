@@ -69,7 +69,7 @@ export class CancelOrderJobStrategy extends BaseOrderJobStrategy<CancelOrderJobP
   private async finish(data: CancelOrderJobPayload) {
     const { orderId, userId, userName } = data;
 
-    await this.lockAndUpdateOrder(orderId, { status: OrderStatus.CANCELLED });
+    await this.updateOrderWithLock(orderId, { status: OrderStatus.CANCELLED });
 
     // Notify the user
     await this.outboxService.add(

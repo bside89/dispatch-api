@@ -9,7 +9,7 @@ fi
 
 if ! docker-compose ps --services --filter "status=running" | grep -q postgres; then
     echo "Starting infrastructure services (PostgreSQL, Redis)..."
-    docker-compose up -d postgres redis promtail loki grafana
+    docker-compose up -d postgres redis promtail loki grafana stripe-mock
     
     echo "⏳ Waiting for services to be ready..."
     sleep 5

@@ -1,6 +1,9 @@
 import { CacheKeyFactory } from '@/shared/modules/cache/factories/cache-key.factory';
-import { OrderQueryDto } from '../dto/order-query.dto';
+import { OrderQueryDto } from '../../../../modules/orders/dto/order-query.dto';
 
+/**
+ * Centralized keys for orders module, especially for caching and idempotency.
+ */
 export const ORDER_KEY = {
   IDEMPOTENCY: (method: string, id: string) =>
     CacheKeyFactory.idempotency('order', method, id),

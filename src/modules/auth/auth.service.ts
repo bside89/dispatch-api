@@ -15,7 +15,7 @@ import { OutboxType } from '@/shared/modules/outbox/enums/outbox-type.enum';
 import { UseLock } from '@/shared/decorators/lock.decorator';
 import Redlock from 'redlock';
 import type { RequestUser } from './interfaces/request-user.interface';
-import { AUTH_KEY } from './constants/auth.key';
+import { AUTH_KEY } from '../../shared/modules/cache/constants/auth.key';
 import type ms from 'ms';
 
 @Injectable()

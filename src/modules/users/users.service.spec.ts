@@ -33,7 +33,9 @@ describe(UsersService.name, () => {
         },
         {
           provide: OutboxService,
-          useValue: {},
+          useValue: {
+            add: jest.fn(),
+          },
         },
         {
           provide: DataSource,

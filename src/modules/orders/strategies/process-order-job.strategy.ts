@@ -52,7 +52,7 @@ export class ProcessOrderJobStrategy extends BaseOrderJobStrategy<ProcessOrderJo
     if (!order.paid) {
       await this.processPayment(job.data, order);
 
-      await this.lockAndUpdateOrder(orderId, { paid: true });
+      await this.updateOrderWithLock(orderId, { paid: true });
     }
 
     await this.finish(job.data);
@@ -127,7 +127,7 @@ export class ProcessOrderJobStrategy extends BaseOrderJobStrategy<ProcessOrderJo
   private async finish(data: ProcessOrderJobPayload) {
     const { orderId, userId, userName } = data;
 
-    await this.lockAndUpdateOrder(orderId, { status: OrderStatus.PAID });
+    await this.updateOrderWithLock(orderId, { status: OrderStatus.PAID });
 
     // Notify the user
     await this.outboxService.add(

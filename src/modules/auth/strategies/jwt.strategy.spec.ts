@@ -5,7 +5,7 @@ import { ConfigService } from '@nestjs/config';
 
 import { JwtStrategy } from './jwt.strategy';
 import { CacheService } from '../../../shared/modules/cache/cache.service';
-import { AUTH_KEY } from '../constants/auth.key';
+import { AUTH_KEY } from '../../../shared/modules/cache/constants/auth.key';
 
 // Stub out the PassportStrategy base so we can instantiate JwtStrategy
 // without a real Passport JWT flow in unit tests.

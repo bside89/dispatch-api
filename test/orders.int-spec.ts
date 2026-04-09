@@ -6,8 +6,10 @@ import Redis from 'ioredis';
 import { REDIS_CLIENT } from '@/shared/constants/redis-client.constant';
 import { UsersService } from '@/modules/users/users.service';
 import { OrdersService } from '@/modules/orders/orders.service';
+import { PaymentsService } from '@/modules/payments/payments.service';
 import { OutboxRepository } from '@/shared/modules/outbox/repositories/outbox.repository';
 import { cleanDatabase, cleanRedis } from './utils/database-cleaner';
+import { paymentsServiceMock } from './utils/mock-payments-service';
 import { INestApplication } from '@nestjs/common';
 import { Queue, Job } from 'bullmq';
 import { getQueueToken } from '@nestjs/bullmq';
@@ -48,7 +50,10 @@ describe('Orders (Integration)', () => {
   beforeAll(async () => {
     const module: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
-    }).compile();
+    })
+      .overrideProvider(PaymentsService)
+      .useValue(paymentsServiceMock)
+      .compile();
 
     app = module.createNestApplication();
     await app.init();
@@ -131,16 +136,14 @@ describe('Orders (Integration)', () => {
 
   describe('Transactional Atomicity', () => {
     it('should rollback the Order when Outbox insertion fails', async () => {
-      // Arrange: create a real user
-      const createdUser = await usersService.create(
-        {
-          name: 'Rollback User',
-          email: 'rollback@test.com',
-          password: 'securePass123',
-        },
-        'idempotency-key-rollback-test',
+      // Arrange: create the user directly in the database so this test stays
+      // focused on the Order transaction and does not enqueue Stripe jobs.
+      const [{ id: userId }] = await dataSource.query(
+        `INSERT INTO "users" (name, email, password, role)
+         VALUES ($1, $2, $3, $4)
+         RETURNING id`,
+        ['Rollback User', 'rollback@test.com', 'securePass123', 'user'],
       );
-      const userId = createdUser.id;
 
       // Force the OutboxRepository.save to throw an error, simulating a DB failure
       const saveSpy = jest
@@ -167,8 +170,11 @@ describe('Orders (Integration)', () => {
       );
       expect(orders).toHaveLength(0);
 
-      // Assert: verify that the Outbox has no entries either
-      const outboxEntries = await dataSource.query(`SELECT id FROM outbox`);
+      // Assert: verify that no Order processing job was persisted in the Outbox.
+      // User creation may enqueue payment jobs, so we only care about the Order flow here.
+      const outboxEntries = await dataSource.query(
+        `SELECT id FROM outbox WHERE type = 'ORDER_PROCESS'`,
+      );
       expect(outboxEntries).toHaveLength(0);
 
       // Cleanup the spy

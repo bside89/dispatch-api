@@ -3,7 +3,10 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { OutboxService } from './outbox.service';
 import { OutboxRepository } from './repositories/outbox.repository';
 import { getQueueToken } from '@nestjs/bullmq';
-import { ORDER_QUEUE_TOKEN } from '@/shared/constants/queue-tokens';
+import {
+  ORDER_QUEUE_TOKEN,
+  PAYMENT_QUEUE_TOKEN,
+} from '@/shared/constants/queue-tokens';
 import { EVENT_BUS } from '../events/constants/event-bus.token';
 import { DataSource } from 'typeorm';
 import { OutboxType } from './enums/outbox-type.enum';
@@ -13,6 +16,7 @@ import {
   CancelOrderJobPayload,
   ProcessOrderJobPayload,
 } from '@/shared/payloads/order-job.payload';
+import { CreateCustomerJobPayload } from '@/shared/payloads/payment-job.payload';
 import { OutboxPayload } from './types/outbox.payload';
 
 const makeOutbox = (overrides: Partial<Outbox> = {}): Outbox =>
@@ -40,6 +44,7 @@ describe(OutboxService.name, () => {
     >
   >;
   let orderQueue: { addBulk: jest.Mock };
+  let paymentQueue: { addBulk: jest.Mock };
   let eventBus: { publish: jest.Mock; publishBulk: jest.Mock };
 
   beforeEach(async () => {
@@ -57,6 +62,13 @@ describe(OutboxService.name, () => {
         },
         {
           provide: getQueueToken(ORDER_QUEUE_TOKEN),
+          useValue: {
+            add: jest.fn(),
+            addBulk: jest.fn(),
+          },
+        },
+        {
+          provide: getQueueToken(PAYMENT_QUEUE_TOKEN),
           useValue: {
             add: jest.fn(),
             addBulk: jest.fn(),
@@ -81,6 +93,7 @@ describe(OutboxService.name, () => {
     service = module.get<OutboxService>(OutboxService);
     repository = module.get(OutboxRepository);
     orderQueue = module.get(getQueueToken(ORDER_QUEUE_TOKEN));
+    paymentQueue = module.get(getQueueToken(PAYMENT_QUEUE_TOKEN));
     eventBus = module.get(EVENT_BUS);
   });
 
@@ -149,6 +162,36 @@ describe(OutboxService.name, () => {
         },
       ]);
       expect(repository.deleteBulk).toHaveBeenCalledWith(['uuid-1', 'uuid-2']);
+    });
+
+    it('should dispatch payment-type messages to the payment queue and delete them', async () => {
+      const payload = new CreateCustomerJobPayload(
+        'u1',
+        'User Name',
+        'user@email.com',
+        { city: 'Sao Paulo' },
+      );
+      const messages = [
+        makeOutbox({
+          id: 'uuid-4',
+          type: OutboxType.PAYMENT_CREATE_CUSTOMER,
+          payload,
+        }),
+      ];
+      (repository.findAndLockBatch as jest.Mock).mockResolvedValue(messages);
+      (paymentQueue.addBulk as jest.Mock).mockResolvedValue([]);
+      (repository.deleteBulk as jest.Mock).mockResolvedValue(undefined);
+
+      await service.process();
+
+      expect(paymentQueue.addBulk).toHaveBeenCalledWith([
+        {
+          name: OutboxType.PAYMENT_CREATE_CUSTOMER,
+          data: payload,
+          jobId: 'uuid-4',
+        },
+      ]);
+      expect(repository.deleteBulk).toHaveBeenCalledWith(['uuid-4']);
     });
 
     it('should dispatch EVENTS_NOTIFY_USER messages to the event bus and delete them', async () => {

@@ -5,7 +5,10 @@ import { bullmqDefaultJobOptions } from '@/config/bullmq.config';
 import { BullModule } from '@nestjs/bullmq';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Outbox } from './entities/outbox.entity';
-import { ORDER_QUEUE_TOKEN } from '@/shared/constants/queue-tokens';
+import {
+  ORDER_QUEUE_TOKEN,
+  PAYMENT_QUEUE_TOKEN,
+} from '@/shared/constants/queue-tokens';
 
 @Global()
 @Module({
@@ -13,6 +16,11 @@ import { ORDER_QUEUE_TOKEN } from '@/shared/constants/queue-tokens';
     TypeOrmModule.forFeature([Outbox]),
     BullModule.registerQueue({
       name: ORDER_QUEUE_TOKEN,
+      defaultJobOptions: bullmqDefaultJobOptions,
+      forceDisconnectOnShutdown: true,
+    }),
+    BullModule.registerQueue({
+      name: PAYMENT_QUEUE_TOKEN,
       defaultJobOptions: bullmqDefaultJobOptions,
       forceDisconnectOnShutdown: true,
     }),

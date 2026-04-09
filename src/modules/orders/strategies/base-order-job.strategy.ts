@@ -5,7 +5,7 @@ import { DataSource } from 'typeorm';
 import { UseLock } from '@/shared/decorators/lock.decorator';
 import Redlock from 'redlock';
 import { BaseJobPayload } from '@/shared/payloads/base-job.payload';
-import { ORDER_KEY } from '../constants/order.key';
+import { ORDER_KEY } from '../../../shared/modules/cache/constants/order.key';
 import { BaseJobStrategy } from '@/shared/strategies/base-job.strategy';
 import { Order } from '../entities/order.entity';
 
@@ -41,7 +41,7 @@ export abstract class BaseOrderJobStrategy<
    * @param updateData The data to update the order with.
    */
   @UseLock({ prefix: 'order-update', key: ([orderId]) => orderId })
-  async lockAndUpdateOrder(
+  async updateOrderWithLock(
     orderId: string,
     updateData: Partial<Order>,
   ): Promise<void> {

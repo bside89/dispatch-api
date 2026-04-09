@@ -93,7 +93,7 @@ export class DeliverOrderJobStrategy extends BaseOrderJobStrategy<DeliverOrderJo
   private async finish(data: DeliverOrderJobPayload) {
     const { orderId, userId, userName } = data;
 
-    await this.lockAndUpdateOrder(orderId, { status: OrderStatus.DELIVERED });
+    await this.updateOrderWithLock(orderId, { status: OrderStatus.DELIVERED });
 
     // Notify the user
     await this.outboxService.add(

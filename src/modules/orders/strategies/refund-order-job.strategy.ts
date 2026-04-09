@@ -72,7 +72,7 @@ export class RefundOrderJobStrategy extends BaseOrderJobStrategy<RefundOrderJobP
 
     await delay(1000);
 
-    await this.lockAndUpdateOrder(orderId, { paid: false });
+    await this.updateOrderWithLock(orderId, { paid: false });
 
     this.logger.log(`Refund OK`, { orderId });
   }
@@ -80,7 +80,7 @@ export class RefundOrderJobStrategy extends BaseOrderJobStrategy<RefundOrderJobP
   private async finish(data: RefundOrderJobPayload) {
     const { orderId, userId, userName } = data;
 
-    await this.lockAndUpdateOrder(orderId, { status: OrderStatus.REFUNDED });
+    await this.updateOrderWithLock(orderId, { status: OrderStatus.REFUNDED });
 
     // Add to the outbox for sending notification to the user (Event Bus)
     await this.outboxService.add(

@@ -10,16 +10,19 @@ import {
   ShipOrderJobStrategy,
   RefundOrderJobStrategy,
 } from '../strategies';
+import { BaseJobHandlerFactory } from '@/shared/factories/base-job-handler.factory';
 
 @Injectable()
-export class OrderJobHandlerFactory {
+export class OrderJobHandlerFactory extends BaseJobHandlerFactory {
   constructor(
     private readonly processOrderJobStrategy: ProcessOrderJobStrategy,
     private readonly shipOrderJobStrategy: ShipOrderJobStrategy,
     private readonly deliverOrderJobStrategy: DeliverOrderJobStrategy,
     private readonly cancelOrderJobStrategy: CancelOrderJobStrategy,
     private readonly refundOrderJobStrategy: RefundOrderJobStrategy,
-  ) {}
+  ) {
+    super();
+  }
 
   createHandler(jobType: string): BaseJobStrategy<BaseJobPayload> | null {
     const map: Record<string, BaseJobStrategy<BaseJobPayload>> = {

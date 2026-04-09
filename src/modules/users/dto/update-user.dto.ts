@@ -4,8 +4,13 @@ import {
   IsEmail,
   MinLength,
   MaxLength,
+  ValidateNested,
 } from 'class-validator';
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional, PartialType } from '@nestjs/swagger';
+import { CreateUserAddressDto } from './create-user.dto';
+import { Type } from 'class-transformer';
+
+export class UpdateUserAddressDto extends PartialType(CreateUserAddressDto) {}
 
 export class UpdateUserDto {
   @ApiProperty({
@@ -30,4 +35,13 @@ export class UpdateUserDto {
   @IsOptional()
   @IsEmail()
   email?: string;
+
+  @ApiPropertyOptional({
+    description: 'User address',
+    type: UpdateUserAddressDto,
+  })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => UpdateUserAddressDto)
+  address?: UpdateUserAddressDto;
 }

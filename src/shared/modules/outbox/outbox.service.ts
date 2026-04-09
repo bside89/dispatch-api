@@ -12,7 +12,10 @@ import { EVENT_BUS } from '../events/constants/event-bus.token';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { Transactional } from '@/shared/decorators/transactional.decorator';
-import { ORDER_QUEUE_TOKEN } from '@/shared/constants/queue-tokens';
+import {
+  ORDER_QUEUE_TOKEN,
+  PAYMENT_QUEUE_TOKEN,
+} from '@/shared/constants/queue-tokens';
 import { OutboxPayloadMap } from './types/outbox-payload.map';
 import { ensureError } from '@/shared/helpers/functions';
 import { EventBusJob } from '../events/interfaces/event-bus-job.interface';
@@ -26,6 +29,8 @@ export class OutboxService extends BaseService implements OnModuleDestroy {
   constructor(
     @InjectQueue(ORDER_QUEUE_TOKEN)
     protected readonly orderQueue: Queue,
+    @InjectQueue(PAYMENT_QUEUE_TOKEN)
+    protected readonly paymentQueue: Queue,
     @Inject(EVENT_BUS)
     protected readonly eventBus: EventBus,
 
@@ -109,6 +114,22 @@ export class OutboxService extends BaseService implements OnModuleDestroy {
             jobId: msg.id,
           }) as EventBusJob,
       );
+    const paymentQueueMsg = messages
+      .filter((m) =>
+        [
+          OutboxType.PAYMENT_CREATE_CUSTOMER,
+          OutboxType.PAYMENT_UPDATE_CUSTOMER,
+          OutboxType.PAYMENT_DELETE_CUSTOMER,
+        ].includes(m.type),
+      )
+      .map(
+        (msg) =>
+          ({
+            name: msg.type,
+            data: msg.payload,
+            jobId: msg.id,
+          }) as EventBusJob,
+      );
     const eventBusMsg = messages
       .filter((m) => m.type === OutboxType.EVENTS_NOTIFY_USER)
       .map(
@@ -122,6 +143,9 @@ export class OutboxService extends BaseService implements OnModuleDestroy {
 
     if (orderQueueMsg.length > 0) {
       await this.orderQueue.addBulk(orderQueueMsg);
+    }
+    if (paymentQueueMsg.length > 0) {
+      await this.paymentQueue.addBulk(paymentQueueMsg);
     }
     if (eventBusMsg.length > 0) {
       await this.eventBus.publishBulk(eventBusMsg);

@@ -20,7 +20,7 @@ import { runAndIgnoreError } from '@/shared/helpers/functions';
 import { UseLock } from '@/shared/decorators/lock.decorator';
 import Redlock from 'redlock';
 import { BaseService } from '@/shared/services/base.service';
-import { ORDER_KEY } from './constants/order.key';
+import { ORDER_KEY } from '../../shared/modules/cache/constants/order.key';
 
 @Injectable()
 export class OrdersService extends BaseService {

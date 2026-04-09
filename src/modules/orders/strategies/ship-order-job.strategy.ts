@@ -104,7 +104,7 @@ export class ShipOrderJobStrategy extends BaseOrderJobStrategy<ShipOrderJobPaylo
   private async finish(data: ShipOrderJobPayload) {
     const { orderId, userId, userName } = data;
 
-    await this.lockAndUpdateOrder(orderId, { status: OrderStatus.SHIPPED });
+    await this.updateOrderWithLock(orderId, { status: OrderStatus.SHIPPED });
 
     // Notify the user
     await this.outboxService.add(

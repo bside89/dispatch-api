@@ -14,8 +14,9 @@
     "start:prod": "node dist/main",
     "lint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",
     "test": "jest",
-    "test:watch": "jest --selectProjects unit --watch",
+    "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
+    "test:unit": "jest --selectProjects unit",
     "test:int": "jest --selectProjects integration --runInBand",
     "test:e2e": "jest --selectProjects e2e --runInBand",
     "test:load": "docker run --rm -i --network=order-flow-api_order-flow-network grafana/k6 run -e BASE_URL=http://order-flow-api:3000 - <test/load-test.js",
@@ -79,6 +80,7 @@
     "redlock": "^5.0.0-beta.2",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
+    "stripe": "^22.0.0",
     "swagger-ui-express": "^5.0.0",
     "typeorm": "^0.3.17",
     "uuid": "^13.0.0"

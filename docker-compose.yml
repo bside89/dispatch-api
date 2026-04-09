@@ -69,6 +69,13 @@ services:
     networks:
       - order-flow-network
 
+  stripe-mock:
+    image: stripe/stripe-mock:latest
+    ports:
+      - '12111:12111'
+    networks:
+      - order-flow-network
+
   app:
     build:
       context: .
@@ -90,8 +97,7 @@ services:
     networks:
       - order-flow-network
     healthcheck:
-      test:
-        ['CMD-SHELL', 'curl -f http://localhost:${APP_PORT}/health || exit 1']
+      test: ['CMD-SHELL', 'curl -f http://localhost:${APP_PORT}/health || exit 1']
       interval: 30s
       timeout: 5s
       retries: 3
