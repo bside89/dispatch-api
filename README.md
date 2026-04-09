@@ -56,6 +56,8 @@ This script will automatically create your `.env` file from the example and star
 
 > **Note:** If you prefer to run manually, ensure you copy `.env.example` to `.env.docker` before running `docker-compose up --build`.
 
+> **Stripe tip:** Set `STRIPE_TEST_MODE` to `local`, `docker`, or `live` depending on how you want to test payments. The details are in the Stripe testing section below.
+
 **3.** Access:
 
 API: http://localhost:3000
@@ -200,6 +202,16 @@ sequenceDiagram
 - **Integration testing (Testcontainers):** Spins up real PostgreSQL and Redis instances per test run. No mocked databases, no "works on my machine" surprises.
 
 - **Load testing (k6):** Hammers the queue under concurrent load to confirm jobs don't get processed twice when retries kick in.
+
+## Stripe testing
+
+Stripe behavior is controlled by `STRIPE_TEST_MODE`.
+
+- `local`: starts `stripe-mock` in Docker and points the app to `localhost:12111`. Use this when you run the API on your machine.
+- `docker`: starts `stripe-mock` in Docker and points the app to `stripe-mock:12111`. Use this when the whole stack runs inside Docker.
+- `live`: talks to Stripe's test environment. You need to put your own Stripe test secret key in `.env`.
+
+The integration and E2E tests mock `PaymentsService`, so they do not depend on Stripe at all. If you want to test real Stripe behavior, switch to `live`. If you just want the app to run without external calls, keep `local` or `docker`.
 
 ---
 
