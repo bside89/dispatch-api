@@ -19,10 +19,9 @@ export class OrderRepository extends BaseRepository<Order> {
   }
 
   async filter(query: Partial<OrderQueryDto>): Promise<PaginatedResultDto<Order>> {
-    const queryBuilder = this.createQueryBuilder(aliasOrder).leftJoinAndSelect(
-      order('items'),
-      'items',
-    );
+    const queryBuilder = this.createQueryBuilder(aliasOrder)
+      .leftJoinAndSelect(order('items'), 'items')
+      .innerJoinAndSelect(order('user'), 'user');
 
     if (query.userId) {
       queryBuilder.andWhere(`${order('userId')} = :userId`, {

@@ -3,6 +3,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
 
 import { JwtRefreshStrategy } from './jwt-refresh.strategy';
+import { UserRole } from '@/modules/users/enums/user-role.enum';
 
 // Stub out PassportStrategy so we can test validate() in isolation.
 jest.mock('@nestjs/passport', () => ({
@@ -38,7 +39,7 @@ describe(JwtRefreshStrategy.name, () => {
     const validPayload = {
       sub: 'user-uuid',
       email: 'user@example.com',
-      role: 'USER',
+      role: UserRole.USER,
       jti: 'refresh-jti-456',
     };
 
