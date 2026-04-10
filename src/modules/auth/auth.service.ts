@@ -117,6 +117,7 @@ export class AuthService extends BaseService {
     const result: LoginResponseDto = {
       accessToken,
       refreshToken,
+      userId: user.id,
     };
 
     return result;
