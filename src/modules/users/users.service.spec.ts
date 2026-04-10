@@ -5,37 +5,59 @@ import { CacheService } from '../../shared/modules/cache/cache.service';
 import { OutboxService } from '../../shared/modules/outbox/outbox.service';
 import { DataSource } from 'typeorm';
 import Redlock from 'redlock';
+import { UserRole } from './enums/user-role.enum';
 
 describe(UsersService.name, () => {
   let service: UsersService;
+  let userRepository: {
+    findById: jest.Mock;
+    findOne: jest.Mock;
+    createEntity: jest.Mock;
+    save: jest.Mock;
+    delete: jest.Mock;
+    filter: jest.Mock;
+    existsBy: jest.Mock;
+    deleteById: jest.Mock;
+  };
+  let cacheService: { get: jest.Mock; set: jest.Mock; deleteBulk: jest.Mock };
+  let outboxService: { add: jest.Mock };
 
   beforeEach(async () => {
+    userRepository = {
+      findById: jest.fn(),
+      findOne: jest.fn(),
+      createEntity: jest.fn(),
+      save: jest.fn(),
+      delete: jest.fn(),
+      filter: jest.fn(),
+      existsBy: jest.fn(),
+      deleteById: jest.fn(),
+    };
+
+    cacheService = {
+      get: jest.fn(),
+      set: jest.fn(),
+      deleteBulk: jest.fn(),
+    };
+
+    outboxService = {
+      add: jest.fn(),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         UsersService,
         {
           provide: UserRepository,
-          useValue: {
-            findById: jest.fn(),
-            findOne: jest.fn(),
-            createEntity: jest.fn(),
-            save: jest.fn(),
-            delete: jest.fn(),
-            filter: jest.fn(),
-          },
+          useValue: userRepository,
         },
         {
           provide: CacheService,
-          useValue: {
-            get: jest.fn(),
-            set: jest.fn(),
-          },
+          useValue: cacheService,
         },
         {
           provide: OutboxService,
-          useValue: {
-            add: jest.fn(),
-          },
+          useValue: outboxService,
         },
         {
           provide: DataSource,
@@ -53,5 +75,48 @@ describe(UsersService.name, () => {
 
   it('should be defined', () => {
     expect(service).toBeDefined();
+  });
+
+  it('scopes the user list to the authenticated user when not admin', async () => {
+    const requestUser = {
+      id: 'user-1',
+      jwtPayload: {
+        sub: 'user-1',
+        email: 'user@example.com',
+        role: UserRole.USER,
+        jti: 'token-id',
+      },
+    };
+
+    userRepository.findById.mockResolvedValue({
+      id: 'user-1',
+      name: 'Jane Doe',
+      email: 'jane@example.com',
+    });
+
+    const result = await service.findAll(
+      { page: 1, limit: 10, name: 'Jane' } as never,
+      requestUser as never,
+    );
+
+    expect(result.total).toBe(1);
+    expect(result.data).toHaveLength(1);
+    expect(userRepository.filter).not.toHaveBeenCalled();
+  });
+
+  it('rejects access to another user record', async () => {
+    const requestUser = {
+      id: 'user-1',
+      jwtPayload: {
+        sub: 'user-1',
+        email: 'user@example.com',
+        role: UserRole.USER,
+        jti: 'token-id',
+      },
+    };
+
+    await expect(service.findOne('user-2', requestUser as never)).rejects.toThrow(
+      'You are not allowed to access user with ID user-2',
+    );
   });
 });

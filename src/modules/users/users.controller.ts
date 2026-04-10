@@ -34,12 +34,12 @@ import { UpdateUserDto } from './dto/update-user.dto';
 import { UpdateLoginDto } from './dto/update-login.dto';
 import { UserQueryDto } from './dto/user-query.dto';
 import { Public } from '../auth/decorators/public.decorator';
-import { Roles } from '../auth/decorators/roles.decorator';
-import { UserRole } from './enums/user-role.enum';
 import { UserResponseDto } from './dto/user-response.dto';
 import { BaseController } from '@/shared/controllers/base.controller';
 import { SuccessResponseDto } from '@/shared/dto/success-response.dto';
 import { PaginatedResponseDto } from '@/shared/dto/paginated-response.dto';
+import { GetUser } from '@/shared/decorators/get-user.decorator';
+import type { RequestUser } from '../auth/interfaces/request-user.interface';
 
 @Controller({ path: 'v1/users', version: '1' })
 @ApiTags('users')
@@ -131,10 +131,10 @@ export class UsersController extends BaseController {
     description: 'Number of users to skip',
     type: Number,
   })
-  async findAll(@Query() queryDto: UserQueryDto) {
+  async findAll(@Query() queryDto: UserQueryDto, @GetUser() user: RequestUser) {
     this.logger.debug('GET /users - Retrieving all users', { query: queryDto });
 
-    const result = await this.usersService.findAll(queryDto);
+    const result = await this.usersService.findAll(queryDto, user);
 
     return this.paginate(result.data, result.total, result.page, result.limit);
   }
@@ -160,10 +160,13 @@ export class UsersController extends BaseController {
   @ApiBadRequestResponse({
     description: 'Invalid UUID format',
   })
-  async findOne(@Param('id', ParseUUIDPipe) id: string) {
+  async findOne(
+    @Param('id', ParseUUIDPipe) id: string,
+    @GetUser() user: RequestUser,
+  ) {
     this.logger.debug(`GET /users/${id} - Retrieving user`, { userId: id });
 
-    const result = await this.usersService.findOne(id);
+    const result = await this.usersService.findOne(id, user);
 
     return this.success(result, 'User retrieved successfully');
   }
@@ -201,12 +204,13 @@ export class UsersController extends BaseController {
   async update(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() updateUserDto: UpdateUserDto,
+    @GetUser() user: RequestUser,
   ) {
     this.logger.debug(`PATCH /users/${id} - Updating user`, {
       userId: id,
     });
 
-    const result = await this.usersService.update(id, updateUserDto);
+    const result = await this.usersService.update(id, updateUserDto, user);
 
     return this.success(result, 'User updated successfully');
   }
@@ -245,18 +249,18 @@ export class UsersController extends BaseController {
   async updateLogin(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() updateLoginDto: UpdateLoginDto,
+    @GetUser() user: RequestUser,
   ) {
     this.logger.debug(`PATCH /users/${id}/login - Updating user login credentials`, {
       userId: id,
     });
 
-    const result = await this.usersService.updateLogin(id, updateLoginDto);
+    const result = await this.usersService.updateLogin(id, updateLoginDto, user);
 
     return this.success(result, 'User login credentials updated successfully');
   }
 
   @Delete(':id')
-  @Roles(UserRole.ADMIN)
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({
     summary: 'Delete user',
@@ -278,10 +282,13 @@ export class UsersController extends BaseController {
   @ApiBadRequestResponse({
     description: 'Invalid UUID format',
   })
-  async remove(@Param('id', ParseUUIDPipe) id: string) {
+  async remove(
+    @Param('id', ParseUUIDPipe) id: string,
+    @GetUser() user: RequestUser,
+  ) {
     this.logger.debug(`DELETE /users/${id} - Deleting user`, { userId: id });
 
-    await this.usersService.remove(id);
+    await this.usersService.remove(id, user);
 
     return this.success(null, 'User deleted successfully');
   }

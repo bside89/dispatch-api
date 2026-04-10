@@ -1,9 +1,11 @@
+import { UserRole } from '@/modules/users/enums/user-role.enum';
+
 export interface JwtPayload {
   sub: string;
 
   email: string;
 
-  role: string;
+  role: UserRole;
 
   jti: string; // JWT ID, to identify the token and facilitate revocation
 

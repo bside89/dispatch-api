@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { UpdateOrderDto } from './dto/update-order.dto';
 import { OrderQueryDto } from './dto/order-query.dto';
@@ -21,6 +21,8 @@ import { UseLock } from '@/shared/decorators/lock.decorator';
 import Redlock from 'redlock';
 import { BaseService } from '@/shared/services/base.service';
 import { ORDER_KEY } from '../../shared/modules/cache/constants/order.key';
+import type { RequestUser } from '../auth/interfaces/request-user.interface';
+import { UserRole } from '../users/enums/user-role.enum';
 
 @Injectable()
 export class OrdersService extends BaseService {
@@ -115,8 +117,17 @@ export class OrdersService extends BaseService {
 
   async findAll(
     queryDto: OrderQueryDto,
+    requestUser?: RequestUser,
   ): Promise<PaginatedResultDto<OrderResponseDto>> {
-    const cacheKey = ORDER_KEY.CACHE_FIND_ALL(queryDto);
+    const effectiveQuery =
+      requestUser?.jwtPayload?.role === UserRole.ADMIN
+        ? queryDto
+        : {
+            ...queryDto,
+            userId: requestUser?.id,
+          };
+
+    const cacheKey = ORDER_KEY.CACHE_FIND_ALL(effectiveQuery);
     const cachedResult = await runAndIgnoreError(
       () => this.cacheService.get<PaginatedResultDto<OrderResponseDto>>(cacheKey),
       `fetching orders list from cache with key: ${cacheKey}`,
@@ -127,7 +138,7 @@ export class OrdersService extends BaseService {
       return cachedResult;
     }
 
-    const result = await this.orderRepository.filter(queryDto);
+    const result = await this.orderRepository.filter(effectiveQuery);
 
     this.logger.debug(`Found ${result.data.length} orders`, {
       page: queryDto.page,
@@ -150,7 +161,7 @@ export class OrdersService extends BaseService {
     return resultMapped;
   }
 
-  async findOne(id: string): Promise<OrderResponseDto> {
+  async findOne(id: string, requestUser?: RequestUser): Promise<OrderResponseDto> {
     const cacheKey = ORDER_KEY.CACHE_FIND_ONE(id);
     const cachedOrder = await runAndIgnoreError(
       () => this.cacheService.get<OrderResponseDto>(cacheKey),
@@ -158,18 +169,56 @@ export class OrdersService extends BaseService {
       this.logger,
     );
     if (cachedOrder) {
+      if (requestUser?.jwtPayload?.role !== UserRole.ADMIN) {
+        if (cachedOrder.user?.id) {
+          this.assertOrderAccess(cachedOrder.user.id, requestUser, id);
+        } else {
+          this.logger.debug(
+            'Cached order does not include ownership data, reloading from database',
+            {
+              orderId: id,
+            },
+          );
+
+          const order = await this.orderRepository.findOne({
+            where: { id },
+            relations: ['user', 'items'],
+          });
+
+          if (!order) {
+            throw new NotFoundException(`Order with ID ${id} not found`);
+          }
+
+          this.assertOrderAccess(order.userId, requestUser, id);
+
+          const orderMapped = EntityMapper.map(order, OrderResponseDto);
+
+          await runAndIgnoreError(
+            () => this.cacheService.set(cacheKey, orderMapped, CACHE_TTL.DEFAULT),
+            `caching order with key: ${cacheKey}`,
+            this.logger,
+          );
+
+          this.logger.debug('Found order', { orderId: id });
+
+          return orderMapped;
+        }
+      }
+
       this.logger.debug('Returning cached order', { orderId: id });
       return cachedOrder;
     }
 
     const order = await this.orderRepository.findOne({
       where: { id },
-      relations: ['items'],
+      relations: ['user', 'items'],
     });
 
     if (!order) {
       throw new NotFoundException(`Order with ID ${id} not found`);
     }
+
+    this.assertOrderAccess(order.userId, requestUser, id);
 
     const orderMapped = EntityMapper.map(order, OrderResponseDto);
 
@@ -296,5 +345,21 @@ export class OrdersService extends BaseService {
     this.logger.debug('Order status updated', { orderId: id });
 
     return EntityMapper.map(order, OrderResponseDto);
+  }
+
+  private assertOrderAccess(
+    orderOwnerId: string | undefined,
+    requestUser: RequestUser | undefined,
+    orderId: string,
+  ): void {
+    if (requestUser?.jwtPayload?.role === UserRole.ADMIN) {
+      return;
+    }
+
+    if (!requestUser || orderOwnerId !== requestUser.id) {
+      throw new ForbiddenException(
+        `You are not allowed to access order with ID ${orderId}`,
+      );
+    }
   }
 }

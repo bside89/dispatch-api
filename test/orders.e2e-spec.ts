@@ -213,15 +213,14 @@ describe('Orders (E2E)', () => {
       expect(res.body.data).toBeInstanceOf(Array);
     });
 
-    it('GET /v1/orders/:id - should get a specific order', async () => {
-      // First create
+    it('GET /v1/orders/:id - should get own order', async () => {
       const payload = {
         items: [{ productId: 'product-xyz', quantity: 1, price: 5000 }],
       };
       const created = await request(app.getHttpServer())
         .post('/v1/orders')
-        .set('idempotency-key', 'order-get-key')
-        .set('Authorization', `Bearer ${adminToken}`)
+        .set('idempotency-key', 'order-get-own-key')
+        .set('Authorization', `Bearer ${userToken}`)
         .send(payload)
         .expect(HttpStatus.CREATED);
 
@@ -233,6 +232,23 @@ describe('Orders (E2E)', () => {
         .expect(HttpStatus.OK);
 
       expect(res.body.data.id).toBe(orderId);
+    });
+
+    it('GET /v1/orders/:id - should block access to another user order', async () => {
+      const payload = {
+        items: [{ productId: 'product-admin', quantity: 1, price: 5000 }],
+      };
+      const created = await request(app.getHttpServer())
+        .post('/v1/orders')
+        .set('idempotency-key', 'order-get-other-key')
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send(payload)
+        .expect(HttpStatus.CREATED);
+
+      await request(app.getHttpServer())
+        .get(`/v1/orders/${created.body.data.id}`)
+        .set('Authorization', `Bearer ${userToken}`)
+        .expect(HttpStatus.FORBIDDEN);
     });
 
     it('PATCH /v1/orders/:id - should block normal user (403 Forbidden)', async () => {

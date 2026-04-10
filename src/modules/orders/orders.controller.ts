@@ -137,10 +137,10 @@ export class OrdersController extends BaseController {
     required: false,
     description: 'Items per page (default: 10)',
   })
-  async findAll(@Query() queryDto: OrderQueryDto) {
+  async findAll(@Query() queryDto: OrderQueryDto, @GetUser() user: RequestUser) {
     this.logger.debug(`GET /orders - Fetching orders with filters`, { queryDto });
 
-    const result = await this.ordersService.findAll(queryDto);
+    const result = await this.ordersService.findAll(queryDto, user);
 
     return this.paginate(result.data, result.total, result.page, result.limit);
   }
@@ -161,10 +161,13 @@ export class OrdersController extends BaseController {
   @ApiNotFoundResponse({
     description: 'Order not found',
   })
-  async findOne(@Param('id', ParseUUIDPipe) id: string) {
+  async findOne(
+    @Param('id', ParseUUIDPipe) id: string,
+    @GetUser() user: RequestUser,
+  ) {
     this.logger.debug(`GET /orders/${id} - Fetching order`, { orderId: id });
 
-    const result = await this.ordersService.findOne(id);
+    const result = await this.ordersService.findOne(id, user);
 
     return this.success(result, 'Order retrieved successfully');
   }

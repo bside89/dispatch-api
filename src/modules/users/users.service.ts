@@ -1,4 +1,5 @@
 import {
+  ForbiddenException,
   Injectable,
   NotFoundException,
   ConflictException,
@@ -29,6 +30,8 @@ import {
   DeleteCustomerJobPayload,
   UpdateCustomerJobPayload,
 } from '@/shared/payloads/payment-job.payload';
+import type { RequestUser } from '../auth/interfaces/request-user.interface';
+import { UserRole } from './enums/user-role.enum';
 
 @Injectable()
 export class UsersService extends BaseService {
@@ -118,7 +121,14 @@ export class UsersService extends BaseService {
     return userMapped;
   }
 
-  async findAll(query: UserQueryDto): Promise<PaginatedResultDto<UserResponseDto>> {
+  async findAll(
+    query: UserQueryDto,
+    requestUser?: RequestUser,
+  ): Promise<PaginatedResultDto<UserResponseDto>> {
+    if (requestUser?.jwtPayload?.role !== UserRole.ADMIN) {
+      return this.findOwnUserList(query, requestUser);
+    }
+
     const cacheKey = USER_KEY.CACHE_FIND_ALL(query);
 
     const cachedResult = await runAndIgnoreError(
@@ -147,7 +157,9 @@ export class UsersService extends BaseService {
     };
   }
 
-  async findOne(id: string): Promise<UserResponseDto> {
+  async findOne(id: string, requestUser?: RequestUser): Promise<UserResponseDto> {
+    this.assertUserAccess(id, requestUser);
+
     const cacheKey = USER_KEY.CACHE_FIND_ONE(id);
 
     const cachedResult = await runAndIgnoreError(
@@ -186,7 +198,10 @@ export class UsersService extends BaseService {
     return userMapped;
   }
 
-  async findByEmail(email: string): Promise<UserResponseDto> {
+  async findByEmail(
+    email: string,
+    requestUser?: RequestUser,
+  ): Promise<UserResponseDto> {
     const cacheKey = USER_KEY.CACHE_FIND_BY_EMAIL(email);
 
     const cachedResult = await runAndIgnoreError(
@@ -195,6 +210,8 @@ export class UsersService extends BaseService {
       this.logger,
     );
     if (cachedResult) {
+      this.assertUserAccess(cachedResult.id, requestUser);
+
       this.logger.debug('Returning cached user', { email });
       return cachedResult;
     }
@@ -205,6 +222,8 @@ export class UsersService extends BaseService {
     if (!user) {
       throw new NotFoundException(`User with email ${email} not found`);
     }
+
+    this.assertUserAccess(user.id, requestUser);
 
     this.logger.debug('User found', { email });
 
@@ -225,7 +244,13 @@ export class UsersService extends BaseService {
   }
 
   @UseLock({ prefix: 'user-update', key: ([id]) => id })
-  async update(id: string, updateUserDto: UpdateUserDto): Promise<UserResponseDto> {
+  async update(
+    id: string,
+    updateUserDto: UpdateUserDto,
+    requestUser?: RequestUser,
+  ): Promise<UserResponseDto> {
+    this.assertUserAccess(id, requestUser);
+
     this.logger.debug(`Updating user with ID: ${id}`);
 
     const user = await this.userRepository.findById(id);
@@ -276,7 +301,10 @@ export class UsersService extends BaseService {
   async updateLogin(
     id: string,
     updateLoginDto: UpdateLoginDto,
+    requestUser?: RequestUser,
   ): Promise<UserResponseDto> {
+    this.assertUserAccess(id, requestUser);
+
     this.logger.debug('Updating login for user', { userId: id });
 
     const user = await this.userRepository.findById(id);
@@ -331,7 +359,9 @@ export class UsersService extends BaseService {
   }
 
   @UseLock({ prefix: 'user-delete', key: ([id]) => id })
-  async remove(id: string): Promise<void> {
+  async remove(id: string, requestUser?: RequestUser): Promise<void> {
+    this.assertUserAccess(id, requestUser);
+
     this.logger.debug('Deleting user', { id });
 
     const user = await this.userRepository.findById(id);
@@ -353,5 +383,44 @@ export class UsersService extends BaseService {
       keys: [USER_KEY.CACHE_FIND_ONE(id), USER_KEY.CACHE_FIND_BY_EMAIL(user.email)],
       patterns: [USER_KEY.CACHE_FIND_ALL_PATTERN()],
     });
+  }
+
+  private async findOwnUserList(
+    query: UserQueryDto,
+    requestUser?: RequestUser,
+  ): Promise<PaginatedResultDto<UserResponseDto>> {
+    if (!requestUser) {
+      throw new ForbiddenException('Authentication is required');
+    }
+
+    const user = await this.userRepository.findById(requestUser.id);
+    if (!user) {
+      throw new NotFoundException(`User with ID ${requestUser.id} not found`);
+    }
+
+    const matchesName =
+      !query.name || user.name.toLowerCase().includes(query.name.toLowerCase());
+    const matchesEmail =
+      !query.email || user.email.toLowerCase().includes(query.email.toLowerCase());
+
+    const data =
+      matchesName && matchesEmail ? [EntityMapper.map(user, UserResponseDto)] : [];
+    const total = data.length;
+    const limit = query.limit ?? 10;
+    const page = query.page ?? 1;
+
+    return new PaginatedResultDto(total, page, limit, data);
+  }
+
+  private assertUserAccess(targetUserId: string, requestUser?: RequestUser): void {
+    if (requestUser?.jwtPayload?.role === UserRole.ADMIN) {
+      return;
+    }
+
+    if (!requestUser || requestUser.id !== targetUserId) {
+      throw new ForbiddenException(
+        `You are not allowed to access user with ID ${targetUserId}`,
+      );
+    }
   }
 }

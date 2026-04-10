@@ -45,7 +45,7 @@ describe('Users (E2E)', () => {
 
   afterAll(async () => {
     await app.close();
-  });
+  }, 30000);
 
   beforeEach(async () => {
     await cleanDatabase(dataSource);
@@ -175,18 +175,36 @@ describe('Users (E2E)', () => {
         .expect(HttpStatus.CREATED);
     });
 
-    it('DELETE /v1/users/:id - should block normal user (403 Forbidden)', async () => {
-      // Temporarily set TEST_ENV to false so RolesGuard won't bypass the check
-      const originalTestEnv = process.env.TEST_ENV;
-      process.env.TEST_ENV = 'false';
-
-      // The user lacks ADMIN role and should be forbidden
+    it('DELETE /v1/users/:id - should allow a user to delete their own account', async () => {
       await request(app.getHttpServer())
         .delete(`/v1/users/${createdUserId}`)
         .set('Authorization', `Bearer ${userToken}`)
-        .expect(HttpStatus.FORBIDDEN); // NestJS Returns 403 when RolesGuard fails
+        .expect(HttpStatus.NO_CONTENT);
 
-      process.env.TEST_ENV = originalTestEnv;
+      await request(app.getHttpServer())
+        .get(`/v1/users/${createdUserId}`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .expect(HttpStatus.NOT_FOUND);
+    });
+
+    it('DELETE /v1/users/:id - should block a user from deleting another user', async () => {
+      const randomSuffix = Math.random().toString(36).substring(7);
+      const otherUserPayload = {
+        name: 'Other User',
+        email: `other-${randomSuffix}@test.com`,
+        password: 'StrongPassword123!',
+      };
+
+      const { body: otherUserCreated } = await request(app.getHttpServer())
+        .post('/v1/users')
+        .set('idempotency-key', `other-${randomSuffix}`)
+        .send(otherUserPayload)
+        .expect(HttpStatus.CREATED);
+
+      await request(app.getHttpServer())
+        .delete(`/v1/users/${otherUserCreated.data.id}`)
+        .set('Authorization', `Bearer ${userToken}`)
+        .expect(HttpStatus.FORBIDDEN);
     });
 
     it('DELETE /v1/users/:id - should allow admin user', async () => {
