@@ -12,13 +12,13 @@ import { UpdateLoginDto } from './dto/update-login.dto';
 import { UserQueryDto } from './dto/user-query.dto';
 import { UserRepository } from './repositories/user.repository';
 import { PaginatedResultDto } from '@/shared/dto/paginated-result.dto';
-import { UserResponseDto } from './dto/user-response.dto';
+import { UserAddressResponseDto, UserResponseDto } from './dto/user-response.dto';
 import { EntityMapper } from '@/shared/utils/entity-mapper';
 import { HashUtils } from '@/shared/utils/hash.utils';
 import { DataSource } from 'typeorm';
 import { Transactional } from '@/shared/decorators/transactional.decorator';
 import { CACHE_TTL } from '@/shared/constants/cache-ttl.constant';
-import { runAndIgnoreError } from '@/shared/helpers/functions';
+import { ensureError, runAndIgnoreError } from '@/shared/helpers/functions';
 import { UseLock } from '@/shared/decorators/lock.decorator';
 import Redlock from 'redlock';
 import { BaseService } from '@/shared/services/base.service';
@@ -32,11 +32,14 @@ import {
 } from '@/shared/payloads/payment-job.payload';
 import type { RequestUser } from '../auth/interfaces/request-user.interface';
 import { UserRole } from './enums/user-role.enum';
+import { PaymentsGatewayService } from '../payments-gateway/payments-gateway.service';
+import { CustomerResponseDto } from '../payments-gateway/dto/customer-response.dto';
 
 @Injectable()
 export class UsersService extends BaseService {
   constructor(
     private readonly userRepository: UserRepository,
+    private readonly paymentsGatewayService: PaymentsGatewayService,
     protected readonly cacheService: CacheService,
     protected readonly outboxService: OutboxService,
     protected readonly dataSource: DataSource, // Used in @Transactional()
@@ -180,9 +183,17 @@ export class UsersService extends BaseService {
       throw new NotFoundException(`User with ID ${id} not found`);
     }
 
-    this.logger.debug('User found', { email: user.email });
+    this.logger.debug('User found', { id: user.id });
+
+    const customer = await this.ensureCustomersRetrieve(user.id, user.customerId);
+
+    this.logger.debug('Retrieved customer data from payments gateway', {
+      userId: user.id,
+      customerId: user.customerId,
+    });
 
     const userMapped = EntityMapper.map(user, UserResponseDto);
+    userMapped.address = EntityMapper.map(customer!.address, UserAddressResponseDto);
 
     await runAndIgnoreError(
       () =>
@@ -227,7 +238,15 @@ export class UsersService extends BaseService {
 
     this.logger.debug('User found', { email });
 
+    const customer = await this.ensureCustomersRetrieve(user.id, user.customerId);
+
+    this.logger.debug('Retrieved customer data from payments gateway', {
+      userId: user.id,
+      customerId: user.customerId,
+    });
+
     const userMapped = EntityMapper.map(user, UserResponseDto);
+    userMapped.address = EntityMapper.map(customer!.address, UserAddressResponseDto);
 
     await runAndIgnoreError(
       () =>
@@ -421,6 +440,29 @@ export class UsersService extends BaseService {
       throw new ForbiddenException(
         `You are not allowed to access user with ID ${targetUserId}`,
       );
+    }
+  }
+
+  private async ensureCustomersRetrieve(
+    userId: string,
+    customerId: string,
+  ): Promise<CustomerResponseDto> {
+    try {
+      const customer =
+        await this.paymentsGatewayService.customersRetrieve(customerId);
+      return customer;
+    } catch (e) {
+      const error = ensureError(e);
+      this.logger.error(
+        '[CRITICAL] Failed to retrieve customer data from payments gateway',
+        {
+          userId: userId,
+          customerId: customerId,
+          errorMessage: error.message,
+          stack: error.stack,
+        },
+      );
+      throw error;
     }
   }
 }

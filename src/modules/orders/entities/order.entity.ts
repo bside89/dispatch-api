@@ -6,7 +6,9 @@ import { BaseEntity } from '@/shared/entities/base.entity';
 
 @Entity('orders')
 export class Order extends BaseEntity {
-  @ManyToOne(() => User, (user) => user.orders)
+  @ManyToOne(() => User, (user) => user.orders, {
+    onDelete: 'CASCADE',
+  })
   @JoinColumn({ name: 'userId' })
   user: User;
 

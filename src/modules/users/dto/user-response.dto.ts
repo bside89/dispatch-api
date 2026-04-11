@@ -1,5 +1,8 @@
+import { BaseAddressDto } from '@/shared/dto/base-address.dto';
 import { ApiProperty } from '@nestjs/swagger';
 import { Exclude, Expose } from 'class-transformer';
+
+export class UserAddressResponseDto extends BaseAddressDto {}
 
 @Exclude()
 export class UserResponseDto {
@@ -37,4 +40,12 @@ export class UserResponseDto {
     example: '2024-01-01T12:00:00Z',
   })
   updatedAt: Date;
+
+  @Expose()
+  @ApiProperty({
+    description: 'User address',
+    type: UserAddressResponseDto,
+    nullable: true,
+  })
+  address?: UserAddressResponseDto;
 }

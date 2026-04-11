@@ -6,6 +6,7 @@ import { OutboxService } from '../../shared/modules/outbox/outbox.service';
 import { DataSource } from 'typeorm';
 import Redlock from 'redlock';
 import { UserRole } from './enums/user-role.enum';
+import { PaymentsGatewayService } from '../payments-gateway/payments-gateway.service';
 
 describe(UsersService.name, () => {
   let service: UsersService;
@@ -21,6 +22,7 @@ describe(UsersService.name, () => {
   };
   let cacheService: { get: jest.Mock; set: jest.Mock; deleteBulk: jest.Mock };
   let outboxService: { add: jest.Mock };
+  let paymentsGatewayService: { createCustomer: jest.Mock };
 
   beforeEach(async () => {
     userRepository = {
@@ -50,6 +52,10 @@ describe(UsersService.name, () => {
         {
           provide: UserRepository,
           useValue: userRepository,
+        },
+        {
+          provide: PaymentsGatewayService,
+          useValue: paymentsGatewayService,
         },
         {
           provide: CacheService,
