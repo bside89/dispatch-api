@@ -8,6 +8,7 @@ import { UserRepository } from '@/modules/users/repositories/user.repository';
 import { OrderRepository } from '@/modules/orders/repositories/order.repository';
 import { CacheService } from '@/shared/modules/cache/cache.service';
 import { PaymentsGatewayService } from '@/modules/payments-gateway/payments-gateway.service';
+import { PAYMENT_KEY } from '@/shared/modules/cache/constants/payment.key';
 
 @Injectable()
 export class DeleteCustomerJobStrategy extends BasePaymentJobStrategy<DeleteCustomerJobPayload> {
@@ -63,6 +64,14 @@ export class DeleteCustomerJobStrategy extends BasePaymentJobStrategy<DeleteCust
   }
 
   private async deleteCustomer(data: DeleteCustomerJobPayload): Promise<void> {
-    await this.paymentsGatewayService.customersDelete(data.customerId);
+    const idempotencyKey = this.idempotencyKey(data.correlationId);
+    await this.paymentsGatewayService.customersDelete(
+      data.customerId,
+      idempotencyKey,
+    );
+  }
+
+  idempotencyKey(id: string): string {
+    return PAYMENT_KEY.IDEMPOTENCY('delete-customer', id);
   }
 }

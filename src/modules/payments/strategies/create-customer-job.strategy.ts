@@ -15,6 +15,7 @@ import {
   CreateCustomerAddressDto,
   CreateCustomerDto,
 } from '@/modules/payments-gateway/dto/create-customer.dto';
+import { PAYMENT_KEY } from '@/shared/modules/cache/constants/payment.key';
 
 @Injectable()
 export class CreateCustomerJobStrategy extends BasePaymentJobStrategy<CreateCustomerJobPayload> {
@@ -73,7 +74,12 @@ export class CreateCustomerJobStrategy extends BasePaymentJobStrategy<CreateCust
     data: CreateCustomerJobPayload,
   ): Promise<CustomerResponseDto> {
     const createCustomerDto = this.toCreateCustomerDto(data);
-    return this.paymentsGatewayService.customersCreate(createCustomerDto);
+    const idempotencyKey = this.idempotencyKey(data.correlationId);
+
+    return this.paymentsGatewayService.customersCreate(
+      createCustomerDto,
+      idempotencyKey,
+    );
   }
 
   private toCreateCustomerDto(data: CreateCustomerJobPayload): CreateCustomerDto {
@@ -83,6 +89,7 @@ export class CreateCustomerJobStrategy extends BasePaymentJobStrategy<CreateCust
       email: data.email,
       name: data.userName,
       address,
+      metadata: { userId: data.userId },
     });
   }
 
@@ -94,5 +101,9 @@ export class CreateCustomerJobStrategy extends BasePaymentJobStrategy<CreateCust
     }
 
     return plainToInstance(CreateCustomerAddressDto, address);
+  }
+
+  idempotencyKey(id: string): string {
+    return PAYMENT_KEY.IDEMPOTENCY('create-customer', id);
   }
 }

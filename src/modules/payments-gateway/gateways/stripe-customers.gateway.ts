@@ -17,9 +17,13 @@ export class StripeCustomersGateway extends BaseService {
     super(StripeCustomersGateway.name);
   }
 
-  async create(createCustomerDto: CreateCustomerDto): Promise<PaymentCustomer> {
+  async create(
+    createCustomerDto: CreateCustomerDto,
+    idempotencyKey: string,
+  ): Promise<PaymentCustomer> {
     const customer = await this.stripe.customers.create(
       StripeCustomerMapper.mapToStripeCustomerCreateParams(createCustomerDto),
+      { idempotencyKey },
     );
     return StripeCustomerMapper.mapToPaymentCustomer(customer);
   }
@@ -42,12 +46,14 @@ export class StripeCustomersGateway extends BaseService {
   async update(
     customerId: string,
     updateParams: Partial<UpdateCustomerDto>,
+    idempotencyKey: string,
   ): Promise<PaymentCustomer> {
     const customer = await this.stripe.customers.update(
       customerId,
       StripeCustomerMapper.mapToStripeCustomerCreateParams(
         updateParams as CreateCustomerDto,
       ),
+      { idempotencyKey },
     );
 
     if (this.isDeletedCustomer(customer)) {
@@ -57,8 +63,8 @@ export class StripeCustomersGateway extends BaseService {
     return StripeCustomerMapper.mapToPaymentCustomer(customer);
   }
 
-  async delete(customerId: string): Promise<void> {
-    const result = await this.stripe.customers.del(customerId);
+  async delete(customerId: string, idempotencyKey: string): Promise<void> {
+    const result = await this.stripe.customers.del(customerId, { idempotencyKey });
     if (!result.deleted) {
       throw new NotFoundException(`Stripe customer ${customerId} not found`);
     }

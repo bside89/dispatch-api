@@ -62,4 +62,6 @@ export abstract class BasePaymentJobStrategy<
       patterns: [USER_KEY.CACHE_FIND_ALL_PATTERN()],
     });
   }
+
+  abstract idempotencyKey(id: string): string;
 }
