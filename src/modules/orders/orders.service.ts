@@ -8,6 +8,7 @@ import { ProcessOrderJobPayload } from '../../shared/payloads/order-job.payload'
 import { NotifyUserJobPayload } from '@/shared/payloads/event-job.payload';
 import { OrderRepository } from './repositories/order.repository';
 import { OrderItemRepository } from './repositories/order-item.repository';
+import { ItemRepository } from '../items/repositories/item.repository';
 import { PaginatedResultDto } from '@/shared/dto/paginated-result.dto';
 import { DataSource } from 'typeorm';
 import { Transactional } from '@/shared/decorators/transactional.decorator';
@@ -29,6 +30,7 @@ export class OrdersService extends BaseService {
   constructor(
     private readonly orderRepository: OrderRepository,
     private readonly orderItemRepository: OrderItemRepository,
+    private readonly itemRepository: ItemRepository,
     private readonly outboxService: OutboxService,
     protected readonly cacheService: CacheService,
     protected readonly dataSource: DataSource, // Used in @Transactional()
@@ -61,10 +63,19 @@ export class OrdersService extends BaseService {
       idempotencyKey: idempotencyKeyFormatted,
     });
 
-    const total = createOrderDto.items.reduce(
-      (sum, item) => sum + item.price * item.quantity,
-      0,
-    );
+    const itemIds = createOrderDto.items.map((i) => i.itemId);
+    const catalogItems = await this.itemRepository.findManyByIds(itemIds);
+
+    for (const dto of createOrderDto.items) {
+      if (!catalogItems.find((ci) => ci.id === dto.itemId)) {
+        throw new NotFoundException(`Item with ID ${dto.itemId} not found`);
+      }
+    }
+
+    const total = createOrderDto.items.reduce((sum, dto) => {
+      const ci = catalogItems.find((ci) => ci.id === dto.itemId)!;
+      return sum + ci.price * dto.quantity;
+    }, 0);
 
     const order = this.orderRepository.createEntity({
       userId,
@@ -74,9 +85,10 @@ export class OrdersService extends BaseService {
 
     const savedOrder = await this.orderRepository.save(order);
 
-    const orderItems = createOrderDto.items.map((item) =>
+    const orderItems = createOrderDto.items.map((dto) =>
       this.orderItemRepository.createEntity({
-        ...item,
+        itemId: dto.itemId,
+        quantity: dto.quantity,
         orderId: savedOrder.id,
       }),
     );
@@ -253,11 +265,21 @@ export class OrdersService extends BaseService {
 
     // If items are updated, remove old items and add new ones
     if (updateOrderDto.items) {
+      const itemIds = updateOrderDto.items.map((i) => i.itemId);
+      const catalogItems = await this.itemRepository.findManyByIds(itemIds);
+
+      for (const dto of updateOrderDto.items) {
+        if (!catalogItems.find((ci) => ci.id === dto.itemId)) {
+          throw new NotFoundException(`Item with ID ${dto.itemId} not found`);
+        }
+      }
+
       await this.orderItemRepository.delete({ orderId: id });
 
-      const orderItems = updateOrderDto.items.map((item) =>
+      const orderItems = updateOrderDto.items.map((dto) =>
         this.orderItemRepository.createEntity({
-          ...item,
+          itemId: dto.itemId,
+          quantity: dto.quantity,
           orderId: id,
         }),
       );
@@ -265,10 +287,10 @@ export class OrdersService extends BaseService {
       await this.orderItemRepository.saveBulk(orderItems);
       order.items = orderItems;
 
-      order.total = updateOrderDto.items.reduce(
-        (sum, item) => sum + item.price * item.quantity,
-        0,
-      );
+      order.total = updateOrderDto.items.reduce((sum, dto) => {
+        const ci = catalogItems.find((ci) => ci.id === dto.itemId)!;
+        return sum + ci.price * dto.quantity;
+      }, 0);
     }
 
     await this.orderRepository.save(order);

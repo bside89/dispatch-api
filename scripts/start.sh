@@ -1,6 +1,6 @@
 #!/bin/bash
 
-echo "Setting up local  environment..."
+echo "Setting up local environment..."
 
 if ! docker info > /dev/null 2>&1; then
     echo "Docker is not running."
@@ -17,7 +17,7 @@ if ! (docker-compose ps --services --filter "status=running" | grep -q postgres 
     echo "Starting infrastructure services (PostgreSQL, Redis)..."
     docker-compose up -d postgres redis promtail loki grafana stripe-mock
     
-    echo "⏳ Waiting for services to be ready..."
+    echo "Waiting for services to be ready..."
     sleep 5
     
     # Wait for PostgreSQL

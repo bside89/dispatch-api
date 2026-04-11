@@ -1,0 +1,197 @@
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { ItemRepository } from './repositories/item.repository';
+import { CreateItemDto } from './dto/create-item.dto';
+import { UpdateItemDto } from './dto/update-item.dto';
+import { ItemQueryDto } from './dto/item-query.dto';
+import { ItemResponseDto } from './dto/item-response.dto';
+import { PaginatedResultDto } from '@/shared/dto/paginated-result.dto';
+import { EntityMapper } from '@/shared/utils/entity-mapper';
+import { BaseService } from '@/shared/services/base.service';
+import { Item } from './entities/item.entity';
+import Redlock from 'redlock';
+import { DataSource } from 'typeorm';
+import { UseLock } from '@/shared/decorators/lock.decorator';
+import { Transactional } from '@/shared/decorators/transactional.decorator';
+import { CacheService } from '@/shared/modules/cache/cache.service';
+import { ITEM_KEY } from '@/shared/modules/cache/constants/item.key';
+import { CACHE_TTL } from '@/shared/constants/cache-ttl.constant';
+import { runAndIgnoreError } from '@/shared/helpers/functions';
+
+@Injectable()
+export class ItemsService extends BaseService {
+  constructor(
+    private readonly itemRepository: ItemRepository,
+    protected readonly cacheService: CacheService,
+    protected readonly dataSource: DataSource, // Used in @Transactional()
+    protected readonly redlock: Redlock, // Used in @UseLock()
+  ) {
+    super(ItemsService.name);
+  }
+
+  @Transactional()
+  @UseLock({
+    prefix: 'item-create',
+    key: ([, idempotencyKey]) => idempotencyKey,
+  })
+  async create(
+    createItemDto: CreateItemDto,
+    idempotencyKey: string,
+  ): Promise<ItemResponseDto> {
+    const idempotencyKeyFormatted = ITEM_KEY.IDEMPOTENCY(
+      this.create.name,
+      idempotencyKey,
+    );
+
+    // Check if there's an existing item for the same idempotency key
+    const existingItem = await this.cacheService.get<ItemResponseDto>(
+      idempotencyKeyFormatted,
+    );
+    if (existingItem) {
+      this.logger.debug('Returning existing item for idempotency key', {
+        idempotencyKey: idempotencyKeyFormatted,
+        itemId: existingItem.id,
+      });
+      return existingItem;
+    }
+
+    this.logger.debug('Creating item', { name: createItemDto.name });
+
+    const item = this.itemRepository.createEntity(createItemDto);
+
+    const savedItem = await this.itemRepository.save(item);
+
+    const itemResponse = EntityMapper.map(savedItem, ItemResponseDto);
+
+    await this.cacheService.set(
+      idempotencyKeyFormatted,
+      itemResponse,
+      CACHE_TTL.IDEMPOTENCY,
+    );
+
+    this.logger.debug('Item created and cached', {
+      itemId: savedItem.id,
+      idempotencyKey: idempotencyKeyFormatted,
+    });
+
+    await this.cacheService.deleteBulk({
+      patterns: [ITEM_KEY.CACHE_FIND_ALL_PATTERN()],
+    });
+
+    return itemResponse;
+  }
+
+  async findAll(query: ItemQueryDto): Promise<PaginatedResultDto<ItemResponseDto>> {
+    const cacheKey = ITEM_KEY.CACHE_FIND_ALL(query);
+
+    const cachedResult = await runAndIgnoreError(
+      () => this.cacheService.get<PaginatedResultDto<ItemResponseDto>>(cacheKey),
+      `fetching items list from cache with key: ${cacheKey}`,
+      this.logger,
+    );
+    if (cachedResult) {
+      this.logger.debug('Returning cached items list', { cacheKey });
+      return cachedResult;
+    }
+
+    this.logger.debug('Fetching items with filters', { queryDto: query });
+
+    const result = await this.itemRepository.filter(query);
+
+    const resultMapped = new PaginatedResultDto<ItemResponseDto>(
+      result.total,
+      result.page,
+      result.limit,
+      EntityMapper.mapArray(result.data, ItemResponseDto),
+    );
+
+    await runAndIgnoreError(
+      () => this.cacheService.set(cacheKey, resultMapped, CACHE_TTL.LIST),
+      `caching items list with key: ${cacheKey}`,
+      this.logger,
+    );
+
+    this.logger.debug(`Retrieved ${result.data.length} items`, { cacheKey });
+
+    return resultMapped;
+  }
+
+  async findOne(id: string): Promise<ItemResponseDto> {
+    const cacheKey = ITEM_KEY.CACHE_FIND_ONE(id);
+
+    const cachedResult = await runAndIgnoreError(
+      () => this.cacheService.get<ItemResponseDto>(cacheKey),
+      `fetching item from cache with key: ${cacheKey}`,
+      this.logger,
+    );
+    if (cachedResult) {
+      this.logger.debug('Returning cached item', { id });
+      return cachedResult;
+    }
+
+    this.logger.debug('Fetching item', { itemId: id });
+
+    const item = await this.itemRepository.findById(id);
+
+    if (!item) {
+      throw new NotFoundException(`Item with ID ${id} not found`);
+    }
+
+    const itemResponse = EntityMapper.map(item, ItemResponseDto);
+
+    await runAndIgnoreError(
+      () => this.cacheService.set(cacheKey, itemResponse, CACHE_TTL.LIST),
+      `caching item with ID: ${id}`,
+      this.logger,
+    );
+
+    return itemResponse;
+  }
+
+  @Transactional()
+  @UseLock({ prefix: 'item-update', key: ([id]) => id })
+  async update(id: string, updateItemDto: UpdateItemDto): Promise<ItemResponseDto> {
+    this.logger.debug('Updating item', { itemId: id });
+
+    const item = await this.itemRepository.findById(id);
+    if (!item) {
+      throw new NotFoundException(`Item with ID ${id} not found`);
+    }
+
+    Object.assign(item, updateItemDto);
+
+    const savedItem = await this.itemRepository.save(item);
+
+    this.logger.debug('Item updated and cached', { itemId: savedItem.id });
+
+    await this.cacheService.deleteBulk({
+      keys: [ITEM_KEY.CACHE_FIND_ONE(id)],
+      patterns: [ITEM_KEY.CACHE_FIND_ALL_PATTERN()],
+    });
+
+    return EntityMapper.map(savedItem, ItemResponseDto);
+  }
+
+  @Transactional()
+  @UseLock({ prefix: 'item-remove', key: ([id]) => id })
+  async remove(id: string): Promise<void> {
+    this.logger.debug('Deleting item', { itemId: id });
+
+    const item = await this.itemRepository.findById(id);
+    if (!item) {
+      throw new NotFoundException(`Item with ID ${id} not found`);
+    }
+
+    await this.itemRepository.deleteById(item.id);
+
+    await this.cacheService.deleteBulk({
+      keys: [ITEM_KEY.CACHE_FIND_ONE(id)],
+      patterns: [ITEM_KEY.CACHE_FIND_ALL_PATTERN()],
+    });
+
+    this.logger.debug('Item deleted', { itemId: id });
+  }
+
+  async findManyByIds(ids: string[]): Promise<Item[]> {
+    return this.itemRepository.findManyByIds(ids);
+  }
+}

@@ -6,6 +6,7 @@ import Redis from 'ioredis';
 import { REDIS_CLIENT } from '@/shared/constants/redis-client.constant';
 import { UsersService } from '@/modules/users/users.service';
 import { OrdersService } from '@/modules/orders/orders.service';
+import { ItemsService } from '@/modules/items/items.service';
 import { OutboxRepository } from '@/shared/modules/outbox/repositories/outbox.repository';
 import { cleanDatabase, cleanRedis } from './utils/database-cleaner';
 import { paymentsGatewayServiceMock } from './utils/mock-payments-gateway-service';
@@ -42,6 +43,7 @@ describe('Orders (Integration)', () => {
   let app: INestApplication;
   let usersService: UsersService;
   let ordersService: OrdersService;
+  let itemsService: ItemsService;
   let outboxRepository: OutboxRepository;
   let eventBusQueue: Queue;
   let dataSource: DataSource;
@@ -60,6 +62,7 @@ describe('Orders (Integration)', () => {
 
     usersService = module.get<UsersService>(UsersService);
     ordersService = module.get<OrdersService>(OrdersService);
+    itemsService = module.get<ItemsService>(ItemsService);
     outboxRepository = module.get<OutboxRepository>(OutboxRepository);
     eventBusQueue = module.get<Queue>(getQueueToken(EVENT_QUEUE_TOKEN));
     dataSource = module.get<DataSource>(DataSource);
@@ -88,11 +91,31 @@ describe('Orders (Integration)', () => {
       );
       const userId = createdUser.id;
 
+      // Arrange: create two items at different prices
+      const itemA = await itemsService.create(
+        {
+          name: 'Product AAA',
+          description: 'Integration test item A',
+          quantity: 100,
+          price: 5000,
+        },
+        'idempotency-key-create-order-test-itemA',
+      );
+      const itemB = await itemsService.create(
+        {
+          name: 'Product BBB',
+          description: 'Integration test item B',
+          quantity: 100,
+          price: 3000,
+        },
+        'idempotency-key-create-order-test-itemB',
+      );
+
       // Act: create an order via OrdersService using the real user ID
       const createOrderDto = {
         items: [
-          { productId: 'product-aaa', quantity: 2, price: 5000 },
-          { productId: 'product-bbb', quantity: 1, price: 3000 },
+          { itemId: itemA.id, quantity: 2 },
+          { itemId: itemB.id, quantity: 1 },
         ],
       };
       await ordersService.create(createOrderDto, userId, 'idempotency-key-order-1');
@@ -107,22 +130,14 @@ describe('Orders (Integration)', () => {
       expect(orders[0].total).toBe(13000); // (2 * 5000) + (1 * 3000)
 
       const orderItems = await dataSource.query(
-        `SELECT "productId", quantity, price FROM order_items WHERE "orderId" = $1 ORDER BY "productId"`,
+        `SELECT "itemId", quantity FROM order_items WHERE "orderId" = $1 ORDER BY "itemId"`,
         [orders[0].id],
       );
       expect(orderItems).toHaveLength(2);
       expect(orderItems).toEqual(
         expect.arrayContaining([
-          expect.objectContaining({
-            productId: 'product-aaa',
-            quantity: 2,
-            price: 5000,
-          }),
-          expect.objectContaining({
-            productId: 'product-bbb',
-            quantity: 1,
-            price: 3000,
-          }),
+          expect.objectContaining({ itemId: itemA.id, quantity: 2 }),
+          expect.objectContaining({ itemId: itemB.id, quantity: 1 }),
         ]),
       );
 
@@ -145,13 +160,21 @@ describe('Orders (Integration)', () => {
         ['Rollback User', 'rollback@test.com', 'securePass123', 'user'],
       );
 
+      // Arrange: create an item directly in the DB (no outbox side effects)
+      const [{ id: itemId }] = await dataSource.query(
+        `INSERT INTO "items" (name, description, quantity, price)
+         VALUES ($1, $2, $3, $4)
+         RETURNING id`,
+        ['Rollback Item', 'Used for rollback test', 10, 7500],
+      );
+
       // Force the OutboxRepository.save to throw an error, simulating a DB failure
       const saveSpy = jest
         .spyOn(outboxRepository, 'save')
         .mockRejectedValueOnce(new Error('Simulated Outbox insertion failure'));
 
       const createOrderDto = {
-        items: [{ productId: 'product-ccc', quantity: 1, price: 7500 }],
+        items: [{ itemId, quantity: 1 }],
       };
 
       // Act: attempt to create the order — should fail due to Outbox error
@@ -195,11 +218,31 @@ describe('Orders (Integration)', () => {
       );
       const userId = createdUser.id;
 
+      // Arrange: create items so the order total is deterministic
+      const itemX = await itemsService.create(
+        {
+          name: 'Product XXX',
+          description: 'Pipeline test item X',
+          quantity: 100,
+          price: 4000,
+        },
+        'idempotency-key-full-flow-itemX',
+      );
+      const itemY = await itemsService.create(
+        {
+          name: 'Product YYY',
+          description: 'Pipeline test item Y',
+          quantity: 100,
+          price: 6000,
+        },
+        'idempotency-key-full-flow-itemY',
+      );
+
       // Act: create an order — returns with PENDING status
       const createOrderDto = {
         items: [
-          { productId: 'product-xxx', quantity: 3, price: 4000 },
-          { productId: 'product-yyy', quantity: 2, price: 6000 },
+          { itemId: itemX.id, quantity: 3 },
+          { itemId: itemY.id, quantity: 2 },
         ],
       };
       const createdOrder = await ordersService.create(
@@ -298,9 +341,20 @@ describe('Orders (Integration)', () => {
         );
         const userId = createdUser.id;
 
+        // Arrange: create an item for the order
+        const compItem = await itemsService.create(
+          {
+            name: 'Compensation Item',
+            description: 'Item for compensation test',
+            quantity: 100,
+            price: 3000,
+          },
+          'idempotency-key-compensation-item',
+        );
+
         // Act: create an order — returns with PENDING status
         const createOrderDto = {
-          items: [{ productId: 'product-comp', quantity: 2, price: 3000 }],
+          items: [{ itemId: compItem.id, quantity: 2 }],
         };
         const createdOrder = await ordersService.create(
           createOrderDto,
@@ -382,9 +436,20 @@ describe('Orders (Integration)', () => {
         );
         const userId = createdUser.id;
 
+        // Arrange: create an item for the order
+        const failItem = await itemsService.create(
+          {
+            name: 'Payment Failure Item',
+            description: 'Item for payment failure test',
+            quantity: 100,
+            price: 5000,
+          },
+          'idempotency-key-payment-failure-item',
+        );
+
         // Act: create an order — returns with PENDING status
         const createOrderDto = {
-          items: [{ productId: 'product-fail', quantity: 1, price: 5000 }],
+          items: [{ itemId: failItem.id, quantity: 1 }],
         };
         const createdOrder = await ordersService.create(
           createOrderDto,

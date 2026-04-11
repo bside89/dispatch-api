@@ -146,18 +146,22 @@ export class UsersService extends BaseService {
 
     const result = await this.userRepository.filter(query);
 
+    const resultMapped = new PaginatedResultDto<UserResponseDto>(
+      result.total,
+      result.page,
+      result.limit,
+      EntityMapper.mapArray(result.data, UserResponseDto),
+    );
+
     await runAndIgnoreError(
-      () => this.cacheService.set(cacheKey, result, CACHE_TTL.LIST),
+      () => this.cacheService.set(cacheKey, resultMapped, CACHE_TTL.LIST),
       `caching users list with key: ${cacheKey}`,
       this.logger,
     );
 
     this.logger.debug(`Retrieved ${result.data.length} users`, { cacheKey });
 
-    return {
-      ...result,
-      data: EntityMapper.mapArray(result.data, UserResponseDto),
-    };
+    return resultMapped;
   }
 
   async findOne(id: string, requestUser?: RequestUser): Promise<UserResponseDto> {
@@ -262,6 +266,7 @@ export class UsersService extends BaseService {
     return userMapped;
   }
 
+  @Transactional()
   @UseLock({ prefix: 'user-update', key: ([id]) => id })
   async update(
     id: string,
@@ -316,6 +321,7 @@ export class UsersService extends BaseService {
     return EntityMapper.map(updatedUser, UserResponseDto);
   }
 
+  @Transactional()
   @UseLock({ prefix: 'user-update', key: ([id]) => id })
   async updateLogin(
     id: string,
@@ -377,6 +383,7 @@ export class UsersService extends BaseService {
     return userMapped;
   }
 
+  @Transactional()
   @UseLock({ prefix: 'user-delete', key: ([id]) => id })
   async remove(id: string, requestUser?: RequestUser): Promise<void> {
     this.assertUserAccess(id, requestUser);

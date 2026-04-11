@@ -19,6 +19,7 @@ describe('Orders (E2E)', () => {
 
   let adminToken: string;
   let userToken: string;
+  let testItemId: string;
 
   beforeAll(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -63,6 +64,20 @@ describe('Orders (E2E)', () => {
       .expect(HttpStatus.CREATED);
     adminToken = adminAuth.data.accessToken;
 
+    // Create a default test item as admin for order creation
+    const { body: itemBody } = await request(app.getHttpServer())
+      .post('/v1/items')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .set('idempotency-key', `item-setup-${Date.now()}`)
+      .send({
+        name: 'Test Product',
+        description: 'A test product for order tests',
+        quantity: 100,
+        price: 14999,
+      })
+      .expect(HttpStatus.CREATED);
+    testItemId = itemBody.data.id;
+
     // Create a regular user for tests
     const randomSuffix = Math.random().toString(36).substring(7);
     const uniqueEmail = `regular-${randomSuffix}@test.com`;
@@ -94,9 +109,8 @@ describe('Orders (E2E)', () => {
       const payload = {
         items: [
           {
-            productId: 'product-100',
+            itemId: '550e8400-e29b-41d4-a716-446655440099',
             quantity: 3,
-            price: 15999,
           },
         ],
       };
@@ -119,9 +133,8 @@ describe('Orders (E2E)', () => {
       const payload = {
         items: [
           {
-            productId: 'product-123',
+            itemId: testItemId,
             quantity: 2,
-            price: 14999,
           },
         ],
       };
@@ -141,9 +154,8 @@ describe('Orders (E2E)', () => {
       const payload = {
         items: [
           {
-            productId: 'product-123',
+            itemId: testItemId,
             quantity: 2,
-            price: 14999,
           },
         ],
       };
@@ -175,7 +187,7 @@ describe('Orders (E2E)', () => {
 
       try {
         const payload = {
-          items: [{ productId: 'product-rollback', quantity: 1, price: 7500 }],
+          items: [{ itemId: testItemId, quantity: 1 }],
         };
 
         await request(app.getHttpServer())
@@ -215,7 +227,7 @@ describe('Orders (E2E)', () => {
 
     it('GET /v1/orders/:id - should get own order', async () => {
       const payload = {
-        items: [{ productId: 'product-xyz', quantity: 1, price: 5000 }],
+        items: [{ itemId: testItemId, quantity: 1 }],
       };
       const created = await request(app.getHttpServer())
         .post('/v1/orders')
@@ -236,7 +248,7 @@ describe('Orders (E2E)', () => {
 
     it('GET /v1/orders/:id - should block access to another user order', async () => {
       const payload = {
-        items: [{ productId: 'product-admin', quantity: 1, price: 5000 }],
+        items: [{ itemId: testItemId, quantity: 1 }],
       };
       const created = await request(app.getHttpServer())
         .post('/v1/orders')
@@ -271,7 +283,7 @@ describe('Orders (E2E)', () => {
       process.env.TEST_ENV = 'false';
 
       const payload = {
-        items: [{ productId: 'product-xyz', quantity: 1, price: 5000 }],
+        items: [{ itemId: testItemId, quantity: 1 }],
       };
       const created = await request(app.getHttpServer())
         .post('/v1/orders')
@@ -284,7 +296,7 @@ describe('Orders (E2E)', () => {
       await request(app.getHttpServer())
         .patch(`/v1/orders/${orderId}`)
         .set('Authorization', `Bearer ${adminToken}`)
-        .send({ items: [{ productId: 'product-xyz-2', quantity: 1, price: 6000 }] })
+        .send({ items: [{ itemId: testItemId, quantity: 3 }] })
         .expect(HttpStatus.OK);
 
       process.env.TEST_ENV = originalTestEnv;
@@ -308,7 +320,7 @@ describe('Orders (E2E)', () => {
       process.env.TEST_ENV = 'false';
 
       const payload = {
-        items: [{ productId: 'product-xyz', quantity: 1, price: 5000 }],
+        items: [{ itemId: testItemId, quantity: 1 }],
       };
       const created = await request(app.getHttpServer())
         .post('/v1/orders')
@@ -343,7 +355,7 @@ describe('Orders (E2E)', () => {
       const originalTestEnv = process.env.TEST_ENV;
       process.env.TEST_ENV = 'false';
 
-      const payload = { items: [{ productId: 'delete', quantity: 1, price: 10 }] };
+      const payload = { items: [{ itemId: testItemId, quantity: 1 }] };
       const created = await request(app.getHttpServer())
         .post('/v1/orders')
         .set('idempotency-key', 'order-delete-key')

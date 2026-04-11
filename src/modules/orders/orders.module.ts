@@ -16,9 +16,14 @@ import {
 } from './strategies';
 import { RefundOrderJobStrategy } from './strategies/refund-order-job.strategy';
 import { PaymentsGatewayModule } from '../payments-gateway/payments-gateway.module';
+import { ItemsModule } from '../items/items.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Order, OrderItem]), PaymentsGatewayModule],
+  imports: [
+    TypeOrmModule.forFeature([Order, OrderItem]),
+    PaymentsGatewayModule,
+    ItemsModule,
+  ],
   controllers: [OrdersController],
   providers: [
     OrdersService,

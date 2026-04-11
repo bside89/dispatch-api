@@ -31,6 +31,7 @@ import {
 } from './shared/constants/queue-tokens';
 import { PaymentsModule } from './modules/payments/payments.module';
 import { PaymentsGatewayModule } from './modules/payments-gateway/payments-gateway.module';
+import { ItemsModule } from './modules/items/items.module';
 
 @Module({
   imports: [
@@ -92,6 +93,7 @@ import { PaymentsGatewayModule } from './modules/payments-gateway/payments-gatew
     AuthModule,
     OrdersModule,
     UsersModule,
+    ItemsModule,
     EventsModule,
     CacheModule,
     OutboxModule,

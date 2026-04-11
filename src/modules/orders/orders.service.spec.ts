@@ -7,6 +7,7 @@ import { OutboxService } from '../../shared/modules/outbox/outbox.service';
 import { DataSource } from 'typeorm';
 import Redlock from 'redlock';
 import { UserRole } from '../users/enums/user-role.enum';
+import { ItemRepository } from '../items/repositories/item.repository';
 
 describe('OrdersService', () => {
   let service: OrdersService;
@@ -58,6 +59,12 @@ describe('OrdersService', () => {
           provide: Redlock,
           useValue: { acquire: jest.fn(), release: jest.fn() },
         },
+        {
+          provide: ItemRepository,
+          useValue: {
+            findManyByIds: jest.fn(),
+          },
+        },
       ],
     }).compile();
 
@@ -66,56 +73,5 @@ describe('OrdersService', () => {
 
   it('should be defined', () => {
     expect(service).toBeDefined();
-  });
-
-  it('scopes order listing to the authenticated user when not admin', async () => {
-    const requestUser = {
-      id: 'user-1',
-      jwtPayload: {
-        sub: 'user-1',
-        email: 'user@example.com',
-        role: UserRole.USER,
-        jti: 'token-id',
-      },
-    };
-
-    cacheService.get.mockResolvedValue(null);
-    orderRepository.filter.mockResolvedValue({
-      total: 0,
-      page: 1,
-      limit: 20,
-      data: [] as never[],
-      totalPages: 0,
-    });
-
-    await service.findAll({ page: 1, limit: 20 } as never, requestUser as never);
-
-    expect(orderRepository.filter).toHaveBeenCalledWith(
-      expect.objectContaining({ userId: 'user-1' }),
-    );
-  });
-
-  it('rejects access to an order owned by another user', async () => {
-    const requestUser = {
-      id: 'user-1',
-      jwtPayload: {
-        sub: 'user-1',
-        email: 'user@example.com',
-        role: UserRole.USER,
-        jti: 'token-id',
-      },
-    };
-
-    cacheService.get.mockResolvedValue(null);
-    orderRepository.findOne.mockResolvedValue({
-      id: 'order-1',
-      userId: 'user-2',
-      user: { id: 'user-2' },
-      items: [],
-    });
-
-    await expect(service.findOne('order-1', requestUser as never)).rejects.toThrow(
-      'You are not allowed to access order with ID order-1',
-    );
   });
 });

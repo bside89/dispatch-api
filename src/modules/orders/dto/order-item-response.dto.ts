@@ -1,5 +1,6 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { Exclude, Expose } from 'class-transformer';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { Exclude, Expose, Type } from 'class-transformer';
+import { ItemResponseDto } from '@/modules/items/dto/item-response.dto';
 
 @Exclude()
 export class OrderItemResponseDto {
@@ -19,37 +20,24 @@ export class OrderItemResponseDto {
 
   @Expose()
   @ApiProperty({
-    description: 'Product unique identifier',
-    example: 'product-123',
+    description: 'Item unique identifier',
+    example: '550e8400-e29b-41d4-a716-446655440002',
   })
-  productId: string;
+  itemId: string;
 
   @Expose()
   @ApiProperty({
-    description: 'Quantity of the product',
+    description: 'Quantity of the item',
     example: 2,
     minimum: 1,
   })
   quantity: number;
 
   @Expose()
-  @ApiProperty({
-    description: 'Price per unit (in cents)',
-    example: 14999,
+  @Type(() => ItemResponseDto)
+  @ApiPropertyOptional({
+    description: 'Item details',
+    type: () => ItemResponseDto,
   })
-  price: number;
-
-  @Expose()
-  @ApiProperty({
-    description: 'Order item creation date',
-    example: '2024-01-01T12:00:00Z',
-  })
-  createdAt: Date;
-
-  @Expose()
-  @ApiProperty({
-    description: 'Order item last update date',
-    example: '2024-01-01T12:00:00Z',
-  })
-  updatedAt: Date;
+  item?: ItemResponseDto;
 }
