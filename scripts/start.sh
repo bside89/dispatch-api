@@ -1,13 +1,19 @@
 #!/bin/bash
 
-echo "Setting up local debug environment..."
+echo "Setting up local  environment..."
 
 if ! docker info > /dev/null 2>&1; then
     echo "Docker is not running."
     exit 1
 fi
 
-if ! docker-compose ps --services --filter "status=running" | grep -q postgres; then
+if ! (docker-compose ps --services --filter "status=running" | grep -q postgres &&
+      docker-compose ps --services --filter "status=running" | grep -q redis && 
+      docker-compose ps --services --filter "status=running" | grep -q promtail &&
+      docker-compose ps --services --filter "status=running" | grep -q loki &&
+      docker-compose ps --services --filter "status=running" | grep -q grafana &&
+      docker-compose ps --services --filter "status=running" | grep -q stripe-mock
+    ); then
     echo "Starting infrastructure services (PostgreSQL, Redis)..."
     docker-compose up -d postgres redis promtail loki grafana stripe-mock
     
@@ -32,7 +38,7 @@ else
 fi
 
 echo ""
-echo "Local Debug Environment"
+echo "Local Dev Environment"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
 echo "Debug tips:"
@@ -45,6 +51,6 @@ read -p "Start the application now? (y/N): " -n 1 -r
 echo
 
 if [[ $REPLY =~ ^[Yy]$ ]]; then
-    echo "Starting NestJS in Debug Mode..."
-    npm run start:debug
+    echo "Starting NestJS in Dev Mode..."
+    nest start --debug --watch
 fi
