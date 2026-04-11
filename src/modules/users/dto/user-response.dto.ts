@@ -1,6 +1,7 @@
 import { BaseAddressDto } from '@/shared/dto/base-address.dto';
 import { ApiProperty } from '@nestjs/swagger';
 import { Exclude, Expose } from 'class-transformer';
+import { UserRole } from '../enums/user-role.enum';
 
 export class UserAddressResponseDto extends BaseAddressDto {}
 
@@ -26,6 +27,13 @@ export class UserResponseDto {
     example: 'joao.silva@email.com',
   })
   email: string;
+
+  @Expose()
+  @ApiProperty({
+    description: 'User role',
+    example: UserRole.USER,
+  })
+  role: UserRole;
 
   @Expose()
   @ApiProperty({

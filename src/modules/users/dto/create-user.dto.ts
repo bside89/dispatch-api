@@ -35,15 +35,6 @@ export class CreateUserDto {
   @IsNotEmpty()
   email: string;
 
-  @ApiPropertyOptional({
-    description: 'User address',
-    type: CreateUserAddressDto,
-  })
-  @IsOptional()
-  @ValidateNested()
-  @Type(() => CreateUserAddressDto)
-  address?: CreateUserAddressDto;
-
   @ApiProperty({
     description: 'User password',
     example: 'password123',
@@ -55,4 +46,13 @@ export class CreateUserDto {
   @MinLength(6)
   @MaxLength(100)
   password: string;
+
+  @ApiPropertyOptional({
+    description: 'User address',
+    type: CreateUserAddressDto,
+  })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => CreateUserAddressDto)
+  address?: CreateUserAddressDto;
 }

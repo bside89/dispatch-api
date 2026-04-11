@@ -15,7 +15,7 @@ export class User extends BaseEntity {
   @Column({ nullable: false, unique: true })
   email: string;
 
-  @Column({ nullable: false, select: false })
+  @Column({ nullable: false })
   password: string;
 
   @Column({
@@ -25,7 +25,7 @@ export class User extends BaseEntity {
   })
   role: UserRole;
 
-  @Column({ nullable: true, select: false })
+  @Column({ nullable: true })
   refreshToken?: string;
 
   @OneToMany(() => Order, (order) => order.user, { cascade: true })
