@@ -15,13 +15,10 @@ export class PaymentsGatewayService extends BaseService {
   //#region Customers
 
   async customersCreate(
-    createCustomerDto: CreateCustomerDto,
+    dto: CreateCustomerDto,
     idempotencyKey: string,
   ): Promise<CustomerResponseDto> {
-    const customer = await this.stripeCustomersGateway.create(
-      createCustomerDto,
-      idempotencyKey,
-    );
+    const customer = await this.stripeCustomersGateway.create(dto, idempotencyKey);
     return EntityMapper.map(customer, CustomerResponseDto);
   }
 
@@ -37,12 +34,12 @@ export class PaymentsGatewayService extends BaseService {
 
   async customersUpdate(
     customerId: string,
-    updateCustomerDto: UpdateCustomerDto,
+    dto: UpdateCustomerDto,
     idempotencyKey: string,
   ): Promise<CustomerResponseDto> {
     const updatedCustomer = await this.stripeCustomersGateway.update(
       customerId,
-      updateCustomerDto,
+      dto,
       idempotencyKey,
     );
     return EntityMapper.map(updatedCustomer, CustomerResponseDto);

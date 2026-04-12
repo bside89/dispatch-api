@@ -20,11 +20,11 @@ import Redlock from 'redlock';
 @Injectable()
 export class ShipOrderJobStrategy extends BaseOrderJobStrategy<ShipOrderJobPayload> {
   constructor(
-    protected readonly outboxService: OutboxService,
-    protected readonly orderRepository: OrderRepository,
-    protected readonly cacheService: CacheService,
-    protected readonly dataSource: DataSource, // Used in @Transactional()
-    protected readonly redlock: Redlock, // Used in @UseLock()
+    private readonly outboxService: OutboxService,
+    orderRepository: OrderRepository,
+    cacheService: CacheService,
+    dataSource: DataSource,
+    redlock: Redlock,
   ) {
     super(
       ShipOrderJobStrategy.name,
@@ -67,7 +67,6 @@ export class ShipOrderJobStrategy extends BaseOrderJobStrategy<ShipOrderJobPaylo
       await this.compensationLogic(job.data, error);
     } catch (e) {
       const error = ensureError(e);
-
       this.logger.error(
         `[CRITICAL] Compensation logic failed for shipping order: ${error.message}`,
         { orderId },

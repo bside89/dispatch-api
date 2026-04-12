@@ -14,9 +14,9 @@ import { PaymentJobHandlerFactory } from '../factories/payment-job-handler.facto
 export class PaymentsProcessor extends BaseProcessor {
   constructor(
     private readonly factory: PaymentJobHandlerFactory,
-    protected readonly configService: ConfigService,
-    protected readonly cacheService: CacheService,
-    protected readonly redlock: Redlock, // Used in @UseLock()
+    cacheService: CacheService,
+    configService: ConfigService,
+    redlock: Redlock,
   ) {
     super(PaymentsProcessor.name, cacheService, configService, redlock);
   }

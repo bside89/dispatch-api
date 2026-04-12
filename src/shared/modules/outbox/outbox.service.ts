@@ -36,8 +36,8 @@ export class OutboxService extends TransactionalService implements OnModuleDestr
     protected readonly eventBus: EventBus,
 
     private readonly outboxRepository: OutboxRepository,
-    protected readonly dataSource: DataSource,
-    protected readonly redlock: Redlock,
+    dataSource: DataSource,
+    redlock: Redlock,
   ) {
     super(OutboxService.name, dataSource, redlock);
   }
@@ -86,7 +86,6 @@ export class OutboxService extends TransactionalService implements OnModuleDestr
       }
     } catch (e) {
       const error = ensureError(e);
-
       this.logger.error(`Error during Outbox processing cycle: ${error.message}`);
     } finally {
       this.isProcessing = false;

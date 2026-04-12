@@ -58,7 +58,6 @@ export abstract class BaseProcessor
       try {
         // Select the appropriate job strategy based on job name and event type
         const handler = factory.createHandler(job.name);
-
         if (!handler) {
           this.logger.warn(`Unknown job: ${job.name}`);
           return;
@@ -72,10 +71,9 @@ export abstract class BaseProcessor
 
         await this.cacheService.set(idempotencyKey, JobStatus.COMPLETED);
       } catch (e) {
-        const error = ensureError(e);
-
         await this.cacheService.set(idempotencyKey, JobStatus.FAILED);
 
+        const error = ensureError(e);
         this.logger.error(
           `Error executing job ${job.name} with id ${job.id}: ${error.message}`,
         );

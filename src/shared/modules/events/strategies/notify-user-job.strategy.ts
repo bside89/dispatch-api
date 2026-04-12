@@ -4,10 +4,10 @@ import { CacheService } from '../../cache/cache.service';
 import { delay } from '../../../helpers/functions';
 import { NotifyUserJobPayload } from '../../../payloads/event-job.payload';
 import { Transactional } from '@/shared/decorators/transactional.decorator';
-import { BaseJobStrategy } from '@/shared/strategies/base-job.strategy';
+import { BaseEventJobStrategy } from './base-event-job.strategy';
 
 @Injectable()
-export class NotifyUserJobStrategy extends BaseJobStrategy<NotifyUserJobPayload> {
+export class NotifyUserJobStrategy extends BaseEventJobStrategy<NotifyUserJobPayload> {
   constructor(protected readonly cacheService: CacheService) {
     super(NotifyUserJobStrategy.name);
   }
@@ -31,10 +31,10 @@ export class NotifyUserJobStrategy extends BaseJobStrategy<NotifyUserJobPayload>
   }
 
   private async notifyUser(userId: string, message: string) {
+    // TODO: Add real notification logic (e.g., send email, push notification, etc.)
     await delay(1000);
 
     this.logger.log(`Notification sent to user ${userId}:`);
-
     this.logger.log(message);
   }
 }

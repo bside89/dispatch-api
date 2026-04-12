@@ -23,8 +23,8 @@ export class ItemsService extends TransactionalService {
   constructor(
     private readonly itemRepository: ItemRepository,
     protected readonly cacheService: CacheService,
-    protected readonly dataSource: DataSource,
-    protected readonly redlock: Redlock,
+    dataSource: DataSource,
+    redlock: Redlock,
   ) {
     super(ItemsService.name, dataSource, redlock);
   }
@@ -38,12 +38,11 @@ export class ItemsService extends TransactionalService {
     createItemDto: CreateItemDto,
     idempotencyKey: string,
   ): Promise<ItemResponseDto> {
+    // Check if there's an existing item for the same idempotency key
     const idempotencyKeyFormatted = ITEM_KEY.IDEMPOTENCY(
       this.create.name,
       idempotencyKey,
     );
-
-    // Check if there's an existing item for the same idempotency key
     const existingItem = await this.cacheService.get<ItemResponseDto>(
       idempotencyKeyFormatted,
     );
@@ -58,9 +57,7 @@ export class ItemsService extends TransactionalService {
     this.logger.debug('Creating item', { name: createItemDto.name });
 
     const item = this.itemRepository.createEntity(createItemDto);
-
     const savedItem = await this.itemRepository.save(item);
-
     const itemResponse = EntityMapper.map(savedItem, ItemResponseDto);
 
     await this.cacheService.set(
@@ -83,7 +80,6 @@ export class ItemsService extends TransactionalService {
 
   async findAll(query: ItemQueryDto): Promise<PaginatedResultDto<ItemResponseDto>> {
     const cacheKey = ITEM_KEY.CACHE_FIND_ALL(query);
-
     const cachedResult = await runAndIgnoreError(
       () => this.cacheService.get<PaginatedResultDto<ItemResponseDto>>(cacheKey),
       `fetching items list from cache with key: ${cacheKey}`,
@@ -97,7 +93,6 @@ export class ItemsService extends TransactionalService {
     this.logger.debug('Fetching items with filters', { queryDto: query });
 
     const result = await this.itemRepository.filter(query);
-
     const resultMapped = new PaginatedResultDto<ItemResponseDto>(
       result.total,
       result.page,
@@ -118,7 +113,6 @@ export class ItemsService extends TransactionalService {
 
   async findOne(id: string): Promise<ItemResponseDto> {
     const cacheKey = ITEM_KEY.CACHE_FIND_ONE(id);
-
     const cachedResult = await runAndIgnoreError(
       () => this.cacheService.get<ItemResponseDto>(cacheKey),
       `fetching item from cache with key: ${cacheKey}`,
@@ -132,20 +126,18 @@ export class ItemsService extends TransactionalService {
     this.logger.debug('Fetching item', { itemId: id });
 
     const item = await this.itemRepository.findById(id);
-
     if (!item) {
       throw new NotFoundException(`Item with ID ${id} not found`);
     }
-
-    const itemResponse = EntityMapper.map(item, ItemResponseDto);
+    const itemMapped = EntityMapper.map(item, ItemResponseDto);
 
     await runAndIgnoreError(
-      () => this.cacheService.set(cacheKey, itemResponse, CACHE_TTL.LIST),
+      () => this.cacheService.set(cacheKey, itemMapped, CACHE_TTL.LIST),
       `caching item with ID: ${id}`,
       this.logger,
     );
 
-    return itemResponse;
+    return itemMapped;
   }
 
   @Transactional()
@@ -159,7 +151,6 @@ export class ItemsService extends TransactionalService {
     }
 
     Object.assign(item, updateItemDto);
-
     const savedItem = await this.itemRepository.save(item);
 
     this.logger.debug('Item updated and cached', { itemId: savedItem.id });

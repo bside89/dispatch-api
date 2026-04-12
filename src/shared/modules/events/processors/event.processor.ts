@@ -1,6 +1,5 @@
 import { OnWorkerEvent, Processor } from '@nestjs/bullmq';
 import { Job } from 'bullmq';
-import { NotifyUserJobStrategy } from '../strategies/notify-user-job.strategy';
 import { BaseProcessor } from '@/shared/processors/base.processor';
 import { ConfigService } from '@nestjs/config';
 import { CacheService } from '@/shared/modules/cache/cache.service';
@@ -15,10 +14,9 @@ import { Injectable } from '@nestjs/common';
 export class EventProcessor extends BaseProcessor {
   constructor(
     protected readonly factory: EventJobHandlerFactory,
-    protected readonly notificationStrategy: NotifyUserJobStrategy,
-    protected readonly configService: ConfigService,
-    protected readonly cacheService: CacheService,
-    protected readonly redlock: Redlock, // Used in @UseLock()
+    cacheService: CacheService,
+    configService: ConfigService,
+    redlock: Redlock,
   ) {
     super(EventProcessor.name, cacheService, configService, redlock);
   }

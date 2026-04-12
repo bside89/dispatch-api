@@ -14,9 +14,9 @@ import { Injectable } from '@nestjs/common';
 export class OrderProcessor extends BaseProcessor {
   constructor(
     private readonly factory: OrderJobHandlerFactory,
-    protected readonly configService: ConfigService,
-    protected readonly cacheService: CacheService,
-    protected readonly redlock: Redlock, // Used in @UseLock()
+    cacheService: CacheService,
+    configService: ConfigService,
+    redlock: Redlock,
   ) {
     super(OrderProcessor.name, cacheService, configService, redlock);
   }

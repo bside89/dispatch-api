@@ -4,14 +4,14 @@ import { OrderStatus } from '../enums/order-status.enum';
 import { DataSource } from 'typeorm';
 import { UseLock } from '@/shared/decorators/lock.decorator';
 import Redlock from 'redlock';
-import { BaseJobPayload } from '@/shared/payloads/base-job.payload';
 import { ORDER_KEY } from '../../../shared/modules/cache/constants/order.key';
 import { BaseJobStrategy } from '@/shared/strategies/base-job.strategy';
 import { Order } from '../entities/order.entity';
 import { LOCK_PREFIX } from '@/shared/constants/lock-prefix.constants';
+import { OrderJobPayload } from '@/shared/payloads/order-job.payload';
 
 export abstract class BaseOrderJobStrategy<
-  T extends BaseJobPayload,
+  T extends OrderJobPayload,
 > extends BaseJobStrategy<T> {
   protected readonly VALID_PRECONDITIONS = {
     [OrderStatus.PENDING]: [],
@@ -30,8 +30,8 @@ export abstract class BaseOrderJobStrategy<
     jobName: string,
     protected readonly cacheService: CacheService,
     protected readonly orderRepository: OrderRepository,
-    protected readonly dataSource: DataSource, // Used in @Transactional()
-    protected readonly redlock: Redlock, // Used in @UseLock()
+    protected readonly dataSource: DataSource,
+    protected readonly redlock: Redlock,
   ) {
     super(jobName);
   }

@@ -210,54 +210,6 @@ export class OrdersController extends BaseController {
     return this.success(result, 'Order updated successfully');
   }
 
-  @Patch(':id/status')
-  @Roles(UserRole.ADMIN)
-  @ApiOperation({
-    summary: 'Update order status',
-    description: 'Update only the order status',
-  })
-  @ApiParam({
-    name: 'id',
-    description: 'Order unique identifier (UUID)',
-  })
-  @ApiOkResponse({
-    description: 'Order status successfully updated',
-    type: SuccessResponseDto<OrderResponseDto>,
-  })
-  @ApiNotFoundResponse({
-    description: 'Order not found',
-  })
-  @ApiBadRequestResponse({
-    description: 'Invalid status value',
-  })
-  @ApiBody({
-    schema: {
-      type: 'object',
-      properties: {
-        status: {
-          type: 'string',
-          enum: Object.values(OrderStatus),
-          example: OrderStatus.PAID,
-        },
-      },
-      required: ['status'],
-    },
-    description: 'New order status',
-  })
-  async updateStatus(
-    @Param('id', ParseUUIDPipe) id: string,
-    @Body('status') status: OrderStatus,
-  ) {
-    this.logger.debug(`PATCH /orders/${id}/status - Updating order status`, {
-      orderId: id,
-      status,
-    });
-
-    const result = await this.ordersService.updateStatus(id, status);
-
-    return this.success(result, 'Order status updated successfully');
-  }
-
   @Delete(':id')
   @Roles(UserRole.ADMIN)
   @HttpCode(HttpStatus.OK)

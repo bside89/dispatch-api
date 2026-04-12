@@ -17,11 +17,11 @@ import { Order } from '../entities/order.entity';
 @Injectable()
 export class RefundOrderJobStrategy extends BaseOrderJobStrategy<RefundOrderJobPayload> {
   constructor(
-    protected readonly cacheService: CacheService,
-    protected readonly outboxService: OutboxService,
-    protected readonly orderRepository: OrderRepository,
-    protected readonly dataSource: DataSource, // Used in @Transactional()
-    protected readonly redlock: Redlock, // Used in @UseLock()
+    private readonly outboxService: OutboxService,
+    cacheService: CacheService,
+    orderRepository: OrderRepository,
+    dataSource: DataSource,
+    redlock: Redlock,
   ) {
     super(
       RefundOrderJobStrategy.name,

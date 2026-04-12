@@ -1,7 +1,6 @@
 import { OrderRepository } from '@/modules/orders/repositories/order.repository';
 import { UserRepository } from '@/modules/users/repositories/user.repository';
 import { CacheService } from '@/shared/modules/cache/cache.service';
-import { BaseJobPayload } from '@/shared/payloads/base-job.payload';
 import { BaseJobStrategy } from '@/shared/strategies/base-job.strategy';
 import Redlock from 'redlock';
 import { DataSource } from 'typeorm';
@@ -12,9 +11,10 @@ import { User } from '@/modules/users/entities/user.entity';
 import { USER_KEY } from '@/shared/modules/cache/constants/user.key';
 import { PaymentsGatewayService } from '@/modules/payments-gateway/payments-gateway.service';
 import { LOCK_PREFIX } from '@/shared/constants/lock-prefix.constants';
+import { PaymentJobPayload } from '@/shared/payloads/payment-job.payload';
 
 export abstract class BasePaymentJobStrategy<
-  T extends BaseJobPayload,
+  T extends PaymentJobPayload,
 > extends BaseJobStrategy<T> {
   constructor(
     jobName: string,

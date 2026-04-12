@@ -29,8 +29,8 @@ export class AuthService extends TransactionalService {
     private readonly configService: ConfigService,
     private readonly userRepository: UserRepository,
     private readonly outboxService: OutboxService,
-    protected readonly dataSource: DataSource,
-    protected readonly redlock: Redlock,
+    dataSource: DataSource,
+    redlock: Redlock,
   ) {
     super(AuthService.name, dataSource, redlock);
   }
@@ -39,14 +39,12 @@ export class AuthService extends TransactionalService {
   @UseLock({ prefix: LOCK_PREFIX.AUTH.LOGIN, key: ([email]) => email })
   async login(email: string, password: string): Promise<LoginResponseDto> {
     const user = await this.userRepository.findOne({ where: { email } });
-
     if (!user) throw new UnauthorizedException('User not found');
 
     const isValid = await HashUtils.compare(user.password, password);
     if (!isValid) throw new UnauthorizedException('Invalid password');
 
     const tokens = await this.generateTokens(user);
-
     await this.updateRefreshToken(user.id, tokens.refreshToken);
 
     // Add to the outbox for notifying the user about the login (Event Bus)
@@ -83,8 +81,8 @@ export class AuthService extends TransactionalService {
         'Invalid refresh token. User logged out. Please log in again.',
       );
     }
-    const tokens = await this.generateTokens(user);
 
+    const tokens = await this.generateTokens(user);
     await this.updateRefreshToken(user.id, tokens.refreshToken);
 
     return tokens;

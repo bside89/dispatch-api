@@ -19,7 +19,6 @@ import { OutboxType } from '@/shared/modules/outbox/enums/outbox-type.enum';
 import { runAndIgnoreError } from '@/shared/helpers/functions';
 import { UseLock } from '@/shared/decorators/lock.decorator';
 import Redlock from 'redlock';
-import { BaseService } from '@/shared/services/base.service';
 import { ORDER_KEY } from '../../shared/modules/cache/constants/order.key';
 import type { RequestUser } from '../auth/interfaces/request-user.interface';
 import { UserRole } from '../users/enums/user-role.enum';
@@ -35,8 +34,8 @@ export class OrdersService extends TransactionalService {
     private readonly itemsService: ItemsService,
     private readonly outboxService: OutboxService,
     private readonly cacheService: CacheService,
-    protected readonly dataSource: DataSource,
-    protected readonly redlock: Redlock,
+    dataSource: DataSource,
+    redlock: Redlock,
   ) {
     super(OrdersService.name, dataSource, redlock);
   }
@@ -47,12 +46,11 @@ export class OrdersService extends TransactionalService {
     key: ([, , idempotencyKey]) => idempotencyKey,
   })
   async create(
-    createOrderDto: CreateOrderDto,
+    dto: CreateOrderDto,
     userId: string,
     idempotencyKey: string,
   ): Promise<OrderResponseDto> {
     const idempotencyKeyFormatted = ORDER_KEY.IDEMPOTENCY('create', idempotencyKey);
-
     const existingOrder = await this.cacheService.get<OrderResponseDto>(
       idempotencyKeyFormatted,
     );
@@ -68,18 +66,17 @@ export class OrdersService extends TransactionalService {
       idempotencyKey: idempotencyKeyFormatted,
     });
 
-    const itemIds = createOrderDto.items.map((i) => i.itemId);
+    const itemIds = dto.items.map((i) => i.itemId);
     const catalogItems = await this.itemsService.findManyByIds(itemIds);
-
-    for (const dto of createOrderDto.items) {
-      if (!catalogItems.find((ci) => ci.id === dto.itemId)) {
-        throw new NotFoundException(`Item with ID ${dto.itemId} not found`);
+    for (const dtoItem of dto.items) {
+      if (!catalogItems.find((ci) => ci.id === dtoItem.itemId)) {
+        throw new NotFoundException(`Item with ID ${dtoItem.itemId} not found`);
       }
     }
 
-    const total = createOrderDto.items.reduce((sum, dto) => {
-      const ci = catalogItems.find((ci) => ci.id === dto.itemId)!;
-      return sum + ci.price * dto.quantity;
+    const total = dto.items.reduce((sum, dtoItem) => {
+      const ci = catalogItems.find((ci) => ci.id === dtoItem.itemId)!;
+      return sum + ci.price * dtoItem.quantity;
     }, 0);
 
     const order = this.orderRepository.createEntity({
@@ -87,29 +84,27 @@ export class OrdersService extends TransactionalService {
       total,
       status: OrderStatus.PENDING,
     });
-
     const savedOrder = await this.orderRepository.save(order);
 
-    const orderItems = createOrderDto.items.map((dto) =>
+    const orderItems = dto.items.map((dtoItem) =>
       this.orderItemRepository.createEntity({
-        itemId: dto.itemId,
-        quantity: dto.quantity,
+        itemId: dtoItem.itemId,
+        quantity: dtoItem.quantity,
         orderId: savedOrder.id,
       }),
     );
-
     await this.orderItemRepository.saveBulk(orderItems);
 
     // Reduce stock quantity of the items
     await Promise.all(
-      createOrderDto.items.map((itemDto) => {
-        const item = catalogItems.find((ci) => ci.id === itemDto.itemId);
-        if (item.stock < itemDto.quantity) {
+      dto.items.map((dtoItem) => {
+        const item = catalogItems.find((ci) => ci.id === dtoItem.itemId);
+        if (item.stock < dtoItem.quantity) {
           throw new ForbiddenException(
-            `Insufficient stock for item ${item.name}. Available: ${item.stock}, requested: ${itemDto.quantity}`,
+            `Insufficient stock for item ${item.name}. Available: ${item.stock}, requested: ${dtoItem.quantity}`,
           );
         }
-        return this.itemsService.decrementItemStock(item, itemDto.quantity);
+        return this.itemsService.decrementItemStock(item, dtoItem.quantity);
       }),
     );
 
@@ -199,42 +194,6 @@ export class OrdersService extends TransactionalService {
       this.logger,
     );
     if (cachedOrder) {
-      if (requestUser?.jwtPayload?.role !== UserRole.ADMIN) {
-        if (cachedOrder.user?.id) {
-          this.assertOrderAccess(cachedOrder.user.id, requestUser, id);
-        } else {
-          this.logger.debug(
-            'Cached order does not include ownership data, reloading from database',
-            {
-              orderId: id,
-            },
-          );
-
-          const order = await this.orderRepository.findOne({
-            where: { id },
-            relations: ['user', 'items'],
-          });
-
-          if (!order) {
-            throw new NotFoundException(`Order with ID ${id} not found`);
-          }
-
-          this.assertOrderAccess(order.userId, requestUser, id);
-
-          const orderMapped = EntityMapper.map(order, OrderResponseDto);
-
-          await runAndIgnoreError(
-            () => this.cacheService.set(cacheKey, orderMapped, CACHE_TTL.DEFAULT),
-            `caching order with key: ${cacheKey}`,
-            this.logger,
-          );
-
-          this.logger.debug('Found order', { orderId: id });
-
-          return orderMapped;
-        }
-      }
-
       this.logger.debug('Returning cached order', { orderId: id });
       return cachedOrder;
     }
@@ -243,7 +202,6 @@ export class OrdersService extends TransactionalService {
       where: { id },
       relations: ['user', 'items'],
     });
-
     if (!order) {
       throw new NotFoundException(`Order with ID ${id} not found`);
     }
@@ -265,58 +223,34 @@ export class OrdersService extends TransactionalService {
 
   @Transactional()
   @UseLock({ prefix: LOCK_PREFIX.ORDER.UPDATE, key: ([id]) => id })
-  async update(
-    id: string,
-    updateOrderDto: UpdateOrderDto,
-  ): Promise<OrderResponseDto> {
+  async update(id: string, dto: UpdateOrderDto): Promise<OrderResponseDto> {
     this.logger.debug('Updating order', { orderId: id });
 
     const order = await this.orderRepository.findOne({
       where: { id },
-      relations: ['items'],
+      relations: ['items', 'user'],
     });
     if (!order) {
       throw new NotFoundException(`Order with ID ${id} not found`);
     }
 
-    Object.assign(order, updateOrderDto);
-
-    // If items are updated, remove old items and add new ones
-    if (updateOrderDto.items) {
-      const itemIds = updateOrderDto.items.map((i) => i.itemId);
-      const catalogItems = await this.itemsService.findManyByIds(itemIds);
-
-      for (const dto of updateOrderDto.items) {
-        if (!catalogItems.find((ci) => ci.id === dto.itemId)) {
-          throw new NotFoundException(`Item with ID ${dto.itemId} not found`);
-        }
-      }
-
-      await this.orderItemRepository.delete({ orderId: id });
-
-      const orderItems = updateOrderDto.items.map((dto) =>
-        this.orderItemRepository.createEntity({
-          itemId: dto.itemId,
-          quantity: dto.quantity,
-          orderId: id,
-        }),
-      );
-
-      await this.orderItemRepository.saveBulk(orderItems);
-      order.items = orderItems;
-
-      order.total = updateOrderDto.items.reduce((sum, dto) => {
-        const ci = catalogItems.find((ci) => ci.id === dto.itemId)!;
-        return sum + ci.price * dto.quantity;
-      }, 0);
-    }
-
+    Object.assign(order, dto);
     await this.orderRepository.save(order);
 
     await this.cacheService.deleteBulk({
       keys: [ORDER_KEY.CACHE_FIND_ONE(id)],
       patterns: [ORDER_KEY.CACHE_FIND_ALL_PATTERN()],
     });
+
+    // Notify the user
+    await this.outboxService.add(
+      OutboxType.EVENTS_NOTIFY_USER,
+      new NotifyUserJobPayload(
+        order.user!.id,
+        order.user!.name,
+        `<To user ${order.user!.name}>: Your order with id ${order.id} status has been updated to ${dto.status}`,
+      ),
+    );
 
     this.logger.debug('Order updated', { orderId: id });
 
@@ -343,50 +277,6 @@ export class OrdersService extends TransactionalService {
     this.logger.debug('Order deleted', { orderId: id });
   }
 
-  @Transactional()
-  @UseLock({ prefix: LOCK_PREFIX.ORDER.UPDATE, key: ([id]) => id })
-  async updateStatus(id: string, status: OrderStatus): Promise<OrderResponseDto> {
-    const order = await this.orderRepository.findOne({
-      where: { id },
-      relations: ['user'],
-    });
-    if (!order) {
-      throw new NotFoundException(`Order with ID ${id} not found`);
-    }
-    if (!order.user) {
-      throw new NotFoundException(`User for order with ID ${id} not found`);
-    }
-
-    const oldStatus = order.status;
-    if (status === oldStatus) {
-      this.logger.debug(`Order ${id} is already in status ${status}`);
-
-      return EntityMapper.map(order, OrderResponseDto);
-    }
-
-    order.status = status;
-    await this.orderRepository.save(order);
-
-    // Notify the user
-    await this.outboxService.add(
-      OutboxType.EVENTS_NOTIFY_USER,
-      new NotifyUserJobPayload(
-        order.user!.id,
-        order.user!.name,
-        `<To user ${order.user!.name}>: Your order with id ${order.id} status has been updated to ${status}`,
-      ),
-    );
-
-    await this.cacheService.deleteBulk({
-      keys: [ORDER_KEY.CACHE_FIND_ONE(id)],
-      patterns: [ORDER_KEY.CACHE_FIND_ALL_PATTERN()],
-    });
-
-    this.logger.debug('Order status updated', { orderId: id });
-
-    return EntityMapper.map(order, OrderResponseDto);
-  }
-
   private assertOrderAccess(
     orderOwnerId: string | undefined,
     requestUser: RequestUser | undefined,
@@ -395,7 +285,6 @@ export class OrdersService extends TransactionalService {
     if (requestUser?.jwtPayload?.role === UserRole.ADMIN) {
       return;
     }
-
     if (!requestUser || orderOwnerId !== requestUser.id) {
       throw new ForbiddenException(
         `You are not allowed to access order with ID ${orderId}`,

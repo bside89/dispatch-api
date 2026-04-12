@@ -10,6 +10,7 @@ import { REDIS_CLIENT } from '@/shared/constants/redis-client.constant';
 import { OutboxRepository } from '@/shared/modules/outbox/repositories/outbox.repository';
 import { paymentsGatewayServiceMock } from './utils/mock-payments-gateway-service';
 import { PaymentsGatewayService } from '@/modules/payments-gateway/payments-gateway.service';
+import { OrderStatus } from '@/modules/orders/enums/order-status.enum';
 
 describe('Orders (E2E)', () => {
   let app: INestApplication;
@@ -271,7 +272,7 @@ describe('Orders (E2E)', () => {
       await request(app.getHttpServer())
         .patch('/v1/orders/123e4567-e89b-12d3-a456-426614174000')
         .set('Authorization', `Bearer ${userToken}`)
-        .send({ items: [] })
+        .send({ status: OrderStatus.REFUNDED })
         .expect(HttpStatus.FORBIDDEN);
 
       process.env.TEST_ENV = originalTestEnv;
@@ -283,7 +284,7 @@ describe('Orders (E2E)', () => {
       process.env.TEST_ENV = 'false';
 
       const payload = {
-        items: [{ itemId: testItemId, quantity: 1 }],
+        items: [{ itemId: testItemId, quantity: 2 }],
       };
       const created = await request(app.getHttpServer())
         .post('/v1/orders')
@@ -296,44 +297,7 @@ describe('Orders (E2E)', () => {
       await request(app.getHttpServer())
         .patch(`/v1/orders/${orderId}`)
         .set('Authorization', `Bearer ${adminToken}`)
-        .send({ items: [{ itemId: testItemId, quantity: 3 }] })
-        .expect(HttpStatus.OK);
-
-      process.env.TEST_ENV = originalTestEnv;
-    });
-
-    it('PATCH /v1/orders/:id/status - should block normal user (403 Forbidden)', async () => {
-      const originalTestEnv = process.env.TEST_ENV;
-      process.env.TEST_ENV = 'false';
-
-      await request(app.getHttpServer())
-        .patch('/v1/orders/123e4567-e89b-12d3-a456-426614174000/status')
-        .set('Authorization', `Bearer ${userToken}`)
-        .send({ status: 'PAID' })
-        .expect(HttpStatus.FORBIDDEN);
-
-      process.env.TEST_ENV = originalTestEnv;
-    });
-
-    it('PATCH /v1/orders/:id/status - should allow admin user', async () => {
-      const originalTestEnv = process.env.TEST_ENV;
-      process.env.TEST_ENV = 'false';
-
-      const payload = {
-        items: [{ itemId: testItemId, quantity: 1 }],
-      };
-      const created = await request(app.getHttpServer())
-        .post('/v1/orders')
-        .set('idempotency-key', 'order-update-status-key')
-        .set('Authorization', `Bearer ${adminToken}`)
-        .send(payload)
-        .expect(HttpStatus.CREATED);
-      const orderId = created.body.data.id;
-
-      await request(app.getHttpServer())
-        .patch(`/v1/orders/${orderId}/status`)
-        .set('Authorization', `Bearer ${adminToken}`)
-        .send({ status: 'PAID' })
+        .send({ status: OrderStatus.REFUNDED })
         .expect(HttpStatus.OK);
 
       process.env.TEST_ENV = originalTestEnv;

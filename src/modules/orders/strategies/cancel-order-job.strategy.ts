@@ -16,11 +16,11 @@ import Redlock from 'redlock';
 @Injectable()
 export class CancelOrderJobStrategy extends BaseOrderJobStrategy<CancelOrderJobPayload> {
   constructor(
-    protected readonly cacheService: CacheService,
-    protected readonly outboxService: OutboxService,
-    protected readonly orderRepository: OrderRepository,
-    protected readonly dataSource: DataSource, // Used in @Transactional()
-    protected readonly redlock: Redlock, // Used in @UseLock()
+    private readonly outboxService: OutboxService,
+    cacheService: CacheService,
+    orderRepository: OrderRepository,
+    dataSource: DataSource,
+    redlock: Redlock,
   ) {
     super(
       CancelOrderJobStrategy.name,

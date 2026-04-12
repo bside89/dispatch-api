@@ -1,14 +1,10 @@
 import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { IS_PUBLIC_KEY } from '../decorators/public.decorator';
-import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class RolesGuard implements CanActivate {
-  constructor(
-    private reflector: Reflector,
-    private readonly configService: ConfigService,
-  ) {}
+  constructor(private reflector: Reflector) {}
 
   canActivate(context: ExecutionContext): boolean {
     // Verify if the route is marked as public
@@ -17,11 +13,6 @@ export class RolesGuard implements CanActivate {
       context.getClass(),
     ]);
     if (isPublic) {
-      return true;
-    }
-
-    if (this.configService.get('TEST_ENV') === 'true') {
-      // In test environment, allow all requests to bypass role checks
       return true;
     }
 
@@ -39,7 +30,6 @@ export class RolesGuard implements CanActivate {
     // Check if the user has one of the required roles
     const request = context.switchToHttp().getRequest();
     const user = request.user;
-
     if (!user) {
       return false;
     }

@@ -43,8 +43,8 @@ export class UsersService extends TransactionalService {
     private readonly paymentsGatewayService: PaymentsGatewayService,
     private readonly cacheService: CacheService,
     private readonly outboxService: OutboxService,
-    protected readonly dataSource: DataSource,
-    protected readonly redlock: Redlock,
+    dataSource: DataSource,
+    redlock: Redlock,
   ) {
     super(UsersService.name, dataSource, redlock);
   }
@@ -58,12 +58,11 @@ export class UsersService extends TransactionalService {
     dto: CreateUserDto,
     idempotencyKey: string,
   ): Promise<UserResponseDto> {
+    // Check if there's an existing user for the same idempotency key
     const idempotencyKeyFormatted = USER_KEY.IDEMPOTENCY(
       this.create.name,
       idempotencyKey,
     );
-
-    // Check if there's an existing user for the same idempotency key
     const existingUser = await this.cacheService.get<UserResponseDto>(
       idempotencyKeyFormatted,
     );
@@ -91,9 +90,7 @@ export class UsersService extends TransactionalService {
       email: dto.email,
       password: await HashUtils.hash(dto.password),
     });
-
     const savedUser = await this.userRepository.save(user);
-
     const userMapped = EntityMapper.map(savedUser, UserResponseDto);
 
     // Add outbox message for creating Stripe customer (job)
@@ -134,7 +131,6 @@ export class UsersService extends TransactionalService {
     }
 
     const cacheKey = USER_KEY.CACHE_FIND_ALL(query);
-
     const cachedResult = await runAndIgnoreError(
       () => this.cacheService.get<PaginatedResultDto<UserResponseDto>>(cacheKey),
       `fetching users list from cache with key: ${cacheKey}`,
@@ -146,7 +142,6 @@ export class UsersService extends TransactionalService {
     }
 
     const result = await this.userRepository.filter(query);
-
     const resultMapped = new PaginatedResultDto<UserResponseDto>(
       result.total,
       result.page,
@@ -169,7 +164,6 @@ export class UsersService extends TransactionalService {
     this.assertUserAccess(id, requestUser);
 
     const cacheKey = USER_KEY.CACHE_FIND_ONE(id);
-
     const cachedResult = await runAndIgnoreError(
       () => this.cacheService.get<UserResponseDto>(cacheKey),
       `fetching user from cache with key: ${cacheKey}`,
@@ -183,7 +177,6 @@ export class UsersService extends TransactionalService {
     this.logger.debug('Retrieving user', { id });
 
     const user = await this.userRepository.findById(id);
-
     if (!user) {
       throw new NotFoundException(`User with ID ${id} not found`);
     }
@@ -219,7 +212,6 @@ export class UsersService extends TransactionalService {
     requestUser?: RequestUser,
   ): Promise<UserResponseDto> {
     const cacheKey = USER_KEY.CACHE_FIND_BY_EMAIL(email);
-
     const cachedResult = await runAndIgnoreError(
       () => this.cacheService.get<UserResponseDto>(cacheKey),
       `fetching user from cache with key: ${cacheKey}`,
@@ -229,6 +221,7 @@ export class UsersService extends TransactionalService {
       this.assertUserAccess(cachedResult.id, requestUser);
 
       this.logger.debug('Returning cached user', { email });
+
       return cachedResult;
     }
 
@@ -297,7 +290,6 @@ export class UsersService extends TransactionalService {
 
     // This will only update the fields that are present in updateUserDto
     Object.assign(user, updateUserDto);
-
     const updatedUser = await this.userRepository.save(user);
 
     this.logger.debug(`User updated successfully: ${updatedUser.id}`);
@@ -366,7 +358,6 @@ export class UsersService extends TransactionalService {
     }
 
     const updatedUser = await this.userRepository.save(user);
-
     const userMapped = EntityMapper.map(updatedUser, UserResponseDto);
 
     await this.cacheService.deleteBulk({
@@ -443,7 +434,6 @@ export class UsersService extends TransactionalService {
     if (requestUser?.jwtPayload?.role === UserRole.ADMIN) {
       return;
     }
-
     if (!requestUser || requestUser.id !== targetUserId) {
       throw new ForbiddenException(
         `You are not allowed to access user with ID ${targetUserId}`,

@@ -22,11 +22,11 @@ import { Order } from '../entities/order.entity';
 @Injectable()
 export class ProcessOrderJobStrategy extends BaseOrderJobStrategy<ProcessOrderJobPayload> {
   constructor(
-    protected readonly cacheService: CacheService,
-    protected readonly outboxService: OutboxService,
-    protected readonly orderRepository: OrderRepository,
-    protected readonly dataSource: DataSource, // Used in @Transactional()
-    protected readonly redlock: Redlock, // Used in @UseLock()
+    private readonly outboxService: OutboxService,
+    cacheService: CacheService,
+    orderRepository: OrderRepository,
+    dataSource: DataSource,
+    redlock: Redlock,
   ) {
     super(
       ProcessOrderJobStrategy.name,
@@ -74,7 +74,6 @@ export class ProcessOrderJobStrategy extends BaseOrderJobStrategy<ProcessOrderJo
       await this.compensationLogic(job.data, error);
     } catch (e) {
       const error = ensureError(e);
-
       this.logger.error(
         `[CRITICAL] Compensation logic failed for processing order: ${error.message}`,
         { orderId },
