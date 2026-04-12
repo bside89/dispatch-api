@@ -12,6 +12,7 @@ import { JobStatus } from '../enums/job-status.enum';
 import { ensureError } from '../helpers/functions';
 import { BeforeApplicationShutdown, OnApplicationBootstrap } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { LOCK_PREFIX } from '../constants/lock-prefix.constants';
 
 export abstract class BaseProcessor
   extends WorkerHost
@@ -37,7 +38,7 @@ export abstract class BaseProcessor
     await this.worker.close();
   }
 
-  @UseLock({ prefix: 'job-execute', key: ([job]) => job.id })
+  @UseLock({ prefix: LOCK_PREFIX.JOB.EXECUTE, key: ([job]) => job.id })
   async executeJob<T extends BaseJobHandlerFactory>(
     job: Job,
     event: 'process' | 'failed',

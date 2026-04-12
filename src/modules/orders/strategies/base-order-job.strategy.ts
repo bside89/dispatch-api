@@ -8,6 +8,7 @@ import { BaseJobPayload } from '@/shared/payloads/base-job.payload';
 import { ORDER_KEY } from '../../../shared/modules/cache/constants/order.key';
 import { BaseJobStrategy } from '@/shared/strategies/base-job.strategy';
 import { Order } from '../entities/order.entity';
+import { LOCK_PREFIX } from '@/shared/constants/lock-prefix.constants';
 
 export abstract class BaseOrderJobStrategy<
   T extends BaseJobPayload,
@@ -40,7 +41,7 @@ export abstract class BaseOrderJobStrategy<
    * @param orderId The ID of the order to update.
    * @param updateData The data to update the order with.
    */
-  @UseLock({ prefix: 'order-update', key: ([orderId]) => orderId })
+  @UseLock({ prefix: LOCK_PREFIX.ORDER.UPDATE, key: ([orderId]) => orderId })
   async updateOrderWithLock(
     orderId: string,
     updateData: Partial<Order>,

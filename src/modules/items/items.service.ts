@@ -16,6 +16,7 @@ import { CacheService } from '@/shared/modules/cache/cache.service';
 import { ITEM_KEY } from '@/shared/modules/cache/constants/item.key';
 import { CACHE_TTL } from '@/shared/constants/cache-ttl.constant';
 import { runAndIgnoreError } from '@/shared/helpers/functions';
+import { LOCK_PREFIX } from '@/shared/constants/lock-prefix.constants';
 
 @Injectable()
 export class ItemsService extends BaseService {
@@ -30,7 +31,7 @@ export class ItemsService extends BaseService {
 
   @Transactional()
   @UseLock({
-    prefix: 'item-create',
+    prefix: LOCK_PREFIX.ITEM.CREATE,
     key: ([, idempotencyKey]) => idempotencyKey,
   })
   async create(
@@ -148,7 +149,7 @@ export class ItemsService extends BaseService {
   }
 
   @Transactional()
-  @UseLock({ prefix: 'item-update', key: ([id]) => id })
+  @UseLock({ prefix: LOCK_PREFIX.ITEM.UPDATE, key: ([id]) => id })
   async update(id: string, updateItemDto: UpdateItemDto): Promise<ItemResponseDto> {
     this.logger.debug('Updating item', { itemId: id });
 
@@ -172,7 +173,7 @@ export class ItemsService extends BaseService {
   }
 
   @Transactional()
-  @UseLock({ prefix: 'item-remove', key: ([id]) => id })
+  @UseLock({ prefix: LOCK_PREFIX.ITEM.REMOVE, key: ([id]) => id })
   async remove(id: string): Promise<void> {
     this.logger.debug('Deleting item', { itemId: id });
 

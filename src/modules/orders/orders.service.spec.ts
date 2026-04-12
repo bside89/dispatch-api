@@ -6,7 +6,6 @@ import { CacheService } from '../../shared/modules/cache/cache.service';
 import { OutboxService } from '../../shared/modules/outbox/outbox.service';
 import { DataSource } from 'typeorm';
 import Redlock from 'redlock';
-import { UserRole } from '../users/enums/user-role.enum';
 import { ItemRepository } from '../items/repositories/item.repository';
 
 describe('OrdersService', () => {

@@ -34,6 +34,7 @@ import type { RequestUser } from '../auth/interfaces/request-user.interface';
 import { UserRole } from './enums/user-role.enum';
 import { PaymentsGatewayService } from '../payments-gateway/payments-gateway.service';
 import { CustomerResponseDto } from '../payments-gateway/dto/customer-response.dto';
+import { LOCK_PREFIX } from '@/shared/constants/lock-prefix.constants';
 
 @Injectable()
 export class UsersService extends BaseService {
@@ -50,7 +51,7 @@ export class UsersService extends BaseService {
 
   @Transactional()
   @UseLock({
-    prefix: 'user-create',
+    prefix: LOCK_PREFIX.USER.CREATE,
     key: ([, idempotencyKey]) => idempotencyKey,
   })
   async create(
@@ -267,7 +268,7 @@ export class UsersService extends BaseService {
   }
 
   @Transactional()
-  @UseLock({ prefix: 'user-update', key: ([id]) => id })
+  @UseLock({ prefix: LOCK_PREFIX.USER.UPDATE, key: ([id]) => id })
   async update(
     id: string,
     updateUserDto: UpdateUserDto,
@@ -322,7 +323,7 @@ export class UsersService extends BaseService {
   }
 
   @Transactional()
-  @UseLock({ prefix: 'user-update', key: ([id]) => id })
+  @UseLock({ prefix: LOCK_PREFIX.USER.UPDATE, key: ([id]) => id })
   async updateLogin(
     id: string,
     updateLoginDto: UpdateLoginDto,
@@ -384,7 +385,7 @@ export class UsersService extends BaseService {
   }
 
   @Transactional()
-  @UseLock({ prefix: 'user-delete', key: ([id]) => id })
+  @UseLock({ prefix: LOCK_PREFIX.USER.REMOVE, key: ([id]) => id })
   async remove(id: string, requestUser?: RequestUser): Promise<void> {
     this.assertUserAccess(id, requestUser);
 

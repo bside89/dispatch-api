@@ -24,6 +24,7 @@ import { BaseService } from '@/shared/services/base.service';
 import { ORDER_KEY } from '../../shared/modules/cache/constants/order.key';
 import type { RequestUser } from '../auth/interfaces/request-user.interface';
 import { UserRole } from '../users/enums/user-role.enum';
+import { LOCK_PREFIX } from '@/shared/constants/lock-prefix.constants';
 
 @Injectable()
 export class OrdersService extends BaseService {
@@ -40,7 +41,10 @@ export class OrdersService extends BaseService {
   }
 
   @Transactional()
-  @UseLock({ prefix: 'order-create', key: ([, , idempotencyKey]) => idempotencyKey })
+  @UseLock({
+    prefix: LOCK_PREFIX.ORDER.CREATE,
+    key: ([, , idempotencyKey]) => idempotencyKey,
+  })
   async create(
     createOrderDto: CreateOrderDto,
     userId: string,
@@ -246,7 +250,7 @@ export class OrdersService extends BaseService {
   }
 
   @Transactional()
-  @UseLock({ prefix: 'order-update', key: ([id]) => id })
+  @UseLock({ prefix: LOCK_PREFIX.ORDER.UPDATE, key: ([id]) => id })
   async update(
     id: string,
     updateOrderDto: UpdateOrderDto,
@@ -306,7 +310,7 @@ export class OrdersService extends BaseService {
   }
 
   @Transactional()
-  @UseLock({ prefix: 'order-remove', key: ([id]) => id })
+  @UseLock({ prefix: LOCK_PREFIX.ORDER.REMOVE, key: ([id]) => id })
   async remove(id: string): Promise<void> {
     this.logger.debug('Deleting order', { orderId: id });
 
@@ -326,7 +330,7 @@ export class OrdersService extends BaseService {
   }
 
   @Transactional()
-  @UseLock({ prefix: 'order-update', key: ([id]) => id })
+  @UseLock({ prefix: LOCK_PREFIX.ORDER.UPDATE, key: ([id]) => id })
   async updateStatus(id: string, status: OrderStatus): Promise<OrderResponseDto> {
     const order = await this.orderRepository.findOne({
       where: { id },

@@ -17,6 +17,7 @@ import Redlock from 'redlock';
 import type { RequestUser } from './interfaces/request-user.interface';
 import { AUTH_KEY } from '../../shared/modules/cache/constants/auth.key';
 import type ms from 'ms';
+import { LOCK_PREFIX } from '@/shared/constants/lock-prefix.constants';
 
 @Injectable()
 export class AuthService extends BaseService {
@@ -31,7 +32,7 @@ export class AuthService extends BaseService {
     super(AuthService.name);
   }
 
-  @UseLock({ prefix: 'auth-login', key: ([email]) => email })
+  @UseLock({ prefix: LOCK_PREFIX.AUTH.LOGIN, key: ([email]) => email })
   async login(email: string, password: string): Promise<LoginResponseDto> {
     const user = await this.userRepository.findOne({ where: { email } });
 
@@ -57,7 +58,10 @@ export class AuthService extends BaseService {
     return tokens;
   }
 
-  @UseLock({ prefix: 'auth-refresh', key: ([reqUser]) => reqUser.jwtPayload.jti })
+  @UseLock({
+    prefix: LOCK_PREFIX.AUTH.REFRESH,
+    key: ([reqUser]) => reqUser.jwtPayload.jti,
+  })
   async refresh(reqUser: RequestUser): Promise<LoginResponseDto> {
     const refreshToken = reqUser.jwtPayload.refreshToken;
     if (!refreshToken) throw new UnauthorizedException('No refresh token found');
@@ -81,7 +85,10 @@ export class AuthService extends BaseService {
     return tokens;
   }
 
-  @UseLock({ prefix: 'auth-logout', key: ([reqUser]) => reqUser.jwtPayload.jti })
+  @UseLock({
+    prefix: LOCK_PREFIX.AUTH.LOGOUT,
+    key: ([reqUser]) => reqUser.jwtPayload.jti,
+  })
   async logout(reqUser: RequestUser): Promise<void> {
     await this.updateRefreshToken(reqUser.id, null);
 
@@ -123,7 +130,7 @@ export class AuthService extends BaseService {
     return result;
   }
 
-  @UseLock({ prefix: 'user-update', key: ([userId]) => userId })
+  @UseLock({ prefix: LOCK_PREFIX.USER.UPDATE, key: ([userId]) => userId })
   private async updateRefreshToken(
     userId: string,
     refreshToken?: string,
