@@ -5,7 +5,7 @@ import { AppLogger } from '../utils/app-logger';
 export abstract class BaseJobStrategy<T extends BaseJobPayload> {
   protected readonly logger: AppLogger;
 
-  constructor(protected readonly jobName: string) {
+  constructor(jobName: string) {
     this.logger = new AppLogger(jobName);
   }
 

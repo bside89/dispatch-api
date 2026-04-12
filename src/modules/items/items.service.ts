@@ -6,7 +6,6 @@ import { ItemQueryDto } from './dto/item-query.dto';
 import { ItemResponseDto } from './dto/item-response.dto';
 import { PaginatedResultDto } from '@/shared/dto/paginated-result.dto';
 import { EntityMapper } from '@/shared/utils/entity-mapper';
-import { BaseService } from '@/shared/services/base.service';
 import { Item } from './entities/item.entity';
 import Redlock from 'redlock';
 import { DataSource } from 'typeorm';
@@ -17,16 +16,17 @@ import { ITEM_KEY } from '@/shared/modules/cache/constants/item.key';
 import { CACHE_TTL } from '@/shared/constants/cache-ttl.constant';
 import { runAndIgnoreError } from '@/shared/helpers/functions';
 import { LOCK_PREFIX } from '@/shared/constants/lock-prefix.constants';
+import { TransactionalService } from '@/shared/services/transactional.service';
 
 @Injectable()
-export class ItemsService extends BaseService {
+export class ItemsService extends TransactionalService {
   constructor(
     private readonly itemRepository: ItemRepository,
     protected readonly cacheService: CacheService,
-    protected readonly dataSource: DataSource, // Used in @Transactional()
-    protected readonly redlock: Redlock, // Used in @UseLock()
+    protected readonly dataSource: DataSource,
+    protected readonly redlock: Redlock,
   ) {
-    super(ItemsService.name);
+    super(ItemsService.name, dataSource, redlock);
   }
 
   @Transactional()
@@ -194,5 +194,11 @@ export class ItemsService extends BaseService {
 
   async findManyByIds(ids: string[]): Promise<Item[]> {
     return this.itemRepository.findManyByIds(ids);
+  }
+
+  @Transactional()
+  @UseLock({ prefix: LOCK_PREFIX.ITEM.UPDATE, key: ([item]) => item.id })
+  async decrementItemStock(item: Item, quantity: number): Promise<void> {
+    await this.itemRepository.decrementStock(item, quantity);
   }
 }

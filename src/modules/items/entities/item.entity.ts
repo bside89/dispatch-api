@@ -10,7 +10,7 @@ export class Item extends BaseEntity {
   description: string;
 
   @Column('integer')
-  quantity: number;
+  stock: number;
 
   @Column('integer')
   price: number;

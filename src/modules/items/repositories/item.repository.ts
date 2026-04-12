@@ -51,4 +51,8 @@ export class ItemRepository extends BaseRepository<Item> {
     if (!ids.length) return [];
     return this.repository.findBy({ id: In(ids) } as any);
   }
+
+  async decrementStock(items: Item, quantity: number): Promise<void> {
+    await this.repository.decrement({ id: items.id }, 'stock', quantity);
+  }
 }

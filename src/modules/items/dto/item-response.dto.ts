@@ -29,7 +29,7 @@ export class ItemResponseDto {
     description: 'Available stock quantity',
     example: 50,
   })
-  quantity: number;
+  stock: number;
 
   @Expose()
   @ApiProperty({

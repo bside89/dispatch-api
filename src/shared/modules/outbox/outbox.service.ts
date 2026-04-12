@@ -4,7 +4,6 @@ import { OutboxType } from './enums/outbox-type.enum';
 import { OutboxRepository } from './repositories/outbox.repository';
 import { RequestContext } from '@/shared/utils/request-context';
 import { randomUUID } from 'crypto';
-import { BaseService } from '@/shared/services/base.service';
 import { DataSource } from 'typeorm';
 import type { EventBus } from '../events/interfaces/event-bus.interface';
 import { Queue } from 'bullmq';
@@ -19,9 +18,11 @@ import {
 import { OutboxPayloadMap } from './types/outbox-payload.map';
 import { ensureError } from '@/shared/helpers/functions';
 import { EventBusJob } from '../events/interfaces/event-bus-job.interface';
+import Redlock from 'redlock';
+import { TransactionalService } from '@/shared/services/transactional.service';
 
 @Injectable()
-export class OutboxService extends BaseService implements OnModuleDestroy {
+export class OutboxService extends TransactionalService implements OnModuleDestroy {
   private isProcessing = false;
 
   private isShuttingDown = false;
@@ -36,8 +37,9 @@ export class OutboxService extends BaseService implements OnModuleDestroy {
 
     private readonly outboxRepository: OutboxRepository,
     protected readonly dataSource: DataSource,
+    protected readonly redlock: Redlock,
   ) {
-    super(OutboxService.name);
+    super(OutboxService.name, dataSource, redlock);
   }
 
   async onModuleDestroy(): Promise<void> {

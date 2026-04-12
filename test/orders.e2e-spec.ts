@@ -72,7 +72,7 @@ describe('Orders (E2E)', () => {
       .send({
         name: 'Test Product',
         description: 'A test product for order tests',
-        quantity: 100,
+        stock: 1000,
         price: 14999,
       })
       .expect(HttpStatus.CREATED);

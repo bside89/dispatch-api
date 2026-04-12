@@ -21,7 +21,7 @@ export abstract class BaseProcessor
   protected readonly logger: AppLogger;
 
   constructor(
-    protected readonly processorName: string,
+    processorName: string,
     protected readonly cacheService: CacheService,
     protected readonly configService: ConfigService,
     protected readonly redlock: Redlock, // Used in @UseLock()

@@ -17,13 +17,13 @@ export abstract class BasePaymentJobStrategy<
   T extends BaseJobPayload,
 > extends BaseJobStrategy<T> {
   constructor(
-    protected readonly jobName: string,
+    jobName: string,
     protected readonly paymentsGatewayService: PaymentsGatewayService,
     protected readonly cacheService: CacheService,
     protected readonly orderRepository: OrderRepository,
     protected readonly userRepository: UserRepository,
-    protected readonly dataSource: DataSource, // Used in @Transactional()
-    protected readonly redlock: Redlock, // Used in @UseLock()
+    protected readonly dataSource: DataSource,
+    protected readonly redlock: Redlock,
   ) {
     super(jobName);
   }

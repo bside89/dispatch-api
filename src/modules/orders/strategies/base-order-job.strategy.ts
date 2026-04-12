@@ -27,7 +27,7 @@ export abstract class BaseOrderJobStrategy<
   };
 
   constructor(
-    protected readonly jobName: string,
+    jobName: string,
     protected readonly cacheService: CacheService,
     protected readonly orderRepository: OrderRepository,
     protected readonly dataSource: DataSource, // Used in @Transactional()

@@ -96,7 +96,7 @@ describe('Orders (Integration)', () => {
         {
           name: 'Product AAA',
           description: 'Integration test item A',
-          quantity: 100,
+          stock: 1000,
           price: 5000,
         },
         'idempotency-key-create-order-test-itemA',
@@ -105,7 +105,7 @@ describe('Orders (Integration)', () => {
         {
           name: 'Product BBB',
           description: 'Integration test item B',
-          quantity: 100,
+          stock: 1000,
           price: 3000,
         },
         'idempotency-key-create-order-test-itemB',
@@ -162,7 +162,7 @@ describe('Orders (Integration)', () => {
 
       // Arrange: create an item directly in the DB (no outbox side effects)
       const [{ id: itemId }] = await dataSource.query(
-        `INSERT INTO "items" (name, description, quantity, price)
+        `INSERT INTO "items" (name, description, stock, price)
          VALUES ($1, $2, $3, $4)
          RETURNING id`,
         ['Rollback Item', 'Used for rollback test', 10, 7500],
@@ -223,7 +223,7 @@ describe('Orders (Integration)', () => {
         {
           name: 'Product XXX',
           description: 'Pipeline test item X',
-          quantity: 100,
+          stock: 1000,
           price: 4000,
         },
         'idempotency-key-full-flow-itemX',
@@ -232,7 +232,7 @@ describe('Orders (Integration)', () => {
         {
           name: 'Product YYY',
           description: 'Pipeline test item Y',
-          quantity: 100,
+          stock: 1000,
           price: 6000,
         },
         'idempotency-key-full-flow-itemY',
@@ -346,7 +346,7 @@ describe('Orders (Integration)', () => {
           {
             name: 'Compensation Item',
             description: 'Item for compensation test',
-            quantity: 100,
+            stock: 1000,
             price: 3000,
           },
           'idempotency-key-compensation-item',
@@ -441,7 +441,7 @@ describe('Orders (Integration)', () => {
           {
             name: 'Payment Failure Item',
             description: 'Item for payment failure test',
-            quantity: 100,
+            stock: 1000,
             price: 5000,
           },
           'idempotency-key-payment-failure-item',

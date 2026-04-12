@@ -6,7 +6,7 @@ export class AddItemsSchema1775596616060 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
     // Create items table
     await queryRunner.query(
-      `CREATE TABLE "items" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "createdAt" TIMESTAMP NOT NULL DEFAULT now(), "updatedAt" TIMESTAMP NOT NULL DEFAULT now(), "name" character varying NOT NULL, "description" text NOT NULL, "quantity" integer NOT NULL, "price" integer NOT NULL, "pricePaymentId" character varying, CONSTRAINT "PK_ba5885359424c15ca6b9e79bcf6" PRIMARY KEY ("id"))`,
+      `CREATE TABLE "items" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "createdAt" TIMESTAMP NOT NULL DEFAULT now(), "updatedAt" TIMESTAMP NOT NULL DEFAULT now(), "name" character varying NOT NULL, "description" text NOT NULL, "stock" integer NOT NULL, "price" integer NOT NULL, "pricePaymentId" character varying, CONSTRAINT "PK_ba5885359424c15ca6b9e79bcf6" PRIMARY KEY ("id"))`,
     );
 
     // Add itemId column to order_items

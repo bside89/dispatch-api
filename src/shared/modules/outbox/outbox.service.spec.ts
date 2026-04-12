@@ -18,6 +18,7 @@ import {
 } from '@/shared/payloads/order-job.payload';
 import { CreateCustomerJobPayload } from '@/shared/payloads/payment-job.payload';
 import { OutboxPayload } from './types/outbox.payload';
+import Redlock from 'redlock';
 
 const makeOutbox = (overrides: Partial<Outbox> = {}): Outbox =>
   ({
@@ -86,6 +87,10 @@ describe(OutboxService.name, () => {
           useValue: {
             transaction: jest.fn((cb) => cb({})),
           },
+        },
+        {
+          provide: Redlock,
+          useValue: { acquire: jest.fn(), release: jest.fn() },
         },
       ],
     }).compile();

@@ -37,7 +37,7 @@ export class CreateItemDto {
   })
   @IsNumber()
   @IsPositive()
-  quantity: number;
+  stock: number;
 
   @ApiProperty({
     description: 'Item price in cents',

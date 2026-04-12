@@ -8,7 +8,6 @@ import { ProcessOrderJobPayload } from '../../shared/payloads/order-job.payload'
 import { NotifyUserJobPayload } from '@/shared/payloads/event-job.payload';
 import { OrderRepository } from './repositories/order.repository';
 import { OrderItemRepository } from './repositories/order-item.repository';
-import { ItemRepository } from '../items/repositories/item.repository';
 import { PaginatedResultDto } from '@/shared/dto/paginated-result.dto';
 import { DataSource } from 'typeorm';
 import { Transactional } from '@/shared/decorators/transactional.decorator';
@@ -25,19 +24,21 @@ import { ORDER_KEY } from '../../shared/modules/cache/constants/order.key';
 import type { RequestUser } from '../auth/interfaces/request-user.interface';
 import { UserRole } from '../users/enums/user-role.enum';
 import { LOCK_PREFIX } from '@/shared/constants/lock-prefix.constants';
+import { ItemsService } from '../items/items.service';
+import { TransactionalService } from '@/shared/services/transactional.service';
 
 @Injectable()
-export class OrdersService extends BaseService {
+export class OrdersService extends TransactionalService {
   constructor(
     private readonly orderRepository: OrderRepository,
     private readonly orderItemRepository: OrderItemRepository,
-    private readonly itemRepository: ItemRepository,
+    private readonly itemsService: ItemsService,
     private readonly outboxService: OutboxService,
-    protected readonly cacheService: CacheService,
-    protected readonly dataSource: DataSource, // Used in @Transactional()
-    protected readonly redlock: Redlock, // Used in @UseLock()
+    private readonly cacheService: CacheService,
+    protected readonly dataSource: DataSource,
+    protected readonly redlock: Redlock,
   ) {
-    super(OrdersService.name);
+    super(OrdersService.name, dataSource, redlock);
   }
 
   @Transactional()
@@ -68,7 +69,7 @@ export class OrdersService extends BaseService {
     });
 
     const itemIds = createOrderDto.items.map((i) => i.itemId);
-    const catalogItems = await this.itemRepository.findManyByIds(itemIds);
+    const catalogItems = await this.itemsService.findManyByIds(itemIds);
 
     for (const dto of createOrderDto.items) {
       if (!catalogItems.find((ci) => ci.id === dto.itemId)) {
@@ -98,6 +99,19 @@ export class OrdersService extends BaseService {
     );
 
     await this.orderItemRepository.saveBulk(orderItems);
+
+    // Reduce stock quantity of the items
+    await Promise.all(
+      createOrderDto.items.map((itemDto) => {
+        const item = catalogItems.find((ci) => ci.id === itemDto.itemId);
+        if (item.stock < itemDto.quantity) {
+          throw new ForbiddenException(
+            `Insufficient stock for item ${item.name}. Available: ${item.stock}, requested: ${itemDto.quantity}`,
+          );
+        }
+        return this.itemsService.decrementItemStock(item, itemDto.quantity);
+      }),
+    );
 
     const completeOrder = await this.orderRepository.findOne({
       where: { id: savedOrder.id },
@@ -270,7 +284,7 @@ export class OrdersService extends BaseService {
     // If items are updated, remove old items and add new ones
     if (updateOrderDto.items) {
       const itemIds = updateOrderDto.items.map((i) => i.itemId);
-      const catalogItems = await this.itemRepository.findManyByIds(itemIds);
+      const catalogItems = await this.itemsService.findManyByIds(itemIds);
 
       for (const dto of updateOrderDto.items) {
         if (!catalogItems.find((ci) => ci.id === dto.itemId)) {

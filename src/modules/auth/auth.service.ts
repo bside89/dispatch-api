@@ -8,7 +8,6 @@ import { CacheService } from '../../shared/modules/cache/cache.service';
 import { UserRepository } from '../users/repositories/user.repository';
 import { HashUtils } from '@/shared/utils/hash.utils';
 import { CACHE_TTL } from '@/shared/constants/cache-ttl.constant';
-import { BaseService } from '@/shared/services/base.service';
 import { OutboxService } from '@/shared/modules/outbox/outbox.service';
 import { NotifyUserJobPayload } from '@/shared/payloads/event-job.payload';
 import { OutboxType } from '@/shared/modules/outbox/enums/outbox-type.enum';
@@ -18,20 +17,25 @@ import type { RequestUser } from './interfaces/request-user.interface';
 import { AUTH_KEY } from '../../shared/modules/cache/constants/auth.key';
 import type ms from 'ms';
 import { LOCK_PREFIX } from '@/shared/constants/lock-prefix.constants';
+import { DataSource } from 'typeorm';
+import { Transactional } from '@/shared/decorators/transactional.decorator';
+import { TransactionalService } from '@/shared/services/transactional.service';
 
 @Injectable()
-export class AuthService extends BaseService {
+export class AuthService extends TransactionalService {
   constructor(
     private readonly jwtService: JwtService,
     private readonly cacheService: CacheService,
     private readonly configService: ConfigService,
     private readonly userRepository: UserRepository,
     private readonly outboxService: OutboxService,
-    protected readonly redlock: Redlock, // Used in @UseLock()
+    protected readonly dataSource: DataSource,
+    protected readonly redlock: Redlock,
   ) {
-    super(AuthService.name);
+    super(AuthService.name, dataSource, redlock);
   }
 
+  @Transactional()
   @UseLock({ prefix: LOCK_PREFIX.AUTH.LOGIN, key: ([email]) => email })
   async login(email: string, password: string): Promise<LoginResponseDto> {
     const user = await this.userRepository.findOne({ where: { email } });
@@ -58,6 +62,7 @@ export class AuthService extends BaseService {
     return tokens;
   }
 
+  @Transactional()
   @UseLock({
     prefix: LOCK_PREFIX.AUTH.REFRESH,
     key: ([reqUser]) => reqUser.jwtPayload.jti,
@@ -85,6 +90,7 @@ export class AuthService extends BaseService {
     return tokens;
   }
 
+  @Transactional()
   @UseLock({
     prefix: LOCK_PREFIX.AUTH.LOGOUT,
     key: ([reqUser]) => reqUser.jwtPayload.jti,

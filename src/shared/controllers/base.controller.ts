@@ -5,7 +5,7 @@ import { AppLogger } from '../utils/app-logger';
 export abstract class BaseController {
   protected readonly logger: AppLogger;
 
-  constructor(protected readonly controllerName: string) {
+  constructor(controllerName: string) {
     this.logger = new AppLogger(controllerName);
   }
 

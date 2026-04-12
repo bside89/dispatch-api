@@ -2,11 +2,11 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { OrdersService } from './orders.service';
 import { OrderRepository } from './repositories/order.repository';
 import { OrderItemRepository } from './repositories/order-item.repository';
+import { ItemsService } from '../items/items.service';
 import { CacheService } from '../../shared/modules/cache/cache.service';
 import { OutboxService } from '../../shared/modules/outbox/outbox.service';
 import { DataSource } from 'typeorm';
 import Redlock from 'redlock';
-import { ItemRepository } from '../items/repositories/item.repository';
 
 describe('OrdersService', () => {
   let service: OrdersService;
@@ -51,18 +51,19 @@ describe('OrdersService', () => {
           },
         },
         {
+          provide: ItemsService,
+          useValue: {
+            findManyByIds: jest.fn(),
+            decrementItemStock: jest.fn(),
+          },
+        },
+        {
           provide: DataSource,
           useValue: {},
         },
         {
           provide: Redlock,
           useValue: { acquire: jest.fn(), release: jest.fn() },
-        },
-        {
-          provide: ItemRepository,
-          useValue: {
-            findManyByIds: jest.fn(),
-          },
         },
       ],
     }).compile();

@@ -21,7 +21,6 @@ import { CACHE_TTL } from '@/shared/constants/cache-ttl.constant';
 import { ensureError, runAndIgnoreError } from '@/shared/helpers/functions';
 import { UseLock } from '@/shared/decorators/lock.decorator';
 import Redlock from 'redlock';
-import { BaseService } from '@/shared/services/base.service';
 import { USER_KEY } from '../../shared/modules/cache/constants/user.key';
 import { OutboxService } from '@/shared/modules/outbox/outbox.service';
 import { OutboxType } from '@/shared/modules/outbox/enums/outbox-type.enum';
@@ -35,18 +34,19 @@ import { UserRole } from './enums/user-role.enum';
 import { PaymentsGatewayService } from '../payments-gateway/payments-gateway.service';
 import { CustomerResponseDto } from '../payments-gateway/dto/customer-response.dto';
 import { LOCK_PREFIX } from '@/shared/constants/lock-prefix.constants';
+import { TransactionalService } from '@/shared/services/transactional.service';
 
 @Injectable()
-export class UsersService extends BaseService {
+export class UsersService extends TransactionalService {
   constructor(
     private readonly userRepository: UserRepository,
     private readonly paymentsGatewayService: PaymentsGatewayService,
-    protected readonly cacheService: CacheService,
-    protected readonly outboxService: OutboxService,
-    protected readonly dataSource: DataSource, // Used in @Transactional()
-    protected readonly redlock: Redlock, // Used in @UseLock()
+    private readonly cacheService: CacheService,
+    private readonly outboxService: OutboxService,
+    protected readonly dataSource: DataSource,
+    protected readonly redlock: Redlock,
   ) {
-    super(UsersService.name);
+    super(UsersService.name, dataSource, redlock);
   }
 
   @Transactional()
