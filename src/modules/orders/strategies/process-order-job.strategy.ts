@@ -8,7 +8,7 @@ import {
   ShipOrderJobPayload,
 } from '../../../shared/payloads/order-job.payload';
 import { NotifyUserJobPayload } from '@/shared/payloads/event-job.payload';
-import { delay, ensureError } from '../../../shared/helpers/functions';
+import { ensureError } from '../../../shared/helpers/functions';
 import { Transactional } from '@/shared/decorators/transactional.decorator';
 import { OutboxType } from '@/shared/modules/outbox/enums/outbox-type.enum';
 import { CacheService } from '../../../shared/modules/cache/cache.service';
@@ -17,7 +17,6 @@ import { OrderRepository } from '../repositories/order.repository';
 import { DataSource } from 'typeorm';
 import { BaseOrderJobStrategy } from './base-order-job.strategy';
 import Redlock from 'redlock';
-import { Order } from '../entities/order.entity';
 
 @Injectable()
 export class ProcessOrderJobStrategy extends BaseOrderJobStrategy<ProcessOrderJobPayload> {
@@ -41,19 +40,13 @@ export class ProcessOrderJobStrategy extends BaseOrderJobStrategy<ProcessOrderJo
   async execute(job: Job<ProcessOrderJobPayload>): Promise<void> {
     const { orderId } = job.data;
 
-    const order = await this.getAndValidate(orderId, OrderStatus.PAID);
+    const order = await this.getAndValidate(orderId, OrderStatus.PROCESSED);
     if (!order) return;
 
     this.logger.log(
       `Processing order, attempt ${job.attemptsMade + 1} of ${job.opts.attempts}`,
       { orderId },
     );
-
-    if (!order.paid) {
-      await this.processPayment(job.data, order);
-
-      await this.updateOrderWithLock(orderId, { paid: true });
-    }
 
     await this.finish(job.data);
   }
@@ -66,16 +59,16 @@ export class ProcessOrderJobStrategy extends BaseOrderJobStrategy<ProcessOrderJo
     const { orderId } = job.data;
 
     this.logger.error(
-      `Failed to process payment for order after all retries: ${error.message}`,
+      `Failed to process order after all retries: ${error.message}`,
       { orderId },
     );
 
     try {
       await this.compensationLogic(job.data, error);
     } catch (e) {
-      const error = ensureError(e);
+      const err = ensureError(e);
       this.logger.error(
-        `[CRITICAL] Compensation logic failed for processing order: ${error.message}`,
+        `[CRITICAL] Compensation logic failed for processing order: ${err.message}`,
         { orderId },
       );
     }
@@ -89,14 +82,22 @@ export class ProcessOrderJobStrategy extends BaseOrderJobStrategy<ProcessOrderJo
       this.logger.log(`Order ${orderId} does not exist, skipping compensation`);
       return;
     }
-    if (order.paid) {
-      // Refund job
+
+    const refundStatuses = [
+      OrderStatus.PAID,
+      OrderStatus.PROCESSED,
+      OrderStatus.SHIPPED,
+      OrderStatus.DELIVERED,
+    ];
+
+    if (refundStatuses.includes(order.status)) {
+      // Payment was already captured — refund
       await this.outboxService.add(
         OutboxType.ORDER_REFUND,
         new RefundOrderJobPayload(userId, orderId, userName),
       );
     } else {
-      // Cancel job
+      // Payment was never captured — just cancel
       await this.outboxService.add(
         OutboxType.ORDER_CANCEL,
         new CancelOrderJobPayload(userId, orderId, userName),
@@ -109,24 +110,16 @@ export class ProcessOrderJobStrategy extends BaseOrderJobStrategy<ProcessOrderJo
       new NotifyUserJobPayload(
         userId,
         userName,
-        `<To user ${userName}>: Your order with id ${orderId} has failed to process.` +
+        `<To user ${userName}>: Your order with id ${orderId} has failed to process. ` +
           `Reason: ${error.message}`,
       ),
     );
   }
 
-  private async processPayment(data: ProcessOrderJobPayload, order: Order) {
-    if (Math.random() < 0.1) throw new Error('Random payment error');
-    await delay(2000);
-    this.logger.log(`Payment OK. Total: R$ ${(order.total / 100).toFixed(2)}`, {
-      orderId: data.orderId,
-    });
-  }
-
   private async finish(data: ProcessOrderJobPayload) {
     const { orderId, userId, userName } = data;
 
-    await this.updateOrderWithLock(orderId, { status: OrderStatus.PAID });
+    await this.updateOrderWithLock(orderId, { status: OrderStatus.PROCESSED });
 
     // Notify the user
     await this.outboxService.add(
@@ -134,7 +127,7 @@ export class ProcessOrderJobStrategy extends BaseOrderJobStrategy<ProcessOrderJo
       new NotifyUserJobPayload(
         userId,
         userName,
-        `<To user ${userName}>: Your order with id ${orderId} has been paid successfully.`,
+        `<To user ${userName}>: Your order with id ${orderId} has been processed successfully.`,
       ),
     );
 
@@ -144,6 +137,6 @@ export class ProcessOrderJobStrategy extends BaseOrderJobStrategy<ProcessOrderJo
       new ShipOrderJobPayload(userId, orderId, userName),
     );
 
-    this.logger.log(`Order moved to PAID`, { orderId });
+    this.logger.log(`Order moved to PROCESSED`, { orderId });
   }
 }

@@ -79,7 +79,7 @@ describe('Orders (Integration)', () => {
   });
 
   describe('Order Creation Flow', () => {
-    it('should create an Order with status PENDING and an Outbox entry when a valid User exists', async () => {
+    it('should create an Order with status PENDING and no Outbox entries', async () => {
       // Arrange: create a real user via UsersService
       const createdUser = await usersService.create(
         {
@@ -141,18 +141,19 @@ describe('Orders (Integration)', () => {
         ]),
       );
 
+      // Assert: no ORDER_PROCESS in outbox — the processing pipeline only
+      // starts after the payment webhook fires (markPaymentAsSucceeded).
       const outboxEntries = await dataSource.query(
-        `SELECT type, payload FROM outbox ORDER BY "createdAt" DESC LIMIT 1`,
+        `SELECT id FROM outbox WHERE type = 'ORDER_PROCESS'`,
       );
-      expect(outboxEntries).toHaveLength(1);
-      expect(outboxEntries[0].type).toBe('ORDER_PROCESS');
+      expect(outboxEntries).toHaveLength(0);
     });
   });
 
   describe('Transactional Atomicity', () => {
-    it('should rollback the Order when Outbox insertion fails', async () => {
-      // Arrange: create the user directly in the database so this test stays
-      // focused on the Order transaction and does not enqueue Stripe jobs.
+    it('should rollback the Order status update when Outbox insertion fails in markPaymentAsSucceeded', async () => {
+      // Arrange: raw-insert user and item to avoid triggering Stripe customer
+      // outbox entries that would interfere with the mockRejectedValueOnce spy.
       const [{ id: userId }] = await dataSource.query(
         `INSERT INTO "users" (name, email, password, role)
          VALUES ($1, $2, $3, $4)
@@ -160,7 +161,6 @@ describe('Orders (Integration)', () => {
         ['Rollback User', 'rollback@test.com', 'securePass123', 'user'],
       );
 
-      // Arrange: create an item directly in the DB (no outbox side effects)
       const [{ id: itemId }] = await dataSource.query(
         `INSERT INTO "items" (name, description, stock, price)
          VALUES ($1, $2, $3, $4)
@@ -168,39 +168,40 @@ describe('Orders (Integration)', () => {
         ['Rollback Item', 'Used for rollback test', 10, 7500],
       );
 
-      // Force the OutboxRepository.save to throw an error, simulating a DB failure
+      // Act: create the order (create() does not touch the outbox, so the spy
+      // is not triggered here — paymentIntentsCreate is handled by the mock).
+      const createOrderDto = { items: [{ itemId, quantity: 1 }] };
+      const createdOrder = await ordersService.create(
+        createOrderDto,
+        userId,
+        'idempotency-key-order-rollback',
+      );
+      const orderId = createdOrder.id;
+
+      // Force OutboxRepository.save to throw on the next call, simulating a DB
+      // failure that occurs inside the markPaymentAsSucceeded transaction.
       const saveSpy = jest
         .spyOn(outboxRepository, 'save')
         .mockRejectedValueOnce(new Error('Simulated Outbox insertion failure'));
 
-      const createOrderDto = {
-        items: [{ itemId, quantity: 1 }],
-      };
-
-      // Act: attempt to create the order — should fail due to Outbox error
+      // Act: simulate the Stripe webhook callback — should fail due to Outbox error
       await expect(
-        ordersService.create(
-          createOrderDto,
-          userId,
-          'idempotency-key-order-rollback',
-        ),
+        ordersService.markPaymentAsSucceeded(orderId, 'pi_test', 'succeeded'),
       ).rejects.toThrow('Simulated Outbox insertion failure');
 
-      // Assert: verify that the Order was NOT persisted (transaction rolled back)
-      const orders = await dataSource.query(
-        `SELECT id FROM orders WHERE "userId" = $1`,
-        [userId],
+      // Assert: the status update (PENDING → PAID) was rolled back
+      const [order] = await dataSource.query(
+        `SELECT status FROM orders WHERE id = $1`,
+        [orderId],
       );
-      expect(orders).toHaveLength(0);
+      expect(order.status).toBe('PENDING');
 
-      // Assert: verify that no Order processing job was persisted in the Outbox.
-      // User creation may enqueue payment jobs, so we only care about the Order flow here.
+      // Assert: no ORDER_PROCESS entry was persisted in the Outbox
       const outboxEntries = await dataSource.query(
         `SELECT id FROM outbox WHERE type = 'ORDER_PROCESS'`,
       );
       expect(outboxEntries).toHaveLength(0);
 
-      // Cleanup the spy
       saveSpy.mockRestore();
     });
   });
@@ -256,9 +257,17 @@ describe('Orders (Integration)', () => {
 
       const orderId = createdOrder.id;
 
+      // Simulate the Stripe payment success webhook — sets PAID and enqueues ORDER_PROCESS.
+      await ordersService.markPaymentAsSucceeded(
+        orderId,
+        'pi_test_full_flow',
+        'succeeded',
+      );
+
       // Wait for the full async pipeline to complete:
-      //   Outbox → ORDER_PROCESS → PAID
-      //   Outbox → ORDER_SHIP → SHIPPED
+      //   webhook → markPaymentAsSucceeded → PAID + Outbox → ORDER_PROCESS
+      //   Outbox → ORDER_PROCESS → PROCESSED + Outbox → ORDER_SHIP
+      //   Outbox → ORDER_SHIP   → SHIPPED   + Outbox → ORDER_DELIVER
       //   Outbox → ORDER_DELIVER → DELIVERED
       //
       // delay() is mocked and setImmediate triggers process() after each add(),
@@ -365,12 +374,19 @@ describe('Orders (Integration)', () => {
         expect(createdOrder.status).toBe('PENDING');
         const orderId = createdOrder.id;
 
+        // Simulate the Stripe payment success webhook.
+        await ordersService.markPaymentAsSucceeded(
+          orderId,
+          'pi_comp_delivery_fail',
+          'succeeded',
+        );
+
         // Wait for the full compensation pipeline to complete:
-        //   Outbox → ORDER_PROCESS → order = PAID
-        //   Outbox → ORDER_SHIP   → order = SHIPPED
+        //   webhook → markPaymentAsSucceeded → PAID + Outbox → ORDER_PROCESS
+        //   Outbox → ORDER_PROCESS → PROCESSED + Outbox → ORDER_SHIP
+        //   Outbox → ORDER_SHIP   → SHIPPED   + Outbox → ORDER_DELIVER
         //   Outbox → ORDER_DELIVER → fails 3 times (backoff mocked to 0ms)
         //                         → executeAfterFail → compensationLogic
-        //   Outbox → ORDER_CANCEL → order = CANCELLED → Outbox → ORDER_REFUND
         //   Outbox → ORDER_REFUND → order = REFUNDED
         //
         // delay() is mocked and setImmediate triggers process() after each add().
@@ -408,97 +424,88 @@ describe('Orders (Integration)', () => {
       }
     }, 45_000);
 
-    it('should do the compensation logic and cancel the Order when pre-payment processing fails', async () => {
-      // Arrange: spy on the private processPayment method to always throw. Since
-      // paid is never set to true, the compensation logic in executeAfterFail
-      // enqueues ORDER_CANCEL instead of ORDER_REFUND. CancelOrderJobStrategy then
-      // sets the order to CANCELLED and enqueues ORDER_REFUND, but
-      // RefundOrderJobStrategy.getAndValidate rejects the transition because
-      // REFUNDED preconditions are [PAID, SHIPPED, DELIVERED] — CANCELLED is not
-      // included — so the order stays in CANCELLED.
-      const processOrderJobStrategy = app.get<ProcessOrderJobStrategy>(
-        ProcessOrderJobStrategy,
+    it('should cancel the Order when the payment webhook reports a failure', async () => {
+      // Arrange: when Stripe fires payment_intent.payment_failed, PaymentsService
+      // calls ordersService.markPaymentAsFailed(), which enqueues ORDER_CANCEL.
+      // CancelOrderJobStrategy then restores stock and sets the order to CANCELLED.
+      // The order never enters the processing pipeline.
+
+      // Arrange: create a real user
+      const createdUser = await usersService.create(
+        {
+          name: 'Payment Failure User',
+          email: 'payment-failure@test.com',
+          password: 'securePass123',
+        },
+        'idempotency-key-payment-failure-user',
+      );
+      const userId = createdUser.id;
+
+      // Arrange: create an item for the order
+      const failItem = await itemsService.create(
+        {
+          name: 'Payment Failure Item',
+          description: 'Item for payment failure test',
+          stock: 1000,
+          price: 5000,
+        },
+        'idempotency-key-payment-failure-item',
       );
 
-      const paymentSpy = jest
-        .spyOn(processOrderJobStrategy as any, 'processPayment')
-        .mockRejectedValue(new Error('Simulated payment failure'));
+      // Act: create an order — returns with PENDING status
+      const createOrderDto = {
+        items: [{ itemId: failItem.id, quantity: 1 }],
+      };
+      const createdOrder = await ordersService.create(
+        createOrderDto,
+        userId,
+        'idempotency-key-payment-failure-order',
+      );
 
-      try {
-        // Arrange: create a real user
-        const createdUser = await usersService.create(
-          {
-            name: 'Payment Failure User',
-            email: 'payment-failure@test.com',
-            password: 'securePass123',
-          },
-          'idempotency-key-payment-failure-user',
-        );
-        const userId = createdUser.id;
+      expect(createdOrder.status).toBe('PENDING');
+      const orderId = createdOrder.id;
 
-        // Arrange: create an item for the order
-        const failItem = await itemsService.create(
-          {
-            name: 'Payment Failure Item',
-            description: 'Item for payment failure test',
-            stock: 1000,
-            price: 5000,
-          },
-          'idempotency-key-payment-failure-item',
-        );
+      // Act: simulate the Stripe payment failure webhook.
+      // This enqueues ORDER_CANCEL (without touching the order status directly).
+      await ordersService.markPaymentAsFailed(
+        orderId,
+        'pi_test_failed',
+        'payment_failed',
+      );
 
-        // Act: create an order — returns with PENDING status
-        const createOrderDto = {
-          items: [{ itemId: failItem.id, quantity: 1 }],
-        };
-        const createdOrder = await ordersService.create(
-          createOrderDto,
-          userId,
-          'idempotency-key-payment-failure-order',
-        );
+      // Wait for the cancellation pipeline to complete:
+      //   webhook → markPaymentAsFailed → Outbox → ORDER_CANCEL
+      //   Outbox → ORDER_CANCEL → restores stock + order = CANCELLED
+      //
+      // delay() is mocked and setImmediate triggers process() after each add().
+      await waitFor(
+        async () => {
+          const rows = await dataSource.query(
+            `SELECT status FROM orders WHERE id = $1`,
+            [orderId],
+          );
+          return rows.length === 1 && rows[0].status === 'CANCELLED';
+        },
+        15_000, // 15s (ORDER_CANCEL step + CI margin)
+        250,
+      );
 
-        expect(createdOrder.status).toBe('PENDING');
-        const orderId = createdOrder.id;
+      // Assert: final order status is CANCELLED
+      const [finalOrder] = await dataSource.query(
+        `SELECT status FROM orders WHERE id = $1`,
+        [orderId],
+      );
+      expect(finalOrder.status).toBe('CANCELLED');
 
-        // Wait for the compensation pipeline to complete:
-        //   Outbox → ORDER_PROCESS → processPayment throws 3× (backoff mocked to 0ms)
-        //                          → executeAfterFail → compensationLogic (order.paid=false)
-        //   Outbox → ORDER_CANCEL  → order = CANCELLED
-        //   Outbox → ORDER_REFUND  → getAndValidate fails (CANCELLED ∉ REFUNDED preconditions)
-        //                          → no-op, order stays CANCELLED
-        //
-        // delay() is mocked and setImmediate triggers process() after each add().
-        await waitFor(
-          async () => {
-            const rows = await dataSource.query(
-              `SELECT status FROM orders WHERE id = $1`,
-              [orderId],
-            );
-            return rows.length === 1 && rows[0].status === 'CANCELLED';
-          },
-          15_000, // 15s (3 steps + 3 BullMQ retries × ~50ms + CI margin)
-          250,
-        );
-
-        // Assert: final order status is CANCELLED
-        const [finalOrder] = await dataSource.query(
-          `SELECT status FROM orders WHERE id = $1`,
-          [orderId],
-        );
-        expect(finalOrder.status).toBe('CANCELLED');
-
-        // Assert: outbox should be fully consumed
-        await waitFor(
-          async () => {
-            const rows = await dataSource.query(`SELECT id FROM outbox`);
-            return rows.length === 0;
-          },
-          5_000,
-          250,
-        );
-      } finally {
-        paymentSpy.mockRestore();
-      }
+      // Assert: outbox should be fully consumed
+      await waitFor(
+        async () => {
+          const rows = await dataSource.query(`SELECT id FROM outbox`);
+          return rows.length === 0;
+        },
+        5_000,
+        250,
+      );
     }, 30_000);
   });
 

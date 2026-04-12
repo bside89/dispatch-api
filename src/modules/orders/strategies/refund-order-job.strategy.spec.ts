@@ -6,6 +6,12 @@ import { OutboxService } from '@/shared/modules/outbox/outbox.service';
 import { OrderRepository } from '../repositories/order.repository';
 import { DataSource } from 'typeorm';
 import Redlock from 'redlock';
+import {
+  createCacheServiceMock,
+  createDataSourceMock,
+  createOutboxServiceMock,
+  createRedlockMock,
+} from '@/shared/testing/provider-mocks';
 
 describe(RefundOrderJobStrategy.name, () => {
   let strategy: RefundOrderJobStrategy;
@@ -16,21 +22,16 @@ describe(RefundOrderJobStrategy.name, () => {
   let redlock: jest.Mocked<Redlock>;
 
   beforeEach(async () => {
-    cacheService = {
-      get: jest.fn(),
-      set: jest.fn(),
-    } as any;
+    cacheService = createCacheServiceMock() as any;
 
-    outboxService = {
-      add: jest.fn(),
-    } as any;
+    outboxService = createOutboxServiceMock() as any;
 
     orderRepository = {
       getAndValidate: jest.fn(),
     } as any;
 
-    dataSource = {} as any;
-    redlock = {} as any;
+    dataSource = createDataSourceMock() as any;
+    redlock = createRedlockMock() as any;
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [

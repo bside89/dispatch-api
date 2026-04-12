@@ -5,6 +5,13 @@ import { OutboxService } from '../../../shared/modules/outbox/outbox.service';
 import { OrderRepository } from '../repositories/order.repository';
 import { DataSource } from 'typeorm';
 import Redlock from 'redlock';
+import { ItemsService } from '../../items/items.service';
+import {
+  createCacheServiceMock,
+  createDataSourceMock,
+  createOutboxServiceMock,
+  createRedlockMock,
+} from '@/shared/testing/provider-mocks';
 
 describe(CancelOrderJobStrategy.name, () => {
   let strategy: CancelOrderJobStrategy;
@@ -15,16 +22,17 @@ describe(CancelOrderJobStrategy.name, () => {
         CancelOrderJobStrategy,
         {
           provide: CacheService,
-          useValue: {
-            hasKey: jest.fn(),
-            setKey: jest.fn(),
-            removeKey: jest.fn(),
-          },
+          useValue: createCacheServiceMock(),
         },
         {
           provide: OutboxService,
+          useValue: createOutboxServiceMock(),
+        },
+        {
+          provide: ItemsService,
           useValue: {
-            add: jest.fn(),
+            findManyByIds: jest.fn(),
+            incrementItemStock: jest.fn(),
           },
         },
         {
@@ -35,11 +43,11 @@ describe(CancelOrderJobStrategy.name, () => {
         },
         {
           provide: DataSource,
-          useValue: {},
+          useValue: createDataSourceMock(),
         },
         {
           provide: Redlock,
-          useValue: { acquire: jest.fn(), release: jest.fn() },
+          useValue: createRedlockMock(),
         },
       ],
     }).compile();

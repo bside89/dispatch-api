@@ -16,11 +16,13 @@ export abstract class BaseOrderJobStrategy<
   protected readonly VALID_PRECONDITIONS = {
     [OrderStatus.PENDING]: [],
     [OrderStatus.PAID]: [OrderStatus.PENDING],
-    [OrderStatus.SHIPPED]: [OrderStatus.PAID],
+    [OrderStatus.PROCESSED]: [OrderStatus.PAID],
+    [OrderStatus.SHIPPED]: [OrderStatus.PROCESSED],
     [OrderStatus.DELIVERED]: [OrderStatus.SHIPPED],
     [OrderStatus.CANCELLED]: [OrderStatus.PENDING],
     [OrderStatus.REFUNDED]: [
       OrderStatus.PAID,
+      OrderStatus.PROCESSED,
       OrderStatus.SHIPPED,
       OrderStatus.DELIVERED,
     ],

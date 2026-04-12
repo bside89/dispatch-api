@@ -7,6 +7,12 @@ import { DataSource } from 'typeorm';
 import Redlock from 'redlock';
 import { UserRole } from './enums/user-role.enum';
 import { PaymentsGatewayService } from '../payments-gateway/payments-gateway.service';
+import {
+  createCacheServiceMock,
+  createDataSourceMock,
+  createOutboxServiceMock,
+  createRedlockMock,
+} from '@/shared/testing/provider-mocks';
 
 describe(UsersService.name, () => {
   let service: UsersService;
@@ -36,14 +42,12 @@ describe(UsersService.name, () => {
       deleteById: jest.fn(),
     };
 
-    cacheService = {
-      get: jest.fn(),
-      set: jest.fn(),
-      deleteBulk: jest.fn(),
-    };
+    cacheService = createCacheServiceMock();
 
-    outboxService = {
-      add: jest.fn(),
+    outboxService = createOutboxServiceMock();
+
+    paymentsGatewayService = {
+      createCustomer: jest.fn(),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -67,11 +71,11 @@ describe(UsersService.name, () => {
         },
         {
           provide: DataSource,
-          useValue: {},
+          useValue: createDataSourceMock(),
         },
         {
           provide: Redlock,
-          useValue: { acquire: jest.fn(), release: jest.fn() },
+          useValue: createRedlockMock(),
         },
       ],
     }).compile();

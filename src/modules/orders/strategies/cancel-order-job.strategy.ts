@@ -3,7 +3,6 @@ import { Job } from 'bullmq';
 import { OrderStatus } from '../enums/order-status.enum';
 import { CancelOrderJobPayload } from '../../../shared/payloads/order-job.payload';
 import { NotifyUserJobPayload } from '../../../shared/payloads/event-job.payload';
-import { delay } from '../../../shared/helpers/functions';
 import { Transactional } from '@/shared/decorators/transactional.decorator';
 import { OutboxType } from '@/shared/modules/outbox/enums/outbox-type.enum';
 import { CacheService } from '../../../shared/modules/cache/cache.service';
@@ -12,11 +11,13 @@ import { OrderRepository } from '../repositories/order.repository';
 import { DataSource } from 'typeorm';
 import { BaseOrderJobStrategy } from './base-order-job.strategy';
 import Redlock from 'redlock';
+import { ItemsService } from '../../items/items.service';
 
 @Injectable()
 export class CancelOrderJobStrategy extends BaseOrderJobStrategy<CancelOrderJobPayload> {
   constructor(
     private readonly outboxService: OutboxService,
+    private readonly itemsService: ItemsService,
     cacheService: CacheService,
     orderRepository: OrderRepository,
     dataSource: DataSource,
@@ -62,8 +63,25 @@ export class CancelOrderJobStrategy extends BaseOrderJobStrategy<CancelOrderJobP
   }
 
   private async releaseInventory(data: CancelOrderJobPayload) {
-    await delay(2000);
-    this.logger.log(`Inventory released for order`, { orderId: data.orderId });
+    const { orderId } = data;
+
+    const order = await this.orderRepository.findOne({
+      where: { id: orderId },
+      relations: ['items'],
+    });
+    if (!order || order.items.length === 0) return;
+
+    const itemIds = order.items.map((oi) => oi.itemId);
+    const catalogItems = await this.itemsService.findManyByIds(itemIds);
+
+    for (const orderItem of order.items) {
+      const catalogItem = catalogItems.find((ci) => ci.id === orderItem.itemId);
+      if (catalogItem) {
+        await this.itemsService.incrementItemStock(catalogItem, orderItem.quantity);
+      }
+    }
+
+    this.logger.log(`Inventory released for order`, { orderId });
   }
 
   private async finish(data: CancelOrderJobPayload) {

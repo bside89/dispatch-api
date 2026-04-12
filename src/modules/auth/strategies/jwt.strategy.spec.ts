@@ -7,6 +7,7 @@ import { JwtStrategy } from './jwt.strategy';
 import { CacheService } from '../../../shared/modules/cache/cache.service';
 import { AUTH_KEY } from '../../../shared/modules/cache/constants/auth.key';
 import { UserRole } from '@/modules/users/enums/user-role.enum';
+import { createCacheServiceMock } from '@/shared/testing/provider-mocks';
 
 // Stub out the PassportStrategy base so we can instantiate JwtStrategy
 // without a real Passport JWT flow in unit tests.
@@ -23,6 +24,8 @@ describe(JwtStrategy.name, () => {
   let cacheService: jest.Mocked<CacheService>;
 
   beforeEach(async () => {
+    cacheService = createCacheServiceMock() as any;
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         JwtStrategy,
@@ -34,13 +37,12 @@ describe(JwtStrategy.name, () => {
         },
         {
           provide: CacheService,
-          useValue: { get: jest.fn() },
+          useValue: cacheService,
         },
       ],
     }).compile();
 
     strategy = module.get<JwtStrategy>(JwtStrategy);
-    cacheService = module.get(CacheService);
   });
 
   afterEach(() => jest.clearAllMocks());

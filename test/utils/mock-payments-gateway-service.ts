@@ -28,10 +28,19 @@ export const paymentsGatewayServiceMock: Pick<
   | 'customersDelete'
   | 'customersList'
   | 'customersRetrieve'
+  | 'paymentIntentsCreate'
 > = {
   customersCreate: jest.fn(async () => makeCustomer('cus_test_create')),
   customersUpdate: jest.fn(async () => makeCustomer('cus_test_update')),
   customersDelete: jest.fn(async () => undefined),
   customersList: jest.fn(async () => [makeCustomer('cus_test_list')]),
   customersRetrieve: jest.fn(async () => makeCustomer('cus_test_retrieve')),
+  paymentIntentsCreate: jest.fn(async () => ({
+    id: 'pi_test_mock',
+    status: 'requires_confirmation',
+    clientSecret: 'pi_test_mock_secret',
+    currency: 'brl',
+    amount: 0,
+    livemode: false,
+  })),
 };

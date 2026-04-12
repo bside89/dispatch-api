@@ -7,7 +7,6 @@ import { cleanDatabase, cleanRedis } from './utils/database-cleaner';
 import { DataSource } from 'typeorm';
 import Redis from 'ioredis';
 import { REDIS_CLIENT } from '@/shared/constants/redis-client.constant';
-import { OutboxRepository } from '@/shared/modules/outbox/repositories/outbox.repository';
 import { paymentsGatewayServiceMock } from './utils/mock-payments-gateway-service';
 import { PaymentsGatewayService } from '@/modules/payments-gateway/payments-gateway.service';
 import { OrderStatus } from '@/modules/orders/enums/order-status.enum';
@@ -16,7 +15,6 @@ describe('Orders (E2E)', () => {
   let app: INestApplication;
   let dataSource: DataSource;
   let redisClient: Redis;
-  let outboxRepository: OutboxRepository;
 
   let adminToken: string;
   let userToken: string;
@@ -44,7 +42,6 @@ describe('Orders (E2E)', () => {
 
     dataSource = app.get<DataSource>(DataSource);
     redisClient = app.get<Redis>(REDIS_CLIENT);
-    outboxRepository = app.get<OutboxRepository>(OutboxRepository);
   });
 
   afterAll(async () => {
@@ -149,6 +146,7 @@ describe('Orders (E2E)', () => {
 
       expect(res.body.data.id).toBeDefined();
       expect(res.body.data.status).toBe('PENDING');
+      expect(res.body.data.paymentIntentClientSecret).toBeDefined();
     });
 
     it('POST /v1/orders - should return the same order on duplicate idempotency key', async () => {
@@ -181,36 +179,30 @@ describe('Orders (E2E)', () => {
       expect(result2.body.data.status).toBe(result1.body.data.status);
     });
 
-    it('POST /v1/orders - should rollback the Order when Outbox insertion fails', async () => {
-      const saveSpy = jest
-        .spyOn(outboxRepository, 'save')
-        .mockRejectedValueOnce(new Error('Simulated Outbox insertion failure'));
+    it('POST /v1/orders - should rollback the Order when Stripe returns an error', async () => {
+      // Arrange: force paymentIntentsCreate to throw for this one call.
+      // create() runs inside @Transactional(), so all DB writes (order +
+      // order_items + stock decrement) must be rolled back.
+      (
+        paymentsGatewayServiceMock.paymentIntentsCreate as jest.Mock
+      ).mockRejectedValueOnce(new Error('Simulated Stripe error'));
 
-      try {
-        const payload = {
-          items: [{ itemId: testItemId, quantity: 1 }],
-        };
+      const payload = {
+        items: [{ itemId: testItemId, quantity: 1 }],
+      };
 
-        await request(app.getHttpServer())
-          .post('/v1/orders')
-          .set('idempotency-key', 'e2e-order-rollback-key')
-          .set('Authorization', `Bearer ${adminToken}`)
-          .send(payload)
-          .expect(HttpStatus.INTERNAL_SERVER_ERROR);
+      await request(app.getHttpServer())
+        .post('/v1/orders')
+        .set('idempotency-key', 'e2e-order-rollback-key')
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send(payload)
+        .expect(HttpStatus.INTERNAL_SERVER_ERROR);
 
-        const orders = await dataSource.query(
-          `SELECT id FROM orders WHERE "userId" = $1`,
-          [ADMIN_USER.id],
-        );
-        expect(orders).toHaveLength(0);
-
-        const outboxEntries = await dataSource.query(
-          `SELECT id FROM outbox WHERE type = 'ORDER_PROCESS'`,
-        );
-        expect(outboxEntries).toHaveLength(0);
-      } finally {
-        saveSpy.mockRestore();
-      }
+      const orders = await dataSource.query(
+        `SELECT id FROM orders WHERE "userId" = $1`,
+        [ADMIN_USER.id],
+      );
+      expect(orders).toHaveLength(0);
     });
 
     it('GET /v1/orders - should return orders list (requires auth)', async () => {

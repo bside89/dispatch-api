@@ -6,6 +6,10 @@ import { ConfigService } from '@nestjs/config';
 import { CacheService } from '../../cache/cache.service';
 import Redlock from 'redlock';
 import { EventJobHandlerFactory } from '../factories/event-job-handler.factory';
+import {
+  createCacheServiceMock,
+  createRedlockMock,
+} from '@/shared/testing/provider-mocks';
 
 describe('EventProcessor', () => {
   let processor: EventProcessor;
@@ -16,6 +20,12 @@ describe('EventProcessor', () => {
   beforeEach(async () => {
     notificationStrategy = {
       execute: jest.fn(),
+    } as any;
+
+    cacheService = createCacheServiceMock() as any;
+
+    factory = {
+      getStrategy: jest.fn(),
     } as any;
 
     const module: TestingModule = await Test.createTestingModule({
@@ -35,7 +45,7 @@ describe('EventProcessor', () => {
         },
         {
           provide: Redlock,
-          useValue: { acquire: jest.fn(), release: jest.fn() },
+          useValue: createRedlockMock(),
         },
         {
           provide: EventJobHandlerFactory,

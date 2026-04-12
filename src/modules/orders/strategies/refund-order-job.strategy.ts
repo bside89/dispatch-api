@@ -12,7 +12,6 @@ import { DataSource } from 'typeorm';
 import { BaseOrderJobStrategy } from './base-order-job.strategy';
 import Redlock from 'redlock';
 import { delay } from '@/shared/helpers/functions';
-import { Order } from '../entities/order.entity';
 
 @Injectable()
 export class RefundOrderJobStrategy extends BaseOrderJobStrategy<RefundOrderJobPayload> {
@@ -44,7 +43,7 @@ export class RefundOrderJobStrategy extends BaseOrderJobStrategy<RefundOrderJobP
       { orderId },
     );
 
-    await this.refundPayment(job.data, order);
+    await this.refundPayment(job.data);
 
     await this.finish(job.data);
   }
@@ -62,17 +61,11 @@ export class RefundOrderJobStrategy extends BaseOrderJobStrategy<RefundOrderJobP
     );
   }
 
-  private async refundPayment(data: RefundOrderJobPayload, order: Order) {
+  private async refundPayment(data: RefundOrderJobPayload) {
     const { orderId } = data;
 
-    if (!order.paid) {
-      this.logger.log(`Order ${orderId} is not paid, skipping refund`);
-      return;
-    }
-
+    // TODO: trigger Stripe PaymentIntent refund here
     await delay(1000);
-
-    await this.updateOrderWithLock(orderId, { paid: false });
 
     this.logger.log(`Refund OK`, { orderId });
   }

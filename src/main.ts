@@ -13,6 +13,7 @@ import { seedMockAdminUser } from './shared/helpers/seed-mock-admin-user.helper'
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
     bufferLogs: true,
+    rawBody: true,
   });
   const configService = app.get(ConfigService);
   const dataSource = app.get(DataSource);
@@ -52,7 +53,12 @@ async function bootstrap() {
   app.enableCors({
     origin: configService.get('TEST_ENV') === 'true' ? '*' : 'http://localhost:5173',
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'idempotency-key'],
+    allowedHeaders: [
+      'Content-Type',
+      'Authorization',
+      'idempotency-key',
+      'stripe-signature',
+    ],
   });
 
   // Swagger configuration

@@ -6,6 +6,11 @@ import { UserRepository } from '@/modules/users/repositories/user.repository';
 import { DataSource } from 'typeorm';
 import Redlock from 'redlock';
 import { PaymentsGatewayService } from '@/modules/payments-gateway/payments-gateway.service';
+import {
+  createCacheServiceMock,
+  createDataSourceMock,
+  createRedlockMock,
+} from '@/shared/testing/provider-mocks';
 
 describe('UpdateCustomerJobStrategy', () => {
   let strategy: UpdateCustomerJobStrategy;
@@ -18,11 +23,26 @@ describe('UpdateCustomerJobStrategy', () => {
           provide: PaymentsGatewayService,
           useValue: { customersUpdate: jest.fn() },
         },
-        { provide: CacheService, useValue: {} },
-        { provide: OrderRepository, useValue: {} },
-        { provide: UserRepository, useValue: {} },
-        { provide: DataSource, useValue: {} },
-        { provide: Redlock, useValue: {} },
+        {
+          provide: CacheService,
+          useValue: createCacheServiceMock(),
+        },
+        {
+          provide: OrderRepository,
+          useValue: { update: jest.fn(), findOne: jest.fn() },
+        },
+        {
+          provide: UserRepository,
+          useValue: { update: jest.fn(), findById: jest.fn() },
+        },
+        {
+          provide: DataSource,
+          useValue: createDataSourceMock(),
+        },
+        {
+          provide: Redlock,
+          useValue: createRedlockMock(),
+        },
       ],
     }).compile();
 

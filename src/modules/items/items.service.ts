@@ -192,4 +192,10 @@ export class ItemsService extends TransactionalService {
   async decrementItemStock(item: Item, quantity: number): Promise<void> {
     await this.itemRepository.decrementStock(item, quantity);
   }
+
+  @Transactional()
+  @UseLock({ prefix: LOCK_PREFIX.ITEM.UPDATE, key: ([item]) => item.id })
+  async incrementItemStock(item: Item, quantity: number): Promise<void> {
+    await this.itemRepository.incrementStock(item, quantity);
+  }
 }

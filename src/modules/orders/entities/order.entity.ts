@@ -25,8 +25,11 @@ export class Order extends BaseEntity {
   @Column('integer')
   total: number;
 
-  @Column('boolean', { default: false })
-  paid: boolean;
+  @Column({ nullable: true, default: null })
+  paymentIntentId?: string;
+
+  @Column({ nullable: true, default: null })
+  paymentIntentStatus?: string;
 
   @OneToMany(() => OrderItem, (item) => item.order, {
     cascade: true,

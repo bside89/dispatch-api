@@ -57,4 +57,25 @@ export class OrderResponseDto {
     type: () => [OrderItemResponseDto],
   })
   items?: OrderItemResponseDto[];
+
+  @Expose()
+  @ApiPropertyOptional({
+    description: 'Stripe payment intent identifier for this order',
+    example: 'pi_123456789',
+  })
+  paymentIntentId?: string;
+
+  @Expose()
+  @ApiPropertyOptional({
+    description: 'Stripe payment intent status',
+    example: 'requires_confirmation',
+  })
+  paymentIntentStatus?: string;
+
+  @Expose()
+  @ApiPropertyOptional({
+    description: 'Stripe payment client secret used by the frontend',
+    example: 'pi_123456789_secret_123456789',
+  })
+  paymentIntentClientSecret?: string;
 }

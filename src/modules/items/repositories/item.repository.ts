@@ -55,4 +55,8 @@ export class ItemRepository extends BaseRepository<Item> {
   async decrementStock(items: Item, quantity: number): Promise<void> {
     await this.repository.decrement({ id: items.id }, 'stock', quantity);
   }
+
+  async incrementStock(items: Item, quantity: number): Promise<void> {
+    await this.repository.increment({ id: items.id }, 'stock', quantity);
+  }
 }

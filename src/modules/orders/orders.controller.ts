@@ -40,12 +40,16 @@ import { BaseController } from '@/shared/controllers/base.controller';
 import { SuccessResponseDto } from '@/shared/dto/success-response.dto';
 import { ErrorResponseDto } from '@/shared/dto/error-response.dto';
 import type { RequestUser } from '../auth/interfaces/request-user.interface';
+import { PaymentsGatewayService } from '../payments-gateway/payments-gateway.service';
 
 @Controller({ path: 'v1/orders', version: '1' })
 @ApiTags('orders')
 @ApiSecurity('bearer')
 export class OrdersController extends BaseController {
-  constructor(private readonly ordersService: OrdersService) {
+  constructor(
+    private readonly ordersService: OrdersService,
+    private readonly paymentsGatewayService: PaymentsGatewayService,
+  ) {
     super(OrdersController.name);
   }
 
