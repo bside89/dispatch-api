@@ -141,11 +141,14 @@ Switching to batch processing cut Outbox latency. Load tests at 100+ concurrent 
 
 ## Order processing flow
 
-1. Order is created via API
-2. Job is added to queue
-3. Worker processes using strategy
-4. Events are emitted
-5. Side effects are triggered (notifications, logs)
+1. Client creates an order — Stripe PaymentIntent is created, order sits at PENDING
+2. Stripe fires a webhook when the payment settles
+3. On success: order moves to PAID, ORDER_PROCESS is added to the outbox
+4. Outbox processor dispatches ORDER_PROCESS to BullMQ
+5. ORDER_PROCESS worker: PAID → PROCESSED, enqueues ORDER_SHIP
+6. ORDER_SHIP worker: PROCESSED → SHIPPED, enqueues ORDER_DELIVER
+7. ORDER_DELIVER worker: SHIPPED → DELIVERED
+8. On payment failure: ORDER_CANCEL is enqueued instead — stock is restored, order ends at CANCELLED
 
 Here is a diagram showing the big picture:
 
@@ -154,42 +157,55 @@ sequenceDiagram
     autonumber
     participant Client
     participant API as Orders Controller/Service
+    participant Stripe as Stripe API
     participant DB as PostgreSQL (Transaction)
     participant Worker as Outbox Processor
     participant Queue as BullMQ (Order & Notify)
 
-    Note over Client, API: [PHASE 1: INITIALIZATION]
+    Note over Client, Stripe: [PHASE 1: ORDER CREATION]
     Client->>API: POST /orders
     activate API
     Note over API, DB: Start Transaction
-    API->>DB: Save Order (Status: PENDING)
-    API->>DB: Save Outbox (Event: ORDER_PROCESS)
+    API->>DB: Save Order (status: PENDING)
+    API->>Stripe: Create PaymentIntent
+    Stripe-->>API: PaymentIntent (id, clientSecret)
+    API->>DB: Save paymentIntentId + paymentIntentStatus
     DB-->>API: Success
-    API-->>Client: 201 Created (Correlation-ID)
+    API-->>Client: 201 Created (clientSecret, Correlation-ID)
     deactivate API
 
-    Note over DB, Queue: [PHASE 2: STATUS PROPAGATION]
+    Note over Stripe, DB: [PHASE 2: PAYMENT WEBHOOK]
+    Stripe->>API: POST /payments/webhook (payment_intent.succeeded)
+    activate API
+    Note over API, DB: Start Transaction
+    API->>DB: Update Order (status: PAID)
+    API->>DB: Save Outbox (ORDER_PROCESS)
+    DB-->>API: Success
+    API-->>Stripe: 200 OK
+    deactivate API
+
+    Note over DB, Queue: [PHASE 3: OUTBOX DISPATCH]
     loop Continuous Processing
-        Worker->>DB: Fetch "PENDING" Outbox events
-        DB-->>Worker: List of events (Created, Paid, etc.)
-        Worker->>Queue: Dispatch Jobs (Order Flow & Notification Queues)
+        Worker->>DB: Fetch pending Outbox events
+        DB-->>Worker: Events list
+        Worker->>Queue: Dispatch jobs
         Queue-->>Worker: Ack (Job IDs)
-        Worker->>DB: Mark Outbox messages as PAID
+        Worker->>DB: Delete processed Outbox entries
     end
 
-    Note over Queue, DB: [PHASE 3: STATE MACHINE STEPS]
+    Note over Queue, DB: [PHASE 4: STATE MACHINE]
     rect rgba(128, 128, 128, 0.1)
-        Note right of Queue: Order Queue Worker
-        Queue->>DB: Update Order to "PAID"
-        Queue->>DB: Save Outbox (Event: ORDER_PROCESS & EVENTS_NOTIFY_USER)
+        Note right of Queue: ORDER_PROCESS
+        Queue->>DB: Update Order to PROCESSED
+        Queue->>DB: Save Outbox (ORDER_SHIP + EVENTS_NOTIFY_USER)
 
-        Note right of Queue: Next Step
-        Queue->>DB: Update Order to "SHIPPED"
-        Queue->>DB: Save Outbox (Event: ORDER_SHIPPED & EVENTS_NOTIFY_USER)
+        Note right of Queue: ORDER_SHIP
+        Queue->>DB: Update Order to SHIPPED
+        Queue->>DB: Save Outbox (ORDER_DELIVER + EVENTS_NOTIFY_USER)
 
-        Note right of Queue: Final Step
-        Queue->>DB: Update Order to "DELIVERED"
-        Queue->>DB: Save Outbox (Event: ORDER_DELIVERED & EVENTS_NOTIFY_USER)
+        Note right of Queue: ORDER_DELIVER
+        Queue->>DB: Update Order to DELIVERED
+        Queue->>DB: Save Outbox (EVENTS_NOTIFY_USER)
     end
 ```
 

@@ -1,4 +1,5 @@
 /*eslint-disable @typescript-eslint/no-explicit-any */
+import 'tsconfig-paths/register';
 import { PostgreSqlContainer } from '@testcontainers/postgresql';
 import { RedisContainer } from '@testcontainers/redis';
 
@@ -20,7 +21,7 @@ export default async () => {
   process.env.DB_USERNAME = 'test_user';
   process.env.DB_PASSWORD = 'test_pass';
   process.env.DB_DATABASE = 'test_db';
-  process.env.DB_SYNCHRONIZE = 'true';
+  process.env.DB_SYNCHRONIZE = 'false';
 
   process.env.REDIS_HOST = redis.getHost();
   process.env.REDIS_PORT = redis.getMappedPort(6379).toString();
@@ -34,6 +35,11 @@ export default async () => {
   process.env.QUEUE_ORDER_CONCURRENCY = '1';
   process.env.QUEUE_EVENT_CONCURRENCY = '1';
   process.env.QUEUE_PAYMENT_CONCURRENCY = '1';
+
+  const dataSource = require('../src/config/typeorm.config').default;
+  await dataSource.initialize();
+  await dataSource.runMigrations();
+  await dataSource.destroy();
 
   console.log('Containers are ready.');
 
