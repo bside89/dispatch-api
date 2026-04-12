@@ -2,18 +2,24 @@ import { AppModule } from '@/app.module';
 import { HttpStatus, INestApplication, ValidationPipe } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import request from 'supertest';
-import { ADMIN_USER } from './constants/admin-user.constant';
 import { cleanDatabase, cleanRedis } from './utils/database-cleaner';
 import { DataSource } from 'typeorm';
 import Redis from 'ioredis';
 import { REDIS_CLIENT } from '@/shared/constants/redis-client.constant';
 import { paymentsGatewayServiceMock } from './utils/mock-payments-gateway-service';
 import { PaymentsGatewayService } from '@/modules/payments-gateway/payments-gateway.service';
+import { JwtService } from '@nestjs/jwt';
+import {
+  createAccessToken,
+  createFixtureUser,
+  getAdminFixture,
+} from './utils/e2e-fixtures';
 
 describe('Users (E2E)', () => {
   let app: INestApplication;
   let dataSource: DataSource;
   let redisClient: Redis;
+  let jwtService: JwtService;
 
   let adminToken: string;
   let userToken: string;
@@ -41,6 +47,7 @@ describe('Users (E2E)', () => {
 
     dataSource = app.get<DataSource>(DataSource);
     redisClient = app.get<Redis>(REDIS_CLIENT);
+    jwtService = app.get<JwtService>(JwtService);
   });
 
   afterAll(async () => {
@@ -51,42 +58,12 @@ describe('Users (E2E)', () => {
     await cleanDatabase(dataSource);
     await cleanRedis(redisClient);
 
-    // Login as admin
-    const { body: adminAuth } = await request(app.getHttpServer())
-      .post('/v1/auth/login')
-      .send({
-        email: ADMIN_USER.email,
-        password: ADMIN_USER.password,
-      })
-      .expect(HttpStatus.CREATED);
-    adminToken = adminAuth.data.accessToken;
+    const adminUser = getAdminFixture();
+    adminToken = createAccessToken(jwtService, adminUser);
 
-    // Create a regular user for tests
-    const randomSuffix = Math.random().toString(36).substring(7);
-    const uniqueEmail = `regular-${randomSuffix}@test.com`;
-    const userPayload = {
-      name: 'Regular Test User',
-      email: uniqueEmail,
-      password: 'StrongPassword123!',
-    };
-
-    const { body: userCreated } = await request(app.getHttpServer())
-      .post('/v1/users')
-      .set('idempotency-key', `setup-${randomSuffix}`)
-      .send(userPayload)
-      .expect(HttpStatus.CREATED);
-
-    createdUserId = userCreated.data.id;
-
-    // Login as regular user
-    const { body: userAuth } = await request(app.getHttpServer())
-      .post('/v1/auth/login')
-      .send({
-        email: userPayload.email,
-        password: userPayload.password,
-      })
-      .expect(HttpStatus.CREATED);
-    userToken = userAuth.data.accessToken;
+    const regularUser = await createFixtureUser(dataSource);
+    createdUserId = regularUser.id;
+    userToken = createAccessToken(jwtService, regularUser);
   });
 
   describe('REST Endpoints', () => {

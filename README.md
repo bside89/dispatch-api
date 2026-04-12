@@ -212,6 +212,28 @@ sequenceDiagram
 
 - **Load testing (k6):** Hammers the queue under concurrent load to confirm jobs don't get processed twice when retries kick in.
 
+### Test watch mode
+
+The default watch command runs with `--runInBand`:
+
+```bash
+npm run test:watch
+```
+
+This is intentional. The `integration` and `e2e` Jest projects share the same Testcontainers-based setup, so running them in parallel during watch mode causes concurrent `globalSetup` execution and environment variable collisions.
+
+If you only want fast feedback from unit tests, use:
+
+```bash
+npm run test:watch:unit
+```
+
+If you want to watch only the database-backed suites, keeping them serial:
+
+```bash
+npm run test:watch:db
+```
+
 ## Stripe testing
 
 Stripe behavior is controlled by `STRIPE_TEST_MODE`.

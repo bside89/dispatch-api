@@ -9,11 +9,19 @@ import Redis from 'ioredis';
 import { REDIS_CLIENT } from '@/shared/constants/redis-client.constant';
 import { paymentsGatewayServiceMock } from './utils/mock-payments-gateway-service';
 import { PaymentsGatewayService } from '@/modules/payments-gateway/payments-gateway.service';
+import { JwtService } from '@nestjs/jwt';
+import {
+  createAccessToken,
+  createRefreshToken,
+  getAdminFixture,
+  persistRefreshToken,
+} from './utils/e2e-fixtures';
 
 describe('Auth (E2E)', () => {
   let app: INestApplication;
   let dataSource: DataSource;
   let redisClient: Redis;
+  let jwtService: JwtService;
 
   beforeAll(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -37,6 +45,7 @@ describe('Auth (E2E)', () => {
 
     dataSource = app.get<DataSource>(DataSource);
     redisClient = app.get<Redis>(REDIS_CLIENT);
+    jwtService = app.get<JwtService>(JwtService);
   });
 
   afterAll(async () => {
@@ -80,16 +89,10 @@ describe('Auth (E2E)', () => {
     });
 
     it('POST /v1/auth/refresh - should return new accessToken and refreshToken', async () => {
-      // First, login to get a valid refresh token
-      const loginRes = await request(app.getHttpServer())
-        .post('/v1/auth/login')
-        .send({
-          email: ADMIN_USER.email,
-          password: ADMIN_USER.password,
-        })
-        .expect(HttpStatus.CREATED);
+      const adminUser = getAdminFixture();
+      const validRefreshToken = createRefreshToken(jwtService, adminUser);
 
-      const validRefreshToken = loginRes.body.data.refreshToken;
+      await persistRefreshToken(dataSource, adminUser.id, validRefreshToken);
 
       const refreshRes = await request(app.getHttpServer())
         .post('/v1/auth/refresh')
@@ -98,9 +101,7 @@ describe('Auth (E2E)', () => {
 
       expect(refreshRes.body.data).toHaveProperty('accessToken');
       expect(refreshRes.body.data).toHaveProperty('refreshToken');
-      expect(refreshRes.body.data.accessToken).not.toBe(
-        loginRes.body.data.accessToken,
-      );
+      expect(refreshRes.body.data.refreshToken).not.toBe(validRefreshToken);
     });
 
     it('POST /v1/auth/logout - should deny access with incorrect accessToken', async () => {
@@ -111,30 +112,19 @@ describe('Auth (E2E)', () => {
     });
 
     it('POST /v1/auth/logout - should authenticate Admin and successfully logout, blacklisting token', async () => {
-      // 1. Login to get a valid access token
-      const loginRes = await request(app.getHttpServer())
-        .post('/v1/auth/login')
-        .send({
-          email: ADMIN_USER.email,
-          password: ADMIN_USER.password,
-        })
-        .expect(HttpStatus.CREATED);
+      const adminUser = getAdminFixture();
+      const validAccessToken = createAccessToken(jwtService, adminUser);
 
-      const validAccessToken = loginRes.body.data.accessToken;
-
-      // 2. Perform logout
       await request(app.getHttpServer())
         .post('/v1/auth/logout')
         .set('Authorization', `Bearer ${validAccessToken}`)
         .expect(HttpStatus.CREATED);
 
-      // 3. Try another authenticated endpoint with the blacklisted token
       await request(app.getHttpServer())
         .post('/v1/auth/refresh')
         .set('Authorization', `Bearer ${validAccessToken}`)
         .expect(HttpStatus.UNAUTHORIZED);
 
-      // We can also test GET /v1/users to see if logout really worked
       await request(app.getHttpServer())
         .get('/v1/users')
         .set('Authorization', `Bearer ${validAccessToken}`)

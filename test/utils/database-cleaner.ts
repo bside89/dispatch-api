@@ -2,9 +2,10 @@ import { DataSource } from 'typeorm';
 import { Redis } from 'ioredis';
 import { ADMIN_USER } from '../constants/admin-user.constant';
 
+const truncateTableNamesCache = new WeakMap<DataSource, string>();
+
 export async function cleanDatabase(dataSource: DataSource) {
-  const entities = dataSource.entityMetadatas;
-  const tableNames = entities.map((entity) => `"${entity.tableName}"`).join(', ');
+  const tableNames = getTruncateTableNames(dataSource);
 
   await dataSource.query(`TRUNCATE ${tableNames} RESTART IDENTITY CASCADE;`);
 
@@ -19,4 +20,19 @@ export async function cleanDatabase(dataSource: DataSource) {
 
 export async function cleanRedis(redisClient: Redis) {
   await redisClient.flushdb();
+}
+
+function getTruncateTableNames(dataSource: DataSource): string {
+  const cachedTableNames = truncateTableNamesCache.get(dataSource);
+  if (cachedTableNames) {
+    return cachedTableNames;
+  }
+
+  const tableNames = dataSource.entityMetadatas
+    .map((entity) => `"${entity.tableName}"`)
+    .join(', ');
+
+  truncateTableNamesCache.set(dataSource, tableNames);
+
+  return tableNames;
 }
