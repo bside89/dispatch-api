@@ -4,7 +4,7 @@ import { BaseService } from '@/shared/services/base.service';
 import {
   StripeCustomerResponse,
   DeletedStripeCustomer,
-} from '../types/payments.types';
+} from '../types/customer.types';
 import { PaymentCustomer } from '../types/customer.types';
 import { STRIPE_CLIENT } from '../constants/stripe-client.token';
 import { CreateCustomerDto } from '@/modules/payments-gateway/dto/create-customer.dto';

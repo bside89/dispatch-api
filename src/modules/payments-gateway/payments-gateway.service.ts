@@ -9,7 +9,7 @@ import { UpdateCustomerDto } from './dto/update-customer.dto';
 import { PaymentIntentResponseDto } from './dto/payment-intent-response.dto';
 import {
   StripePaymentIntentCreateParams,
-  StripePaymentIntentWebhookEvent,
+  StripeWebhookEvent,
 } from './types/payment-intent.types';
 
 @Injectable()
@@ -89,7 +89,7 @@ export class PaymentsGatewayService extends BaseService {
     payload: Buffer | string,
     signature: string,
     secret: string,
-  ): StripePaymentIntentWebhookEvent {
+  ): StripeWebhookEvent {
     return this.stripePaymentIntentsGateway.constructWebhookEvent(
       payload,
       signature,

@@ -9,7 +9,7 @@ import {
   StripeCustomerCreateTaxIdType,
   StripeCustomerList,
   StripeCustomerListItem,
-} from '../types/payments.types';
+} from '../types/customer.types';
 
 /**
  * Mapper class to convert between Stripe types and internal application types

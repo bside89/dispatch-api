@@ -5,7 +5,7 @@ import { STRIPE_CLIENT } from '../constants/stripe-client.token';
 import {
   StripePaymentIntentCreateParams,
   StripePaymentIntentResponse,
-  StripePaymentIntentWebhookEvent,
+  StripeWebhookEvent,
 } from '../types/payment-intent.types';
 
 @Injectable()
@@ -29,11 +29,11 @@ export class StripePaymentIntentsGateway extends BaseService {
     payload: Buffer | string,
     signature: string,
     secret: string,
-  ): StripePaymentIntentWebhookEvent {
+  ): StripeWebhookEvent {
     return this.stripe.webhooks.constructEvent(
       payload,
       signature,
       secret,
-    ) as unknown as StripePaymentIntentWebhookEvent;
+    ) as unknown as StripeWebhookEvent;
   }
 }

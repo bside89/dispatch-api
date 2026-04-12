@@ -16,12 +16,16 @@ import {
   ApiHeader,
   ApiOkResponse,
   ApiOperation,
+  ApiSecurity,
+  ApiTags,
 } from '@nestjs/swagger';
 import { PaymentWebhookDto } from './dto/payment-webhook.dto';
 import { PaymentWebhookResponseDto } from './dto/payment-webhook-response.dto';
 import { ConfigService } from '@nestjs/config';
 
 @Controller('payments')
+@ApiTags('payments')
+@ApiSecurity('bearer')
 export class PaymentsController extends BaseController {
   constructor(
     private readonly paymentsService: PaymentsService,
