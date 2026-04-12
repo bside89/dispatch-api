@@ -66,6 +66,15 @@ Bull Board: http://localhost:3000/bull-board
 
 Grafana: http://localhost:3001
 
+When `APP_ENV` is different from `production`, the app creates a mock admin user on startup if it does not already exist:
+
+- Name: João Silva Admin
+- Email: joao.silva@email.com
+- Password: password123
+- Role: admin
+
+This user is meant for local and development testing only. In `production`, it is not created.
+
 ---
 
 ## Architecture overview

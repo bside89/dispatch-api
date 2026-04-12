@@ -7,12 +7,16 @@ import { BasicAuthMiddleware } from './middleware/basic-auth.middleware';
 import helmet from 'helmet';
 import { Logger } from 'nestjs-pino';
 import { AllExceptionsFilter } from './shared/filters/http-exception.filter';
+import { DataSource } from 'typeorm';
+import { seedMockAdminUser } from './shared/helpers/seed-mock-admin-user.helper';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
     bufferLogs: true,
   });
   const configService = app.get(ConfigService);
+  const dataSource = app.get(DataSource);
+  const logger = app.get(Logger);
 
   // Global exception filter
   app.useGlobalFilters(new AllExceptionsFilter());
@@ -72,6 +76,9 @@ async function bootstrap() {
   // Apply the middleware manually for the protected routes
   const authMiddleware = new BasicAuthMiddleware(configService);
 
+  // Seed the mock admin user before the application starts accepting requests
+  await seedMockAdminUser(configService, dataSource, logger);
+
   // Protect Bull Board
   app.use('/bull-board', (req, res, next) => authMiddleware.use(req, res, next));
 
@@ -81,8 +88,6 @@ async function bootstrap() {
   app.enableShutdownHooks();
 
   await app.listen(port);
-
-  const logger = app.get(Logger);
 
   logger.log(`Application is running on: http://localhost:${port}`, 'Bootstrap');
   logger.log(
