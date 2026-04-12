@@ -13,7 +13,6 @@ import { Public } from './decorators/public.decorator';
 import { JwtRefreshAuthGuard } from './guards/jwt-refresh.guard';
 import { GetUser } from '@/shared/decorators/get-user.decorator';
 import { BaseController } from '@/shared/controllers/base.controller';
-import { SuccessResponseDto } from '@/shared/dto/success-response.dto';
 import { LoginResponseDto } from './dto/login-response.dto';
 import type { RequestUser } from './interfaces/request-user.interface';
 
@@ -35,7 +34,7 @@ export class AuthController extends BaseController {
   })
   @ApiCreatedResponse({
     description: 'Login successful',
-    type: SuccessResponseDto<LoginResponseDto>,
+    type: LoginResponseDto,
   })
   @ApiBadRequestResponse({
     description: 'Invalid email or password',
@@ -63,7 +62,7 @@ export class AuthController extends BaseController {
   })
   @ApiCreatedResponse({
     description: 'Token refreshed successfully',
-    type: SuccessResponseDto<LoginResponseDto>,
+    type: LoginResponseDto,
   })
   @ApiBadRequestResponse({
     description: 'Invalid refresh token',
@@ -83,13 +82,12 @@ export class AuthController extends BaseController {
   })
   @ApiCreatedResponse({
     description: 'Logout successful',
-    type: SuccessResponseDto<null>,
   })
   async logout(@GetUser() user: RequestUser) {
     this.logger.debug('POST /auth/logout - Logging out user', { userId: user.id });
 
     await this.authService.logout(user);
 
-    return this.success(null, 'Logout successful');
+    return this.success({}, 'Logout successful');
   }
 }

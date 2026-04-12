@@ -37,7 +37,6 @@ import { PaginatedResultDto } from '@/shared/dto/paginated-result.dto';
 import { GetUser } from '@/shared/decorators/get-user.decorator';
 import { OrderResponseDto } from './dto/order-response.dto';
 import { BaseController } from '@/shared/controllers/base.controller';
-import { SuccessResponseDto } from '@/shared/dto/success-response.dto';
 import { ErrorResponseDto } from '@/shared/dto/error-response.dto';
 import type { RequestUser } from '../auth/interfaces/request-user.interface';
 import { PaymentsGatewayService } from '../payments-gateway/payments-gateway.service';
@@ -69,7 +68,7 @@ export class OrdersController extends BaseController {
   })
   @ApiCreatedResponse({
     description: 'Order successfully created',
-    type: SuccessResponseDto<OrderResponseDto>,
+    type: OrderResponseDto,
   })
   @ApiBadRequestResponse({
     description: 'Invalid input data or missing idempotency-key header',
@@ -160,7 +159,7 @@ export class OrdersController extends BaseController {
   })
   @ApiOkResponse({
     description: 'Order successfully retrieved',
-    type: SuccessResponseDto<OrderResponseDto>,
+    type: OrderResponseDto,
   })
   @ApiNotFoundResponse({
     description: 'Order not found',
@@ -188,7 +187,7 @@ export class OrdersController extends BaseController {
   })
   @ApiOkResponse({
     description: 'Order successfully updated',
-    type: SuccessResponseDto<OrderResponseDto>,
+    type: OrderResponseDto,
   })
   @ApiNotFoundResponse({
     description: 'Order not found',
@@ -227,7 +226,7 @@ export class OrdersController extends BaseController {
   })
   @ApiOkResponse({
     description: 'Order successfully deleted',
-    type: SuccessResponseDto<OrderResponseDto>,
+    type: OrderResponseDto,
   })
   @ApiNotFoundResponse({
     description: 'Order not found',

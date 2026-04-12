@@ -36,7 +36,6 @@ import { UserQueryDto } from './dto/user-query.dto';
 import { Public } from '../auth/decorators/public.decorator';
 import { UserResponseDto } from './dto/user-response.dto';
 import { BaseController } from '@/shared/controllers/base.controller';
-import { SuccessResponseDto } from '@/shared/dto/success-response.dto';
 import { PaginatedResponseDto } from '@/shared/dto/paginated-response.dto';
 import { GetUser } from '@/shared/decorators/get-user.decorator';
 import type { RequestUser } from '../auth/interfaces/request-user.interface';
@@ -67,7 +66,7 @@ export class UsersController extends BaseController {
   })
   @ApiCreatedResponse({
     description: 'User created successfully',
-    type: SuccessResponseDto<UserResponseDto>,
+    type: UserResponseDto,
   })
   @ApiConflictResponse({
     description: 'Email already exists',
@@ -152,7 +151,7 @@ export class UsersController extends BaseController {
   })
   @ApiOkResponse({
     description: 'User found successfully',
-    type: SuccessResponseDto<UserResponseDto>,
+    type: UserResponseDto,
   })
   @ApiNotFoundResponse({
     description: 'User not found',
@@ -186,7 +185,7 @@ export class UsersController extends BaseController {
   })
   @ApiOkResponse({
     description: 'User updated successfully',
-    type: SuccessResponseDto<UserResponseDto>,
+    type: UserResponseDto,
   })
   @ApiNotFoundResponse({
     description: 'User not found',
@@ -230,7 +229,7 @@ export class UsersController extends BaseController {
   })
   @ApiOkResponse({
     description: 'Login credentials updated successfully',
-    type: SuccessResponseDto<UserResponseDto>,
+    type: UserResponseDto,
   })
   @ApiNotFoundResponse({
     description: 'User not found',

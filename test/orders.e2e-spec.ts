@@ -115,7 +115,7 @@ describe('Orders (E2E)', () => {
 
       expect(res.body.data.id).toBeDefined();
       expect(res.body.data.status).toBe('PENDING');
-      expect(res.body.data.paymentIntentClientSecret).toBeDefined();
+      expect(res.body.data.paymentIntent.clientSecret).toBeDefined();
     });
 
     it('POST /v1/orders - should return the same order on duplicate idempotency key', async () => {

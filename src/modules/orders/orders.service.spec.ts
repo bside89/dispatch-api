@@ -174,10 +174,13 @@ describe('OrdersService', () => {
     expect(result).toMatchObject({
       id: 'order-1',
       status: OrderStatus.PENDING,
-      paymentIntentId: 'pi_123',
-      paymentIntentStatus: 'requires_confirmation',
+      paymentIntent: {
+        id: 'pi_123',
+        status: 'requires_confirmation',
+        clientSecret: 'pi_123_secret_456',
+      },
     });
     expect(result.total).toBe(5000);
-    expect(result.paymentIntentClientSecret).toBe('pi_123_secret_456');
+    expect(result.paymentIntent.clientSecret).toBe('pi_123_secret_456');
   });
 });

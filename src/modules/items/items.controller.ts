@@ -35,7 +35,6 @@ import { UserRole } from '../users/enums/user-role.enum';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { PaginatedResultDto } from '@/shared/dto/paginated-result.dto';
 import { BaseController } from '@/shared/controllers/base.controller';
-import { SuccessResponseDto } from '@/shared/dto/success-response.dto';
 
 @Controller({ path: 'v1/items', version: '1' })
 @ApiTags('items')
@@ -63,7 +62,7 @@ export class ItemsController extends BaseController {
   })
   @ApiCreatedResponse({
     description: 'Item successfully created',
-    type: SuccessResponseDto<ItemResponseDto>,
+    type: ItemResponseDto,
   })
   @ApiBadRequestResponse({ description: 'Invalid input data' })
   @ApiForbiddenResponse({ description: 'Requires admin role' })
@@ -105,7 +104,7 @@ export class ItemsController extends BaseController {
   @ApiParam({ name: 'id', description: 'Item unique identifier (UUID)' })
   @ApiOkResponse({
     description: 'Item successfully retrieved',
-    type: SuccessResponseDto<ItemResponseDto>,
+    type: ItemResponseDto,
   })
   @ApiNotFoundResponse({ description: 'Item not found' })
   async findOne(@Param('id', ParseUUIDPipe) id: string) {
@@ -122,7 +121,7 @@ export class ItemsController extends BaseController {
   @ApiParam({ name: 'id', description: 'Item unique identifier (UUID)' })
   @ApiOkResponse({
     description: 'Item successfully updated',
-    type: SuccessResponseDto<ItemResponseDto>,
+    type: ItemResponseDto,
   })
   @ApiNotFoundResponse({ description: 'Item not found' })
   @ApiForbiddenResponse({ description: 'Requires admin role' })
@@ -151,6 +150,6 @@ export class ItemsController extends BaseController {
 
     await this.itemsService.remove(id);
 
-    return this.success(null, 'Item deleted successfully');
+    return this.success({}, 'Item deleted successfully');
   }
 }

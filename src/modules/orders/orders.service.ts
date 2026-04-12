@@ -10,7 +10,7 @@ import { OrderItemRepository } from './repositories/order-item.repository';
 import { PaginatedResultDto } from '@/shared/dto/paginated-result.dto';
 import { DataSource } from 'typeorm';
 import { Transactional } from '@/shared/decorators/transactional.decorator';
-import { OrderResponseDto } from './dto/order-response.dto';
+import { OrderPaymentIntentDto, OrderResponseDto } from './dto/order-response.dto';
 import { EntityMapper } from '@/shared/utils/entity-mapper';
 import { CACHE_TTL } from '@/shared/constants/cache-ttl.constant';
 import { OutboxService } from '@/shared/modules/outbox/outbox.service';
@@ -149,9 +149,10 @@ export class OrdersService extends TransactionalService {
     });
 
     const orderMapped = EntityMapper.map(completeOrder, OrderResponseDto);
-    orderMapped.paymentIntentId = paymentIntent.id;
-    orderMapped.paymentIntentStatus = paymentIntent.status;
-    orderMapped.paymentIntentClientSecret = paymentIntent.clientSecret;
+    orderMapped.paymentIntent = EntityMapper.map(
+      paymentIntent,
+      OrderPaymentIntentDto,
+    );
 
     await this.cacheService.set(
       idempotencyKeyFormatted,
