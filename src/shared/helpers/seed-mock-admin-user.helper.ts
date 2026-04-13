@@ -22,7 +22,7 @@ export async function seedMockAdminUser(
   dataSource: DataSource,
   logger: SeedLogger,
 ): Promise<void> {
-  if (configService.get('APP_ENV') === 'production') {
+  if (configService.get('SEED_TEST_DATA') !== 'true') {
     return;
   }
 

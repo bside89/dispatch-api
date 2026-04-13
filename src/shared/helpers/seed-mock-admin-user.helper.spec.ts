@@ -31,8 +31,17 @@ describe(seedMockAdminUser.name, () => {
     jest.restoreAllMocks();
   });
 
-  it('skips seeding in production', async () => {
-    (configService.get as jest.Mock).mockReturnValue('production');
+  it('skips seeding when SEED_TEST_DATA is not true', async () => {
+    (configService.get as jest.Mock).mockReturnValue('false');
+
+    await seedMockAdminUser(configService, dataSource, logger);
+
+    expect(dataSource.getRepository).not.toHaveBeenCalled();
+    expect(userRepository.insert).not.toHaveBeenCalled();
+  });
+
+  it('skips seeding when SEED_TEST_DATA is missing', async () => {
+    (configService.get as jest.Mock).mockReturnValue(undefined);
 
     await seedMockAdminUser(configService, dataSource, logger);
 
@@ -41,7 +50,7 @@ describe(seedMockAdminUser.name, () => {
   });
 
   it('inserts the mock admin user when it does not exist', async () => {
-    (configService.get as jest.Mock).mockReturnValue('development');
+    (configService.get as jest.Mock).mockReturnValue('true');
     userRepository.existsBy.mockResolvedValue(false);
 
     await seedMockAdminUser(configService, dataSource, logger);
@@ -67,7 +76,7 @@ describe(seedMockAdminUser.name, () => {
   });
 
   it('does nothing when the mock admin user already exists', async () => {
-    (configService.get as jest.Mock).mockReturnValue('development');
+    (configService.get as jest.Mock).mockReturnValue('true');
     userRepository.existsBy.mockResolvedValue(true);
 
     await seedMockAdminUser(configService, dataSource, logger);

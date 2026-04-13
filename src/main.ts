@@ -9,6 +9,7 @@ import { Logger } from 'nestjs-pino';
 import { AllExceptionsFilter } from './shared/filters/http-exception.filter';
 import { DataSource } from 'typeorm';
 import { seedMockAdminUser } from './shared/helpers/seed-mock-admin-user.helper';
+import { seedMockItems } from './shared/helpers/seed-mock-items.helper';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
@@ -84,8 +85,9 @@ async function bootstrap() {
   // Apply the middleware manually for the protected routes
   const authMiddleware = new BasicAuthMiddleware(configService);
 
-  // Seed the mock admin user before the application starts accepting requests
+  // Seed mock data before the application starts accepting requests
   await seedMockAdminUser(configService, dataSource, logger);
+  await seedMockItems(configService, dataSource, logger);
 
   // Protect Bull Board
   app.use('/bull-board', (req, res, next) => authMiddleware.use(req, res, next));
