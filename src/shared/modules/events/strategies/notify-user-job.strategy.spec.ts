@@ -2,7 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { NotifyUserJobStrategy } from './notify-user-job.strategy';
 import { CacheService } from '../../cache/cache.service';
 
-describe(NotifyUserJobStrategy.name, () => {
+describe('NotifyUserJobStrategy', () => {
   let strategy: NotifyUserJobStrategy;
 
   beforeEach(async () => {

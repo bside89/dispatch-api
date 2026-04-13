@@ -2,7 +2,7 @@ import { ConfigService } from '@nestjs/config';
 import { DataSource } from 'typeorm';
 import { seedMockItems } from './seed-mock-items.helper';
 
-describe(seedMockItems.name, () => {
+describe('seedMockItems', () => {
   const configService = {
     get: jest.fn(),
   } as unknown as ConfigService;

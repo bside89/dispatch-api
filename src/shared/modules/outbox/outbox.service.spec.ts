@@ -36,7 +36,7 @@ const makeOutboxPayload = (overrides: Partial<OutboxPayload> = {}): OutboxPayloa
     ...overrides,
   }) as OutboxPayload;
 
-describe(OutboxService.name, () => {
+describe('OutboxService', () => {
   let service: OutboxService;
   let repository: jest.Mocked<
     Pick<
@@ -158,12 +158,16 @@ describe(OutboxService.name, () => {
         {
           name: OutboxType.ORDER_PROCESS,
           data: { orderId: '1' },
-          jobId: 'uuid-1',
+          opts: {
+            jobId: 'uuid-1',
+          },
         },
         {
           name: OutboxType.ORDER_SHIP,
           data: { orderId: '2' },
-          jobId: 'uuid-2',
+          opts: {
+            jobId: 'uuid-2',
+          },
         },
       ]);
       expect(repository.deleteBulk).toHaveBeenCalledWith(['uuid-1', 'uuid-2']);
@@ -193,7 +197,9 @@ describe(OutboxService.name, () => {
         {
           name: OutboxType.PAYMENT_CREATE_CUSTOMER,
           data: payload,
-          jobId: 'uuid-4',
+          opts: {
+            jobId: 'uuid-4',
+          },
         },
       ]);
       expect(repository.deleteBulk).toHaveBeenCalledWith(['uuid-4']);

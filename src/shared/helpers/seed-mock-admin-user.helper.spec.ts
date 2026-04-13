@@ -3,7 +3,7 @@ import { DataSource } from 'typeorm';
 import { seedMockAdminUser } from './seed-mock-admin-user.helper';
 import { HashUtils } from '../utils/hash.utils';
 
-describe(seedMockAdminUser.name, () => {
+describe('seedMockAdminUser', () => {
   const configService = {
     get: jest.fn(),
   } as unknown as ConfigService;

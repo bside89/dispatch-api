@@ -1,7 +1,7 @@
 import { EventBusJob } from './event-bus-job.interface';
 
 export interface EventBus {
-  publish(events: EventBusJob[]): Promise<void>;
+  publish(event: EventBusJob): Promise<void>;
 
   publishBulk(events: EventBusJob[]): Promise<void>;
 }

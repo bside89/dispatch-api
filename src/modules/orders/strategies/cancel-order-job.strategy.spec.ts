@@ -13,7 +13,7 @@ import {
   createRedlockMock,
 } from '@/shared/testing/provider-mocks';
 
-describe(CancelOrderJobStrategy.name, () => {
+describe('CancelOrderJobStrategy', () => {
   let strategy: CancelOrderJobStrategy;
 
   beforeEach(async () => {

@@ -6,7 +6,7 @@ import { DataSource } from 'typeorm';
 import Redlock from 'redlock';
 import { DeliverOrderJobStrategy } from './deliver-order-job.strategy';
 
-describe(DeliverOrderJobStrategy.name, () => {
+describe('DeliverOrderJobStrategy', () => {
   let strategy: DeliverOrderJobStrategy;
 
   beforeEach(async () => {

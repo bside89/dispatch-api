@@ -19,7 +19,7 @@ jest.mock('@nestjs/passport', () => ({
   },
 }));
 
-describe(JwtStrategy.name, () => {
+describe('JwtStrategy', () => {
   let strategy: JwtStrategy;
   let cacheService: jest.Mocked<CacheService>;
 

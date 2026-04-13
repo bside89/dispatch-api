@@ -14,7 +14,7 @@ import {
   createRedlockMock,
 } from '@/shared/testing/provider-mocks';
 
-describe(UsersService.name, () => {
+describe('UsersService', () => {
   let service: UsersService;
   let userRepository: {
     findById: jest.Mock;

@@ -13,7 +13,7 @@ import {
   createRedlockMock,
 } from '@/shared/testing/provider-mocks';
 
-describe(RefundOrderJobStrategy.name, () => {
+describe('RefundOrderJobStrategy', () => {
   let strategy: RefundOrderJobStrategy;
   let cacheService: jest.Mocked<CacheService>;
   let outboxService: jest.Mocked<OutboxService>;

@@ -20,6 +20,8 @@ import { ensureError } from '@/shared/helpers/functions';
 import { EventBusJob } from '../events/interfaces/event-bus-job.interface';
 import Redlock from 'redlock';
 import { TransactionalService } from '@/shared/services/transactional.service';
+import { QueueJob } from '@/shared/interfaces/queue-job.interface';
+import { OutboxPayload } from './types/outbox.payload';
 
 @Injectable()
 export class OutboxService extends TransactionalService implements OnModuleDestroy {
@@ -62,13 +64,11 @@ export class OutboxService extends TransactionalService implements OnModuleDestr
     try {
       const limit = 100;
       const messages = await this.outboxRepository.findAndLockBatch(limit);
-
       if (messages.length === 0) return;
 
       await this.dispatch(messages);
 
       const dispatchedIds: string[] = messages.map((m) => m.id);
-
       await this.outboxRepository.deleteBulk(dispatchedIds);
 
       this.logger.log(
@@ -79,9 +79,7 @@ export class OutboxService extends TransactionalService implements OnModuleDestr
       // If we reached the maximum limit, schedule the next execution immediately
       if (messages.length === limit) {
         this.isProcessing = false; // Release the lock for the next execution
-
         setImmediate(() => this.process());
-
         return;
       }
     } catch (e) {
@@ -112,8 +110,10 @@ export class OutboxService extends TransactionalService implements OnModuleDestr
           ({
             name: msg.type,
             data: msg.payload,
-            jobId: msg.id,
-          }) as EventBusJob,
+            opts: {
+              jobId: msg.id,
+            },
+          }) as QueueJob<OutboxPayload>,
       );
     const paymentQueueMsg = messages
       .filter((m) =>
@@ -128,8 +128,10 @@ export class OutboxService extends TransactionalService implements OnModuleDestr
           ({
             name: msg.type,
             data: msg.payload,
-            jobId: msg.id,
-          }) as EventBusJob,
+            opts: {
+              jobId: msg.id,
+            },
+          }) as QueueJob<OutboxPayload>,
       );
     const eventBusMsg = messages
       .filter((m) => m.type === OutboxType.EVENTS_NOTIFY_USER)

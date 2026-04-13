@@ -9,10 +9,8 @@ import { EventBusJob } from '../interfaces/event-bus-job.interface';
 export class BullEventBus implements EventBus {
   constructor(@InjectQueue(EVENT_QUEUE_TOKEN) private readonly queue: Queue) {}
 
-  async publish(events: EventBusJob[]): Promise<void> {
-    for (const event of events) {
-      await this.queue.add(event.name, event.data, { jobId: event.jobId });
-    }
+  async publish(event: EventBusJob): Promise<void> {
+    await this.queue.add(event.name, event.data, { jobId: event.jobId });
   }
 
   async publishBulk(events: EventBusJob[]): Promise<void> {

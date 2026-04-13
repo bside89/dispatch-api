@@ -11,6 +11,10 @@ export class OrderPaymentIntentDto extends PickType(PaymentIntentResponseDto, [
   'status',
 ] as const) {
   @Expose()
+  @ApiPropertyOptional({
+    description: 'Client secret used by the frontend to confirm payment',
+    example: 'pi_123456789_secret_123456789',
+  })
   clientSecret?: string | null;
 }
 

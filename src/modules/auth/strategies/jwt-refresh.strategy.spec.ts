@@ -14,7 +14,7 @@ jest.mock('@nestjs/passport', () => ({
   },
 }));
 
-describe(JwtRefreshStrategy.name, () => {
+describe('JwtRefreshStrategy', () => {
   let strategy: JwtRefreshStrategy;
 
   beforeEach(async () => {
