@@ -103,6 +103,9 @@ Client → API (NestJS)
 - **Queue-based processing (BullMQ)**  
   I used BullMQ to handle retries and backoff strategies, making the system way more resilient.
 
+- **Hybrid fulfillment model**  
+  Payment processing and side effects (cancel, refund) run through BullMQ for resilience. Shipping and delivery are manual admin actions — because those depend on real-world warehouse events, not a timer.
+
 - **Strategy + Factory patterns**  
   Keeps the workflow handling flexible. It's easy to plug in a new strategy without breaking existing code.
 
@@ -145,10 +148,12 @@ Switching to batch processing cut Outbox latency. Load tests at 100+ concurrent 
 2. Stripe fires a webhook when the payment settles
 3. On success: order moves to PAID, ORDER_PROCESS is added to the outbox
 4. Outbox processor dispatches ORDER_PROCESS to BullMQ
-5. ORDER_PROCESS worker: PAID → PROCESSED, enqueues ORDER_SHIP
-6. ORDER_SHIP worker: PROCESSED → SHIPPED, enqueues ORDER_DELIVER
-7. ORDER_DELIVER worker: SHIPPED → DELIVERED
-8. On payment failure: ORDER_CANCEL is enqueued instead — stock is restored, order ends at CANCELLED
+5. ORDER_PROCESS worker runs automatically: PAID → PROCESSED
+6. Admin ships the order: `PATCH /orders/:id/ship` → PROCESSED → SHIPPED (accepts optional `trackingNumber` and `carrier`)
+7. Admin confirms delivery: `PATCH /orders/:id/deliver` → SHIPPED → DELIVERED
+8. Admin can cancel pre-shipment: `PATCH /orders/:id/cancel` — ORDER_CANCEL is enqueued, stock is restored, order ends at CANCELLED
+9. Admin can trigger a refund: `PATCH /orders/:id/refund` — ORDER_REFUND is enqueued, Stripe processes the refund
+10. On payment failure: ORDER_CANCEL is enqueued automatically — same cancel and restore logic applies
 
 Here is a diagram showing the big picture:
 
@@ -193,19 +198,30 @@ sequenceDiagram
         Worker->>DB: Delete processed Outbox entries
     end
 
-    Note over Queue, DB: [PHASE 4: STATE MACHINE]
+    Note over Queue, DB: [PHASE 4: AUTOMATIC PROCESSING]
     rect rgba(128, 128, 128, 0.1)
         Note right of Queue: ORDER_PROCESS
         Queue->>DB: Update Order to PROCESSED
-        Queue->>DB: Save Outbox (ORDER_SHIP + EVENTS_NOTIFY_USER)
-
-        Note right of Queue: ORDER_SHIP
-        Queue->>DB: Update Order to SHIPPED
-        Queue->>DB: Save Outbox (ORDER_DELIVER + EVENTS_NOTIFY_USER)
-
-        Note right of Queue: ORDER_DELIVER
-        Queue->>DB: Update Order to DELIVERED
         Queue->>DB: Save Outbox (EVENTS_NOTIFY_USER)
+    end
+
+    Note over Client, DB: [PHASE 5: MANUAL FULFILLMENT]
+    rect rgba(100, 149, 237, 0.1)
+        Client->>API: PATCH /orders/:id/ship (Admin only)
+        activate API
+        API->>DB: Update Order (SHIPPED, shippedAt, trackingNumber, carrier)
+        API->>DB: Save Outbox (EVENTS_NOTIFY_USER)
+        DB-->>API: Success
+        API-->>Client: 200 OK
+        deactivate API
+
+        Client->>API: PATCH /orders/:id/deliver (Admin only)
+        activate API
+        API->>DB: Update Order (DELIVERED, deliveredAt)
+        API->>DB: Save Outbox (EVENTS_NOTIFY_USER)
+        DB-->>API: Success
+        API-->>Client: 200 OK
+        deactivate API
     end
 ```
 
@@ -264,9 +280,8 @@ The integration and E2E tests mock `PaymentsService`, so they do not depend on S
 
 ## Features
 
-- Order creation and lifecycle processing
-- Multi-stage async pipeline (process → ship → deliver)
-- Job chaining and orchestration
+- Order creation and lifecycle management
+- Hybrid order pipeline: BullMQ for automatic processing, admin endpoints for manual fulfillment
 - Decoupled notification system
 - Idempotency for jobs and events
 - Authentication with multi-device support
