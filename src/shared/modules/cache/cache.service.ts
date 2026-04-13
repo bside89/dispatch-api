@@ -1,4 +1,4 @@
-import { REDIS_CLIENT } from '@/shared/constants/redis-client.constant';
+import { REDIS_CLIENT } from '@/shared/modules/cache/constants/redis-client.constant';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { Inject, Injectable, OnModuleDestroy } from '@nestjs/common';
 import type { Cache } from 'cache-manager';

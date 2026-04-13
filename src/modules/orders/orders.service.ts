@@ -168,73 +168,6 @@ export class OrdersService extends TransactionalService {
     return orderMapped;
   }
 
-  @Transactional()
-  @UseLock({ prefix: LOCK_PREFIX.ORDER.UPDATE, key: ([orderId]) => orderId })
-  async markPaymentAsSucceeded(
-    orderId: string,
-    paymentIntentId: string,
-    paymentIntentStatus: string,
-  ): Promise<OrderResponseDto> {
-    const order = await this.orderRepository.findOne({
-      where: { id: orderId },
-      relations: ['user', 'items'],
-    });
-    if (!order) {
-      throw new NotFoundException(`Order with ID ${orderId} not found`);
-    }
-
-    order.paymentIntentId = paymentIntentId;
-    order.paymentIntentStatus = paymentIntentStatus;
-    order.status = OrderStatus.PAID;
-
-    await this.orderRepository.save(order);
-    await this.cacheService.deleteBulk({
-      keys: [ORDER_KEY.CACHE_FIND_ONE(orderId)],
-      patterns: [ORDER_KEY.CACHE_FIND_ALL_PATTERN()],
-    });
-
-    // Kick off the order processing pipeline
-    await this.outboxService.add(
-      OutboxType.ORDER_PROCESS,
-      new ProcessOrderJobPayload(order.user.id, orderId, order.user.name),
-    );
-
-    return EntityMapper.map(order, OrderResponseDto);
-  }
-
-  @Transactional()
-  @UseLock({ prefix: LOCK_PREFIX.ORDER.UPDATE, key: ([orderId]) => orderId })
-  async markPaymentAsFailed(
-    orderId: string,
-    paymentIntentId: string,
-    paymentIntentStatus: string,
-  ): Promise<OrderResponseDto> {
-    const order = await this.orderRepository.findOne({
-      where: { id: orderId },
-      relations: ['user', 'items'],
-    });
-    if (!order) {
-      throw new NotFoundException(`Order with ID ${orderId} not found`);
-    }
-
-    order.paymentIntentId = paymentIntentId;
-    order.paymentIntentStatus = paymentIntentStatus;
-
-    await this.orderRepository.save(order);
-    await this.cacheService.deleteBulk({
-      keys: [ORDER_KEY.CACHE_FIND_ONE(orderId)],
-      patterns: [ORDER_KEY.CACHE_FIND_ALL_PATTERN()],
-    });
-
-    // Enqueue the cancellation job (restores stock and updates status)
-    await this.outboxService.add(
-      OutboxType.ORDER_CANCEL,
-      new CancelOrderJobPayload(order.user.id, orderId, order.user.name),
-    );
-
-    return EntityMapper.map(order, OrderResponseDto);
-  }
-
   async findAll(
     queryDto: OrderQueryDto,
     requestUser?: RequestUser,
@@ -303,7 +236,15 @@ export class OrdersService extends TransactionalService {
 
     this.assertOrderAccess(order.userId, requestUser, id);
 
+    const paymentIntent = await this.paymentsGatewayService.paymentIntentsRetrieve(
+      order.paymentIntentId,
+    );
+
     const orderMapped = EntityMapper.map(order, OrderResponseDto);
+    orderMapped.paymentIntent = EntityMapper.map(
+      paymentIntent,
+      OrderPaymentIntentDto,
+    );
 
     await runAndIgnoreError(
       () => this.cacheService.set(cacheKey, orderMapped, CACHE_TTL.DEFAULT),
@@ -370,6 +311,73 @@ export class OrdersService extends TransactionalService {
     });
 
     this.logger.debug('Order deleted', { orderId: id });
+  }
+
+  @Transactional()
+  @UseLock({ prefix: LOCK_PREFIX.ORDER.UPDATE, key: ([orderId]) => orderId })
+  async markPaymentAsSucceeded(
+    orderId: string,
+    paymentIntentId: string,
+    paymentIntentStatus: string,
+  ): Promise<OrderResponseDto> {
+    const order = await this.orderRepository.findOne({
+      where: { id: orderId },
+      relations: ['user', 'items'],
+    });
+    if (!order) {
+      throw new NotFoundException(`Order with ID ${orderId} not found`);
+    }
+
+    order.paymentIntentId = paymentIntentId;
+    order.paymentIntentStatus = paymentIntentStatus;
+    order.status = OrderStatus.PAID;
+
+    await this.orderRepository.save(order);
+    await this.cacheService.deleteBulk({
+      keys: [ORDER_KEY.CACHE_FIND_ONE(orderId)],
+      patterns: [ORDER_KEY.CACHE_FIND_ALL_PATTERN()],
+    });
+
+    // Kick off the order processing pipeline
+    await this.outboxService.add(
+      OutboxType.ORDER_PROCESS,
+      new ProcessOrderJobPayload(order.user.id, orderId, order.user.name),
+    );
+
+    return EntityMapper.map(order, OrderResponseDto);
+  }
+
+  @Transactional()
+  @UseLock({ prefix: LOCK_PREFIX.ORDER.UPDATE, key: ([orderId]) => orderId })
+  async markPaymentAsFailed(
+    orderId: string,
+    paymentIntentId: string,
+    paymentIntentStatus: string,
+  ): Promise<OrderResponseDto> {
+    const order = await this.orderRepository.findOne({
+      where: { id: orderId },
+      relations: ['user', 'items'],
+    });
+    if (!order) {
+      throw new NotFoundException(`Order with ID ${orderId} not found`);
+    }
+
+    order.paymentIntentId = paymentIntentId;
+    order.paymentIntentStatus = paymentIntentStatus;
+
+    await this.orderRepository.save(order);
+    await this.cacheService.deleteBulk({
+      keys: [ORDER_KEY.CACHE_FIND_ONE(orderId)],
+      patterns: [ORDER_KEY.CACHE_FIND_ALL_PATTERN()],
+    });
+
+    // Enqueue the cancellation job (restores stock and updates status)
+    await this.outboxService.add(
+      OutboxType.ORDER_CANCEL,
+      new CancelOrderJobPayload(order.user.id, orderId, order.user.name),
+    );
+
+    return EntityMapper.map(order, OrderResponseDto);
   }
 
   private assertOrderAccess(

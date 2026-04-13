@@ -3,7 +3,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { AppModule } from '@/app.module';
 import { DataSource } from 'typeorm';
 import Redis from 'ioredis';
-import { REDIS_CLIENT } from '@/shared/constants/redis-client.constant';
+import { REDIS_CLIENT } from '@/shared/modules/cache/constants/redis-client.constant';
 import { UsersService } from '@/modules/users/users.service';
 import { OrdersService } from '@/modules/orders/orders.service';
 import { ItemsService } from '@/modules/items/items.service';

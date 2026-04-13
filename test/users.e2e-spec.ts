@@ -5,7 +5,7 @@ import request from 'supertest';
 import { cleanDatabase, cleanRedis } from './utils/database-cleaner';
 import { DataSource } from 'typeorm';
 import Redis from 'ioredis';
-import { REDIS_CLIENT } from '@/shared/constants/redis-client.constant';
+import { REDIS_CLIENT } from '@/shared/modules/cache/constants/redis-client.constant';
 import { paymentsGatewayServiceMock } from './utils/mock-payments-gateway-service';
 import { PaymentsGatewayService } from '@/modules/payments-gateway/payments-gateway.service';
 import { JwtService } from '@nestjs/jwt';
