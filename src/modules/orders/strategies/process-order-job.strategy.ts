@@ -5,7 +5,6 @@ import {
   CancelOrderJobPayload,
   ProcessOrderJobPayload,
   RefundOrderJobPayload,
-  ShipOrderJobPayload,
 } from '../../../shared/payloads/order-job.payload';
 import { NotifyUserJobPayload } from '@/shared/payloads/event-job.payload';
 import { ensureError } from '../../../shared/helpers/functions';
@@ -127,14 +126,8 @@ export class ProcessOrderJobStrategy extends BaseOrderJobStrategy<ProcessOrderJo
       new NotifyUserJobPayload(
         userId,
         userName,
-        `<To user ${userName}>: Your order with id ${orderId} has been processed successfully.`,
+        `<To user ${userName}>: Your order with id ${orderId} has been processed successfully. It is now awaiting shipment.`,
       ),
-    );
-
-    // Ship job
-    await this.outboxService.add(
-      OutboxType.ORDER_SHIP,
-      new ShipOrderJobPayload(userId, orderId, userName),
     );
 
     this.logger.log(`Order moved to PROCESSED`, { orderId });

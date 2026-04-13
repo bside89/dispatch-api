@@ -31,6 +31,18 @@ export class Order extends BaseEntity {
   @Column({ nullable: true, default: null })
   paymentIntentStatus?: string;
 
+  @Column({ nullable: true, default: null })
+  trackingNumber?: string;
+
+  @Column({ nullable: true, default: null })
+  carrier?: string;
+
+  @Column({ type: 'timestamp', nullable: true, default: null })
+  shippedAt?: Date;
+
+  @Column({ type: 'timestamp', nullable: true, default: null })
+  deliveredAt?: Date;
+
   @OneToMany(() => OrderItem, (item) => item.order, {
     cascade: true,
     eager: true,

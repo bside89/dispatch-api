@@ -142,11 +142,6 @@ describe('OutboxService', () => {
           type: OutboxType.ORDER_PROCESS,
           payload: makeOutboxPayload({ orderId: '1' }),
         }),
-        makeOutbox({
-          id: 'uuid-2',
-          type: OutboxType.ORDER_SHIP,
-          payload: makeOutboxPayload({ orderId: '2' }),
-        }),
       ];
       (repository.findAndLockBatch as jest.Mock).mockResolvedValue(messages);
       (orderQueue.addBulk as jest.Mock).mockResolvedValue([]);
@@ -162,15 +157,8 @@ describe('OutboxService', () => {
             jobId: 'uuid-1',
           },
         },
-        {
-          name: OutboxType.ORDER_SHIP,
-          data: { orderId: '2' },
-          opts: {
-            jobId: 'uuid-2',
-          },
-        },
       ]);
-      expect(repository.deleteBulk).toHaveBeenCalledWith(['uuid-1', 'uuid-2']);
+      expect(repository.deleteBulk).toHaveBeenCalledWith(['uuid-1']);
     });
 
     it('should dispatch payment-type messages to the payment queue and delete them', async () => {

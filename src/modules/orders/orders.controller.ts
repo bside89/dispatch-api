@@ -29,6 +29,7 @@ import {
 import { OrdersService } from './orders.service';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { UpdateOrderDto } from './dto/update-order.dto';
+import { ShipOrderDto } from './dto/ship-order.dto';
 import { OrderQueryDto } from './dto/order-query.dto';
 import { OrderStatus } from './enums/order-status.enum';
 import { UserRole } from '../users/enums/user-role.enum';
@@ -242,5 +243,111 @@ export class OrdersController extends BaseController {
     await this.ordersService.remove(id);
 
     return this.success(null, 'Order deleted successfully');
+  }
+
+  @Patch(':id/ship')
+  @Roles(UserRole.ADMIN)
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Mark order as shipped',
+    description:
+      'Marks an order as shipped. The order must be in PROCESSED status. ' +
+      'Optionally accepts tracking number and carrier information.',
+  })
+  @ApiParam({ name: 'id', description: 'Order unique identifier (UUID)' })
+  @ApiBody({ type: ShipOrderDto, description: 'Shipping information' })
+  @ApiOkResponse({
+    description: 'Order successfully marked as shipped',
+    type: OrderResponseDto,
+  })
+  @ApiNotFoundResponse({ description: 'Order not found' })
+  @ApiBadRequestResponse({
+    description: 'Order is not in a valid status for shipping',
+  })
+  async ship(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() shipOrderDto: ShipOrderDto,
+  ) {
+    this.logger.debug(`PATCH /orders/${id}/ship - Shipping order`, { orderId: id });
+
+    const result = await this.ordersService.ship(id, shipOrderDto);
+
+    return this.success(result, 'Order marked as shipped successfully');
+  }
+
+  @Patch(':id/deliver')
+  @Roles(UserRole.ADMIN)
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Mark order as delivered',
+    description: 'Marks an order as delivered. The order must be in SHIPPED status.',
+  })
+  @ApiParam({ name: 'id', description: 'Order unique identifier (UUID)' })
+  @ApiOkResponse({
+    description: 'Order successfully marked as delivered',
+    type: OrderResponseDto,
+  })
+  @ApiNotFoundResponse({ description: 'Order not found' })
+  @ApiBadRequestResponse({
+    description: 'Order is not in a valid status for delivery',
+  })
+  async deliver(@Param('id', ParseUUIDPipe) id: string) {
+    this.logger.debug(`PATCH /orders/${id}/deliver - Delivering order`, {
+      orderId: id,
+    });
+
+    const result = await this.ordersService.deliver(id);
+
+    return this.success(result, 'Order marked as delivered successfully');
+  }
+
+  @Patch(':id/cancel')
+  @Roles(UserRole.ADMIN)
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Cancel an order',
+    description:
+      'Cancels an order and releases reserved inventory. ' +
+      'The order must be in PENDING, PAID, or PROCESSED status.',
+  })
+  @ApiParam({ name: 'id', description: 'Order unique identifier (UUID)' })
+  @ApiOkResponse({ description: 'Order cancellation enqueued successfully' })
+  @ApiNotFoundResponse({ description: 'Order not found' })
+  @ApiBadRequestResponse({
+    description: 'Order is not in a valid status for cancellation',
+  })
+  async cancel(@Param('id', ParseUUIDPipe) id: string) {
+    this.logger.debug(`PATCH /orders/${id}/cancel - Cancelling order`, {
+      orderId: id,
+    });
+
+    await this.ordersService.cancel(id);
+
+    return this.success(null, 'Order cancellation enqueued successfully');
+  }
+
+  @Patch(':id/refund')
+  @Roles(UserRole.ADMIN)
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Refund an order',
+    description:
+      'Initiates a refund for an order. ' +
+      'The order must be in PAID, PROCESSED, SHIPPED, or DELIVERED status.',
+  })
+  @ApiParam({ name: 'id', description: 'Order unique identifier (UUID)' })
+  @ApiOkResponse({ description: 'Order refund enqueued successfully' })
+  @ApiNotFoundResponse({ description: 'Order not found' })
+  @ApiBadRequestResponse({
+    description: 'Order is not in a valid status for refunding',
+  })
+  async refund(@Param('id', ParseUUIDPipe) id: string) {
+    this.logger.debug(`PATCH /orders/${id}/refund - Refunding order`, {
+      orderId: id,
+    });
+
+    await this.ordersService.refund(id);
+
+    return this.success(null, 'Order refund enqueued successfully');
   }
 }

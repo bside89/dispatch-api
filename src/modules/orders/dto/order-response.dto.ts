@@ -79,4 +79,32 @@ export class OrderResponseDto {
     type: () => OrderPaymentIntentDto,
   })
   paymentIntent: OrderPaymentIntentDto;
+
+  @Expose()
+  @ApiPropertyOptional({
+    description: 'Shipping tracking number provided by the carrier',
+    example: 'BR123456789',
+  })
+  trackingNumber?: string;
+
+  @Expose()
+  @ApiPropertyOptional({
+    description: 'Carrier name (e.g. Correios, Fedex)',
+    example: 'Correios',
+  })
+  carrier?: string;
+
+  @Expose()
+  @ApiPropertyOptional({
+    description: 'Date when the order was shipped',
+    example: '2024-01-02T10:00:00Z',
+  })
+  shippedAt?: Date;
+
+  @Expose()
+  @ApiPropertyOptional({
+    description: 'Date when the order was delivered',
+    example: '2024-01-05T14:30:00Z',
+  })
+  deliveredAt?: Date;
 }

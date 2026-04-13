@@ -1,4 +1,9 @@
-import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { UpdateOrderDto } from './dto/update-order.dto';
 import { OrderQueryDto } from './dto/order-query.dto';
@@ -18,7 +23,10 @@ import { OutboxType } from '@/shared/modules/outbox/enums/outbox-type.enum';
 import {
   ProcessOrderJobPayload,
   CancelOrderJobPayload,
+  RefundOrderJobPayload,
 } from '@/shared/payloads/order-job.payload';
+import { ShipOrderDto } from './dto/ship-order.dto';
+import { ORDER_STATUS_PRECONDITIONS } from './constants/order-status-preconditions.constant';
 import { runAndIgnoreError } from '@/shared/helpers/functions';
 import { UseLock } from '@/shared/decorators/lock.decorator';
 import Redlock from 'redlock';
@@ -378,6 +386,153 @@ export class OrdersService extends TransactionalService {
     );
 
     return EntityMapper.map(order, OrderResponseDto);
+  }
+
+  @Transactional()
+  @UseLock({ prefix: LOCK_PREFIX.ORDER.UPDATE, key: ([id]) => id })
+  async ship(id: string, dto: ShipOrderDto): Promise<OrderResponseDto> {
+    this.logger.debug('Shipping order', { orderId: id });
+
+    const order = await this.orderRepository.findOne({
+      where: { id },
+      relations: ['user', 'items'],
+    });
+    if (!order) {
+      throw new NotFoundException(`Order with ID ${id} not found`);
+    }
+
+    const preconditions = ORDER_STATUS_PRECONDITIONS[OrderStatus.SHIPPED];
+    if (!preconditions.includes(order.status)) {
+      throw new BadRequestException(
+        `Order must be ${preconditions.join(' or ')} to be shipped; current status: ${order.status}`,
+      );
+    }
+
+    order.status = OrderStatus.SHIPPED;
+    order.shippedAt = new Date();
+    if (dto.trackingNumber !== undefined) order.trackingNumber = dto.trackingNumber;
+    if (dto.carrier !== undefined) order.carrier = dto.carrier;
+
+    await this.orderRepository.save(order);
+    await this.cacheService.deleteBulk({
+      keys: [ORDER_KEY.CACHE_FIND_ONE(id)],
+      patterns: [ORDER_KEY.CACHE_FIND_ALL_PATTERN()],
+    });
+
+    await this.outboxService.add(
+      OutboxType.EVENTS_NOTIFY_USER,
+      new NotifyUserJobPayload(
+        order.user!.id,
+        order.user!.name,
+        `<To user ${order.user!.name}>: Your order with id ${order.id} has been shipped.` +
+          (order.trackingNumber
+            ? ` Tracking: ${order.trackingNumber} via ${order.carrier ?? 'carrier'}.`
+            : ''),
+      ),
+    );
+
+    this.logger.debug('Order shipped', { orderId: id });
+    return EntityMapper.map(order, OrderResponseDto);
+  }
+
+  @Transactional()
+  @UseLock({ prefix: LOCK_PREFIX.ORDER.UPDATE, key: ([id]) => id })
+  async deliver(id: string): Promise<OrderResponseDto> {
+    this.logger.debug('Delivering order', { orderId: id });
+
+    const order = await this.orderRepository.findOne({
+      where: { id },
+      relations: ['user', 'items'],
+    });
+    if (!order) {
+      throw new NotFoundException(`Order with ID ${id} not found`);
+    }
+
+    const preconditions = ORDER_STATUS_PRECONDITIONS[OrderStatus.DELIVERED];
+    if (!preconditions.includes(order.status)) {
+      throw new BadRequestException(
+        `Order must be ${preconditions.join(' or ')} to be delivered; current status: ${order.status}`,
+      );
+    }
+
+    order.status = OrderStatus.DELIVERED;
+    order.deliveredAt = new Date();
+
+    await this.orderRepository.save(order);
+    await this.cacheService.deleteBulk({
+      keys: [ORDER_KEY.CACHE_FIND_ONE(id)],
+      patterns: [ORDER_KEY.CACHE_FIND_ALL_PATTERN()],
+    });
+
+    await this.outboxService.add(
+      OutboxType.EVENTS_NOTIFY_USER,
+      new NotifyUserJobPayload(
+        order.user!.id,
+        order.user!.name,
+        `<To user ${order.user!.name}>: Your order with id ${order.id} has been delivered successfully.`,
+      ),
+    );
+
+    this.logger.debug('Order delivered', { orderId: id });
+    return EntityMapper.map(order, OrderResponseDto);
+  }
+
+  @Transactional()
+  @UseLock({ prefix: LOCK_PREFIX.ORDER.UPDATE, key: ([id]) => id })
+  async cancel(id: string): Promise<void> {
+    this.logger.debug('Cancelling order', { orderId: id });
+
+    const order = await this.orderRepository.findOne({
+      where: { id },
+      relations: ['user'],
+    });
+    if (!order) {
+      throw new NotFoundException(`Order with ID ${id} not found`);
+    }
+
+    const preconditions = ORDER_STATUS_PRECONDITIONS[OrderStatus.CANCELLED];
+    if (!preconditions.includes(order.status)) {
+      throw new BadRequestException(
+        `Order must be ${preconditions.join(' or ')} to be cancelled; current status: ${order.status}`,
+      );
+    }
+
+    // Delegates to the job strategy which handles inventory release + status update
+    await this.outboxService.add(
+      OutboxType.ORDER_CANCEL,
+      new CancelOrderJobPayload(order.user!.id, id, order.user!.name),
+    );
+
+    this.logger.debug('Order cancel enqueued', { orderId: id });
+  }
+
+  @Transactional()
+  @UseLock({ prefix: LOCK_PREFIX.ORDER.UPDATE, key: ([id]) => id })
+  async refund(id: string): Promise<void> {
+    this.logger.debug('Refunding order', { orderId: id });
+
+    const order = await this.orderRepository.findOne({
+      where: { id },
+      relations: ['user'],
+    });
+    if (!order) {
+      throw new NotFoundException(`Order with ID ${id} not found`);
+    }
+
+    const preconditions = ORDER_STATUS_PRECONDITIONS[OrderStatus.REFUNDED];
+    if (!preconditions.includes(order.status)) {
+      throw new BadRequestException(
+        `Order must be ${preconditions.join(' or ')} to be refunded; current status: ${order.status}`,
+      );
+    }
+
+    // Delegates to the job strategy which triggers the Stripe refund + status update
+    await this.outboxService.add(
+      OutboxType.ORDER_REFUND,
+      new RefundOrderJobPayload(order.user!.id, id, order.user!.name),
+    );
+
+    this.logger.debug('Order refund enqueued', { orderId: id });
   }
 
   private assertOrderAccess(

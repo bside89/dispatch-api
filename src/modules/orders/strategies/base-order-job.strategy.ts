@@ -9,24 +9,12 @@ import { BaseJobStrategy } from '@/shared/strategies/base-job.strategy';
 import { Order } from '../entities/order.entity';
 import { LOCK_PREFIX } from '@/shared/constants/lock-prefix.constants';
 import { OrderJobPayload } from '@/shared/payloads/order-job.payload';
+import { ORDER_STATUS_PRECONDITIONS } from '../constants/order-status-preconditions.constant';
 
 export abstract class BaseOrderJobStrategy<
   T extends OrderJobPayload,
 > extends BaseJobStrategy<T> {
-  protected readonly VALID_PRECONDITIONS = {
-    [OrderStatus.PENDING]: [],
-    [OrderStatus.PAID]: [OrderStatus.PENDING],
-    [OrderStatus.PROCESSED]: [OrderStatus.PAID],
-    [OrderStatus.SHIPPED]: [OrderStatus.PROCESSED],
-    [OrderStatus.DELIVERED]: [OrderStatus.SHIPPED],
-    [OrderStatus.CANCELLED]: [OrderStatus.PENDING],
-    [OrderStatus.REFUNDED]: [
-      OrderStatus.PAID,
-      OrderStatus.PROCESSED,
-      OrderStatus.SHIPPED,
-      OrderStatus.DELIVERED,
-    ],
-  };
+  protected readonly VALID_PRECONDITIONS = ORDER_STATUS_PRECONDITIONS;
 
   constructor(
     jobName: string,

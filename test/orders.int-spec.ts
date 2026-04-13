@@ -15,7 +15,6 @@ import { Queue, Job } from 'bullmq';
 import { getQueueToken } from '@nestjs/bullmq';
 import { waitFor } from './utils/wait-for';
 import { EVENT_QUEUE_TOKEN } from '@/shared/constants/queue-tokens';
-import { DeliverOrderJobStrategy } from '@/modules/orders/strategies/deliver-order-job.strategy';
 import { ProcessOrderJobStrategy } from '@/modules/orders/strategies/process-order-job.strategy';
 import { OrderProcessor } from '@/modules/orders/processors/order.processor';
 import { PaymentsGatewayService } from '@/modules/payments-gateway/payments-gateway.service';
@@ -264,38 +263,47 @@ describe('Orders (Integration)', () => {
         'succeeded',
       );
 
-      // Wait for the full async pipeline to complete:
+      // Wait for the async BullMQ pipeline to advance the order to PROCESSED.
       //   webhook → markPaymentAsSucceeded → PAID + Outbox → ORDER_PROCESS
-      //   Outbox → ORDER_PROCESS → PROCESSED + Outbox → ORDER_SHIP
-      //   Outbox → ORDER_SHIP   → SHIPPED   + Outbox → ORDER_DELIVER
-      //   Outbox → ORDER_DELIVER → DELIVERED
+      //   Outbox → ORDER_PROCESS → PROCESSED + EVENTS_NOTIFY_USER
       //
       // delay() is mocked and setImmediate triggers process() after each add(),
-      // so each step resolves in ~10-50ms (BullMQ + Redis latency).
+      // so this resolves in ~10-50ms (BullMQ + Redis latency).
       await waitFor(
         async () => {
           const rows = await dataSource.query(
             `SELECT status FROM orders WHERE id = $1`,
             [orderId],
           );
-          return rows.length === 1 && rows[0].status === 'DELIVERED';
+          return rows.length === 1 && rows[0].status === 'PROCESSED';
         },
-        15_000, // 15s timeout (3 steps × ~50ms + CI margin)
+        10_000, // 10s timeout (1 BullMQ step + CI margin)
         250, // poll every 250ms
       );
 
-      // Assert: final order status is DELIVERED
-      const [finalOrder] = await dataSource.query(
-        `SELECT id, "userId", status, total FROM orders WHERE id = $1`,
+      // Assert: order is PROCESSED after queue job completes
+      const [processedOrder] = await dataSource.query(
+        `SELECT status FROM orders WHERE id = $1`,
         [orderId],
       );
-      expect(finalOrder.status).toBe('DELIVERED');
-      expect(finalOrder.total).toBe(24000); // (3 * 4000) + (2 * 6000)
+      expect(processedOrder.status).toBe('PROCESSED');
+
+      // Admin manually ships the order
+      const shippedResult = await ordersService.ship(orderId, {
+        trackingNumber: 'INT-TEST-123',
+        carrier: 'Test Carrier',
+      });
+      expect(shippedResult.status).toBe('SHIPPED');
+      expect(shippedResult.trackingNumber).toBe('INT-TEST-123');
+      expect(shippedResult.carrier).toBe('Test Carrier');
+
+      // Admin manually delivers the order
+      const deliveredResult = await ordersService.deliver(orderId);
+      expect(deliveredResult.status).toBe('DELIVERED');
 
       // Assert: outbox should be fully consumed (no pending entries).
-      // When the order reaches DELIVERED, the DeliverOrderStrategy adds one
-      // last EVENTS_NOTIFY_USER to the Outbox. setImmediate triggers process()
-      // immediately after add(), so this resolves within milliseconds.
+      // ProcessOrderJobStrategy and the two manual ship/deliver service calls
+      // each add one EVENTS_NOTIFY_USER. setImmediate dispatches immediately.
       await waitFor(
         async () => {
           const rows = await dataSource.query(`SELECT id FROM outbox`);
@@ -307,7 +315,7 @@ describe('Orders (Integration)', () => {
 
       // Assert: all notification events have been processed by the events queue.
       // The flow produces exactly 3 EVENTS_NOTIFY_USER outbox entries (one per
-      // strategy: process, ship, deliver). Wait for all events to complete
+      // step: process, ship, deliver). Wait for all events to complete
       // processing in the events queue.
       await waitFor(
         async () => {
@@ -325,18 +333,18 @@ describe('Orders (Integration)', () => {
 
   describe('Order Compensation Flow', () => {
     it('should do the compensation logic and refund the Order when post-payment processing fails', async () => {
-      // Arrange: get DeliverOrderJobStrategy to force all delivery attempts to fail.
+      // Arrange: force all ProcessOrderJobStrategy.execute() calls to fail.
       // This exhausts all BullMQ retries and triggers the executeAfterFail
-      // compensation path, which enqueues ORDER_CANCEL → CancelOrderJobStrategy
-      // updates order to CANCELLED and enqueues ORDER_REFUND →
-      // RefundOrderJobStrategy updates to REFUNDED.
-      const deliverOrderJobStrategy = app.get<DeliverOrderJobStrategy>(
-        DeliverOrderJobStrategy,
+      // compensation path. Since the order is in PAID status when the job
+      // runs, compensationLogic enqueues ORDER_REFUND →
+      // RefundOrderJobStrategy updates order to REFUNDED.
+      const processOrderJobStrategy = app.get<ProcessOrderJobStrategy>(
+        ProcessOrderJobStrategy,
       );
 
-      const deliverSpy = jest
-        .spyOn(deliverOrderJobStrategy, 'execute')
-        .mockRejectedValue(new Error('Simulated delivery failure'));
+      const processSpy = jest
+        .spyOn(processOrderJobStrategy, 'execute')
+        .mockRejectedValue(new Error('Simulated processing failure'));
 
       try {
         // Arrange: create a real user
@@ -381,12 +389,11 @@ describe('Orders (Integration)', () => {
           'succeeded',
         );
 
-        // Wait for the full compensation pipeline to complete:
+        // Wait for the compensation pipeline to complete:
         //   webhook → markPaymentAsSucceeded → PAID + Outbox → ORDER_PROCESS
-        //   Outbox → ORDER_PROCESS → PROCESSED + Outbox → ORDER_SHIP
-        //   Outbox → ORDER_SHIP   → SHIPPED   + Outbox → ORDER_DELIVER
-        //   Outbox → ORDER_DELIVER → fails 3 times (backoff mocked to 0ms)
+        //   Outbox → ORDER_PROCESS → fails 3 times (backoff mocked to 0ms)
         //                         → executeAfterFail → compensationLogic
+        //   Order is PAID → enqueues ORDER_REFUND
         //   Outbox → ORDER_REFUND → order = REFUNDED
         //
         // delay() is mocked and setImmediate triggers process() after each add().
@@ -398,7 +405,7 @@ describe('Orders (Integration)', () => {
             );
             return rows.length === 1 && rows[0].status === 'REFUNDED';
           },
-          30_000, // 30s (5 steps + 3 BullMQ retries × ~50ms + CI margin)
+          30_000, // 30s (3 BullMQ retries + refund step + CI margin)
           250,
         );
 
@@ -420,7 +427,7 @@ describe('Orders (Integration)', () => {
           250,
         );
       } finally {
-        deliverSpy.mockRestore();
+        processSpy.mockRestore();
       }
     }, 45_000);
 

@@ -99,8 +99,6 @@ export class OutboxService extends TransactionalService implements OnModuleDestr
       .filter((m) =>
         [
           OutboxType.ORDER_PROCESS,
-          OutboxType.ORDER_SHIP,
-          OutboxType.ORDER_DELIVER,
           OutboxType.ORDER_CANCEL,
           OutboxType.ORDER_REFUND,
         ].includes(m.type),

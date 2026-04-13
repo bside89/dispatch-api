@@ -296,5 +296,201 @@ describe('Orders (E2E)', () => {
 
       process.env.TEST_ENV = originalTestEnv;
     });
+
+    it('PATCH /v1/orders/:id/ship - should block normal user (403 Forbidden)', async () => {
+      const originalTestEnv = process.env.TEST_ENV;
+      process.env.TEST_ENV = 'false';
+
+      await request(app.getHttpServer())
+        .patch('/v1/orders/123e4567-e89b-12d3-a456-426614174000/ship')
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({})
+        .expect(HttpStatus.FORBIDDEN);
+
+      process.env.TEST_ENV = originalTestEnv;
+    });
+
+    it('PATCH /v1/orders/:id/ship - should ship order and return tracking info', async () => {
+      const originalTestEnv = process.env.TEST_ENV;
+      process.env.TEST_ENV = 'false';
+
+      const payload = { items: [{ itemId: testItemId, quantity: 1 }] };
+      const created = await request(app.getHttpServer())
+        .post('/v1/orders')
+        .set('idempotency-key', 'order-ship-key')
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send(payload)
+        .expect(HttpStatus.CREATED);
+      const orderId = created.body.data.id;
+
+      // Advance order to PROCESSED status directly in DB
+      await dataSource.query(
+        `UPDATE orders SET status = 'PROCESSED' WHERE id = $1`,
+        [orderId],
+      );
+
+      const res = await request(app.getHttpServer())
+        .patch(`/v1/orders/${orderId}/ship`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ trackingNumber: 'BR123456789', carrier: 'Correios' })
+        .expect(HttpStatus.OK);
+
+      expect(res.body.data.status).toBe('SHIPPED');
+      expect(res.body.data.trackingNumber).toBe('BR123456789');
+      expect(res.body.data.carrier).toBe('Correios');
+      expect(res.body.data.shippedAt).toBeDefined();
+
+      process.env.TEST_ENV = originalTestEnv;
+    });
+
+    it('PATCH /v1/orders/:id/ship - should return 400 if order is not PROCESSED', async () => {
+      const originalTestEnv = process.env.TEST_ENV;
+      process.env.TEST_ENV = 'false';
+
+      const payload = { items: [{ itemId: testItemId, quantity: 1 }] };
+      const created = await request(app.getHttpServer())
+        .post('/v1/orders')
+        .set('idempotency-key', 'order-ship-invalid-status-key')
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send(payload)
+        .expect(HttpStatus.CREATED);
+      const orderId = created.body.data.id;
+
+      // Order is still PENDING — should not be shippable
+      await request(app.getHttpServer())
+        .patch(`/v1/orders/${orderId}/ship`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({})
+        .expect(HttpStatus.BAD_REQUEST);
+
+      process.env.TEST_ENV = originalTestEnv;
+    });
+
+    it('PATCH /v1/orders/:id/deliver - should deliver order', async () => {
+      const originalTestEnv = process.env.TEST_ENV;
+      process.env.TEST_ENV = 'false';
+
+      const payload = { items: [{ itemId: testItemId, quantity: 1 }] };
+      const created = await request(app.getHttpServer())
+        .post('/v1/orders')
+        .set('idempotency-key', 'order-deliver-key')
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send(payload)
+        .expect(HttpStatus.CREATED);
+      const orderId = created.body.data.id;
+
+      // Advance order to SHIPPED status directly in DB
+      await dataSource.query(`UPDATE orders SET status = 'SHIPPED' WHERE id = $1`, [
+        orderId,
+      ]);
+
+      const res = await request(app.getHttpServer())
+        .patch(`/v1/orders/${orderId}/deliver`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .expect(HttpStatus.OK);
+
+      expect(res.body.data.status).toBe('DELIVERED');
+      expect(res.body.data.deliveredAt).toBeDefined();
+
+      process.env.TEST_ENV = originalTestEnv;
+    });
+
+    it('PATCH /v1/orders/:id/cancel - should cancel a PENDING order', async () => {
+      const originalTestEnv = process.env.TEST_ENV;
+      process.env.TEST_ENV = 'false';
+
+      const payload = { items: [{ itemId: testItemId, quantity: 1 }] };
+      const created = await request(app.getHttpServer())
+        .post('/v1/orders')
+        .set('idempotency-key', 'order-cancel-key')
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send(payload)
+        .expect(HttpStatus.CREATED);
+      const orderId = created.body.data.id;
+
+      const res = await request(app.getHttpServer())
+        .patch(`/v1/orders/${orderId}/cancel`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .expect(HttpStatus.OK);
+
+      expect(res.body.message).toMatch(/cancel/i);
+
+      process.env.TEST_ENV = originalTestEnv;
+    });
+
+    it('PATCH /v1/orders/:id/cancel - should return 400 if order is SHIPPED', async () => {
+      const originalTestEnv = process.env.TEST_ENV;
+      process.env.TEST_ENV = 'false';
+
+      const payload = { items: [{ itemId: testItemId, quantity: 1 }] };
+      const created = await request(app.getHttpServer())
+        .post('/v1/orders')
+        .set('idempotency-key', 'order-cancel-shipped-key')
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send(payload)
+        .expect(HttpStatus.CREATED);
+      const orderId = created.body.data.id;
+
+      await dataSource.query(`UPDATE orders SET status = 'SHIPPED' WHERE id = $1`, [
+        orderId,
+      ]);
+
+      await request(app.getHttpServer())
+        .patch(`/v1/orders/${orderId}/cancel`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .expect(HttpStatus.BAD_REQUEST);
+
+      process.env.TEST_ENV = originalTestEnv;
+    });
+
+    it('PATCH /v1/orders/:id/refund - should enqueue refund for a PAID order', async () => {
+      const originalTestEnv = process.env.TEST_ENV;
+      process.env.TEST_ENV = 'false';
+
+      const payload = { items: [{ itemId: testItemId, quantity: 1 }] };
+      const created = await request(app.getHttpServer())
+        .post('/v1/orders')
+        .set('idempotency-key', 'order-refund-key')
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send(payload)
+        .expect(HttpStatus.CREATED);
+      const orderId = created.body.data.id;
+
+      // Advance order to PAID status directly in DB
+      await dataSource.query(`UPDATE orders SET status = 'PAID' WHERE id = $1`, [
+        orderId,
+      ]);
+
+      const res = await request(app.getHttpServer())
+        .patch(`/v1/orders/${orderId}/refund`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .expect(HttpStatus.OK);
+
+      expect(res.body.message).toMatch(/refund/i);
+
+      process.env.TEST_ENV = originalTestEnv;
+    });
+
+    it('PATCH /v1/orders/:id/refund - should return 400 if order is PENDING', async () => {
+      const originalTestEnv = process.env.TEST_ENV;
+      process.env.TEST_ENV = 'false';
+
+      const payload = { items: [{ itemId: testItemId, quantity: 1 }] };
+      const created = await request(app.getHttpServer())
+        .post('/v1/orders')
+        .set('idempotency-key', 'order-refund-pending-key')
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send(payload)
+        .expect(HttpStatus.CREATED);
+      const orderId = created.body.data.id;
+
+      // Order is still PENDING — not eligible for refund
+      await request(app.getHttpServer())
+        .patch(`/v1/orders/${orderId}/refund`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .expect(HttpStatus.BAD_REQUEST);
+
+      process.env.TEST_ENV = originalTestEnv;
+    });
   });
 });
