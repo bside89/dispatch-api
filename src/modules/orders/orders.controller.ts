@@ -246,7 +246,7 @@ export class OrdersController extends BaseController {
   }
 
   @Patch(':id/ship')
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.SHIPPER)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Mark order as shipped',
@@ -276,7 +276,7 @@ export class OrdersController extends BaseController {
   }
 
   @Patch(':id/deliver')
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.DELIVERY)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Mark order as delivered',

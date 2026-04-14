@@ -11,7 +11,7 @@
 
 Dispatch is an order management API built with NestJS. I built it to work through the architectural problems that come up in real e-commerce backends: async processing, distributed locking, and transactional guarantees.
 
-The flow is hybrid. Payment processing and compensation (cancel, refund) run through BullMQ queues — they need retries and backoff. Shipping and delivery are manual admin endpoints, because those depend on someone at a warehouse making a decision.
+The flow is hybrid. Payment processing and compensation (cancel, refund) run through BullMQ queues — they need retries and backoff. Shipping and delivery are manual endpoints, because those depend on someone at a warehouse, or users with privileged access (like a delivery person), making a decision.
 
 ---
 
