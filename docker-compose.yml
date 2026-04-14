@@ -16,7 +16,7 @@ services:
       - postgres_data:/var/lib/postgresql/data
       - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
     networks:
-      - order-flow-network
+      - dispatch-network
     healthcheck:
       test: ['CMD-SHELL', 'pg_isready -U ${DB_USERNAME} -d ${DB_DATABASE}']
       interval: 10s
@@ -35,7 +35,7 @@ services:
     volumes:
       - redis_data:/data
     networks:
-      - order-flow-network
+      - dispatch-network
 
   promtail:
     image: grafana/promtail:3.6.8
@@ -47,7 +47,7 @@ services:
       - ./promtail-config.yml:/etc/promtail/config.yml
     command: -config.file=/etc/promtail/config.yml
     networks:
-      - order-flow-network
+      - dispatch-network
 
   loki:
     image: grafana/loki:2.9.0
@@ -57,7 +57,7 @@ services:
     volumes:
       - loki_data:/loki
     networks:
-      - order-flow-network
+      - dispatch-network
 
   grafana:
     image: grafana/grafana:12.4.2
@@ -69,7 +69,7 @@ services:
     volumes:
       - grafana_data:/var/lib/grafana
     networks:
-      - order-flow-network
+      - dispatch-network
 
   stripe-mock:
     image: stripe/stripe-mock:v0.197.0
@@ -77,13 +77,13 @@ services:
     ports:
       - '12111:12111'
     networks:
-      - order-flow-network
+      - dispatch-network
 
   app:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: order-flow-api
+    container_name: dispatch-api
     restart: always
     depends_on:
       postgres:
@@ -98,7 +98,7 @@ services:
       - ./logs:/app/logs
       - ./.env.docker:/app/.env:ro
     networks:
-      - order-flow-network
+      - dispatch-network
     healthcheck:
       test: ['CMD-SHELL', 'curl -f http://localhost:${APP_PORT}/health || exit 1']
       interval: 30s
@@ -113,5 +113,5 @@ volumes:
   grafana_data:
 
 networks:
-  order-flow-network:
+  dispatch-network:
     driver: bridge

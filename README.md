@@ -1,4 +1,4 @@
-# Order Flow API
+# Dispatch
 
 ![Node](https://img.shields.io/badge/node-20+-green)
 ![NestJS](https://img.shields.io/badge/nestjs-backend-red)
@@ -9,9 +9,9 @@
 
 ## Overview
 
-I built this Order Management API with NestJS to show my approach to backend architecture, specifically focusing on asynchronous processing and event-driven design.
+Dispatch is an order management API built with NestJS. I built it to work through the architectural problems that come up in real e-commerce backends: async processing, distributed locking, transactional guarantees, and a fulfillment model that actually reflects how warehouses work.
 
-Instead of writing a simple CRUD app, I wanted to simulate a messy, real-world order lifecycle where performance, resilience, and knowing exactly what failed actually matter.
+The flow is hybrid. Payment processing and compensation (cancel, refund) run through BullMQ queues — they need retries and backoff. Shipping and delivery are manual admin endpoints, because those depend on someone at a warehouse making a decision, not a timer firing automatically.
 
 ---
 
@@ -24,7 +24,7 @@ Most backend systems eventually hit the same problems:
 - Tracking down a bug across multiple distributed flows
 - Retrying failed jobs safely without duplicating records
 
-It's common to reach for microservices to solve these, but that brings a lot of operational baggage. I wanted to see how far I could push these patterns **while keeping the monolith**.
+The instinct is to reach for microservices to solve these, but that brings a lot of operational baggage. I wanted to see how far I could push these patterns while keeping the monolith.
 
 ---
 
@@ -42,8 +42,8 @@ Before starting, make sure you have the following installed:
 **1.** Clone the repository:
 
 ```bash
-git clone https://github.com/bside89/order-flow-api
-cd order-flow-api
+git clone https://github.com/bside89/dispatch-api
+cd dispatch-api
 ```
 
 **2.** Run the installation script:
@@ -98,28 +98,28 @@ Client → API (NestJS)
 ## Architecture highlights
 
 - **Event-driven within a monolith**  
-  You get the decoupling benefits without the headache of managing multiple deployments.
+  Orders, payments, notifications, and side effects communicate through an internal event bus. No service discovery, no shared network. Less operational overhead; the tradeoff is that module boundaries have to be maintained by convention.
 
 - **Queue-based processing (BullMQ)**  
-  I used BullMQ to handle retries and backoff strategies, making the system way more resilient.
+  Payment processing and order compensation run through BullMQ with exponential backoff. If the process job fails, it retries up to 3 times before triggering the compensation flow.
 
 - **Hybrid fulfillment model**  
-  Payment processing and side effects (cancel, refund) run through BullMQ for resilience. Shipping and delivery are manual admin actions — because those depend on real-world warehouse events, not a timer.
+  PROCESS, CANCEL, and REFUND go through BullMQ because they need retries. SHIP and DELIVER are synchronous endpoints an admin calls when the warehouse is actually ready — no queue, no scheduler.
 
 - **Strategy + Factory patterns**  
-  Keeps the workflow handling flexible. It's easy to plug in a new strategy without breaking existing code.
+  Each order job type (PROCESS, CANCEL, REFUND) has a dedicated strategy class. Adding a new job type means adding one class — the processor and factory stay untouched.
 
 - **Idempotent job execution**  
-  Because retrying a failed payment twice by accident is a developer's worst nightmare.
+  Jobs carry the order ID and target status in their payload. Before executing, the strategy re-reads the database and validates the precondition. A PAID → PROCESSED job running twice gets blocked on the second run.
 
 - **Centralized logging with correlationId**  
-  I added this so I could actually trace an async request from start to finish.
+  Every request gets a correlation ID injected at the middleware level. Async jobs carry it forward so you can trace a single order across all log lines, even across queue hops.
 
 - **High-throughput outbox processor**  
-  Uses Recursive Polling to process events in batches — throughput stays high without blocking the Event Loop.
+  Uses recursive polling with `setImmediate` between batches to yield back to the event loop. A spike in queued events doesn't starve other requests.
 
 - **Database concurrency control**  
-  Uses `SELECT ... FOR UPDATE SKIP LOCKED` so multiple outbox instances can run in parallel without stepping on each other.
+  Uses `SELECT ... FOR UPDATE SKIP LOCKED` on outbox reads, so multiple processor instances can run against the same database without double-dispatching events.
 
 ---
 
@@ -155,7 +155,7 @@ Switching to batch processing cut Outbox latency. Load tests at 100+ concurrent 
 9. Admin can trigger a refund: `PATCH /orders/:id/refund` — ORDER_REFUND is enqueued, Stripe processes the refund
 10. On payment failure: ORDER_CANCEL is enqueued automatically — same cancel and restore logic applies
 
-Here is a diagram showing the big picture:
+The sequence diagram:
 
 ```mermaid
 sequenceDiagram
@@ -233,38 +233,16 @@ sequenceDiagram
 - Correlation ID for end-to-end tracing
 - Log aggregation via Promtail + Loki
 - Visualization with Grafana
-- Track a single order across multiple async steps
-- Debug failures in distributed flows
 
 ---
 
 ## Testing strategy
 
-- **Integration testing (Testcontainers):** Spins up real PostgreSQL and Redis instances per test run. No mocked databases, no "works on my machine" surprises.
+Integration tests spin up real PostgreSQL and Redis containers via Testcontainers. No mocked databases, no "works on my machine" surprises.
 
-- **Load testing (k6):** Hammers the queue under concurrent load to confirm jobs don't get processed twice when retries kick in.
+There's also a k6 load test that hammers the queue under concurrent load to confirm jobs don't get processed twice when retries kick in.
 
-### Test watch mode
-
-The default watch command runs with `--runInBand`:
-
-```bash
-npm run test:watch
-```
-
-This is intentional. The `integration` and `e2e` Jest projects share the same Testcontainers-based setup, so running them in parallel during watch mode causes concurrent `globalSetup` execution and environment variable collisions.
-
-If you only want fast feedback from unit tests, use:
-
-```bash
-npm run test:watch:unit
-```
-
-If you want to watch only the database-backed suites, keeping them serial:
-
-```bash
-npm run test:watch:db
-```
+---
 
 ## Stripe testing
 
@@ -292,47 +270,38 @@ The integration and E2E tests mock `PaymentsService`, so they do not depend on S
 
 ## Engineering trade-offs
 
-| Decision                    | Reason                                |
-| --------------------------- | ------------------------------------- |
-| Monolith over Microservices | Reduced operational complexity        |
-| BullMQ over Kafka           | Simpler setup, sufficient for scale   |
-| Partial Event-Driven        | Applied only where it adds real value |
-
----
-
-## Tech Stack
-
-- NestJS
-- BullMQ + Redis
-- PostgreSQL
-- Docker
-- Grafana + Loki + Promtail
-- Pino Logger
+| Decision                    | Reason                                                                                                                                                                                                 |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Monolith over Microservices | No service discovery, no cross-service network calls, no distributed tracing setup. The constraints are worth it for a project at this scale.                                                          |
+| BullMQ over Kafka           | Kafka's strength is ordered, partitioned streams across consumer groups. BullMQ with Redis covers the actual requirements: reliable retries, per-queue concurrency caps, and rate limiting.            |
+| Partial event-driven        | Only order processing and notifications go through the event bus. Auth and user management are plain request/response — adding async complexity there would solve a problem this project doesn't have. |
 
 ---
 
 ## Production considerations
 
-This project includes patterns commonly used in production systems:
+A few things that would matter in a real deployment:
 
-- Retry strategies with backoff
-- Failure isolation via queues
-- Observability-first design
-- Scalable processing pipelines
-- Transactions
+The outbox pattern gives at-least-once delivery guarantees. Events are written to the database in the same transaction as the state change, so a crash between "state updated" and "event dispatched" can't lose the event. Duplicate dispatch is prevented by idempotency checks at the job level.
+
+Distributed locking via Redlock ensures concurrent webhook deliveries for the same order don't cause split-brain state. The lock covers the full transaction.
+
+BullMQ retries with exponential backoff handle transient failures. Jobs that exhaust all retries get logged with full context so failures are traceable.
 
 ---
 
-## What this demonstrates
+## What's worth looking at
 
-- Real-world backend architecture
-- Clean code and separation of concerns
-- Practical use of design patterns
-- Async workflows and resilience
-- Monitoring and debugging strategies
+A few things in this codebase that aren't obvious from the feature list:
+
+The outbox processor (`shared/modules/outbox/`) uses a recursive `setImmediate` loop to drain event batches without blocking the event loop. Under load, it batches aggressively while still yielding between iterations.
+
+The hybrid fulfillment model required splitting what was originally a fully automatic queue pipeline. `ORDER_STATUS_PRECONDITIONS` in `orders/constants/` enforces valid state transitions for both the BullMQ strategies and the direct service calls — single source of truth for the state machine.
+
+The integration tests (`test/orders.int-spec.ts`) run the actual outbox processor against real PostgreSQL and Redis containers via Testcontainers. Timing bugs, lock contention, and idempotency issues show up in tests, not in production. That's the point.
 
 ---
 
 ## Final thoughts
 
-I built this codebase primarily to experiment with tools and patterns I use in production setups. Feel free to explore the code, and if you spot any areas to push the architecture even further, let me know.
+I built this to work through patterns I reach for in production — the outbox, distributed locking, hybrid sync/async flows. It's a portfolio project, but the problems it's solving are real.
