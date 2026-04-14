@@ -156,6 +156,16 @@ export class OrdersService extends TransactionalService {
       patterns: [ORDER_KEY.CACHE_FIND_ALL_PATTERN()],
     });
 
+    // Notify the user
+    await this.outboxService.add(
+      OutboxType.EVENTS_NOTIFY_USER,
+      new NotifyUserJobPayload(
+        completeOrder.user.id,
+        completeOrder.user.name,
+        `<To user ${completeOrder.user.name}>: Your order has been created with ID ${completeOrder.id}. Total: ${completeOrder.total}. Please proceed to payment.`,
+      ),
+    );
+
     const orderMapped = EntityMapper.map(completeOrder, OrderResponseDto);
     orderMapped.paymentIntent = EntityMapper.map(
       paymentIntent,

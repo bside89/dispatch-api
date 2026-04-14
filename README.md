@@ -9,9 +9,9 @@
 
 ## Overview
 
-Dispatch is an order management API built with NestJS. I built it to work through the architectural problems that come up in real e-commerce backends: async processing, distributed locking, transactional guarantees, and a fulfillment model that actually reflects how warehouses work.
+Dispatch is an order management API built with NestJS. I built it to work through the architectural problems that come up in real e-commerce backends: async processing, distributed locking, and transactional guarantees.
 
-The flow is hybrid. Payment processing and compensation (cancel, refund) run through BullMQ queues — they need retries and backoff. Shipping and delivery are manual admin endpoints, because those depend on someone at a warehouse making a decision, not a timer firing automatically.
+The flow is hybrid. Payment processing and compensation (cancel, refund) run through BullMQ queues — they need retries and backoff. Shipping and delivery are manual admin endpoints, because those depend on someone at a warehouse making a decision.
 
 ---
 
@@ -98,7 +98,7 @@ Client → API (NestJS)
 ## Architecture highlights
 
 - **Event-driven within a monolith**  
-  Orders, payments, notifications, and side effects communicate through an internal event bus. No service discovery, no shared network. Less operational overhead; the tradeoff is that module boundaries have to be maintained by convention.
+  Orders and payments go through queues. Notifications and side effects communicate through an internal event bus. No service discovery, no shared network. Less operational overhead; the tradeoff is that module boundaries have to be maintained by convention.
 
 - **Queue-based processing (BullMQ)**  
   Payment processing and order compensation run through BullMQ with exponential backoff. If the process job fails, it retries up to 3 times before triggering the compensation flow.
@@ -129,12 +129,13 @@ I ran k6 stress tests to find performance bottlenecks.
 
 ### Concurrency tuning
 
-The two queues have different I/O profiles, so they get different concurrency limits:
+The three queues have different I/O profiles, so they get different concurrency limits:
 
-| Queue      | Concurrency | Strategy                                                                                                |
-| :--------- | :---------- | :------------------------------------------------------------------------------------------------------ |
-| **Orders** | `15`        | Capped to protect the PostgreSQL connection pool during complex transactions.                           |
-| **Events** | `30`        | Higher because these are fast external I/O calls — notifications don't need the same care as DB writes. |
+| Queue        | Concurrency | Strategy                                                                                                |
+| :----------- | :---------- | :------------------------------------------------------------------------------------------------------ |
+| **Orders**   | `15`        | Capped to protect the PostgreSQL connection pool during complex transactions.                           |
+| **Events**   | `30`        | Higher because these are fast external I/O calls — notifications don't need the same care as DB writes. |
+| **Payments** | `15`        | Same as Orders.                                                                                         |
 
 ### Throughput benchmarks
 
