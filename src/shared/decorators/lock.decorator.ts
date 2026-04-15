@@ -2,6 +2,8 @@
 import { InternalServerErrorException } from '@nestjs/common';
 import Redlock from 'redlock';
 import { CACHE_TTL } from '../constants/cache-ttl.constant';
+import { I18N_COMMON } from '../constants/i18n';
+import { template } from '../helpers/functions';
 
 export type UseLockKeySelector<T = any> = (args: T) => string | number;
 
@@ -32,8 +34,11 @@ export function UseLock({ ttl = CACHE_TTL.LOCK, prefix, key }: UseLockOptions) {
       // The Service MUST have the redlock injected for the decorator to work
       const redlock = this.redlock as Redlock;
       if (!redlock) {
-        throw new InternalServerErrorException(
+        console.error(
           'Redlock not found in class instance. Please inject Redlock as "protected readonly redlock: Redlock".',
+        );
+        throw new InternalServerErrorException(
+          template(I18N_COMMON.ERRORS.INTERNAL_SERVER_ERROR),
         );
       }
 

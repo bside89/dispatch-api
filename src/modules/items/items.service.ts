@@ -14,15 +14,16 @@ import { Transactional } from '@/shared/decorators/transactional.decorator';
 import { CacheService } from '@/shared/modules/cache/cache.service';
 import { ITEM_KEY } from '@/shared/modules/cache/constants/item.key';
 import { CACHE_TTL } from '@/shared/constants/cache-ttl.constant';
-import { runAndIgnoreError } from '@/shared/helpers/functions';
+import { runAndIgnoreError, template } from '@/shared/helpers/functions';
 import { LOCK_PREFIX } from '@/shared/constants/lock-prefix.constants';
 import { TransactionalService } from '@/shared/services/transactional.service';
+import { I18N_ITEM } from '@/shared/constants/i18n';
 
 @Injectable()
 export class ItemsService extends TransactionalService {
   constructor(
     private readonly itemRepository: ItemRepository,
-    protected readonly cacheService: CacheService,
+    private readonly cacheService: CacheService,
     dataSource: DataSource,
     redlock: Redlock,
   ) {
@@ -127,7 +128,7 @@ export class ItemsService extends TransactionalService {
 
     const item = await this.itemRepository.findById(id);
     if (!item) {
-      throw new NotFoundException(`Item with ID ${id} not found`);
+      throw new NotFoundException(template(I18N_ITEM.ERRORS.NOT_FOUND, { id }));
     }
     const itemMapped = EntityMapper.map(item, ItemResponseDto);
 
@@ -147,7 +148,7 @@ export class ItemsService extends TransactionalService {
 
     const item = await this.itemRepository.findById(id);
     if (!item) {
-      throw new NotFoundException(`Item with ID ${id} not found`);
+      throw new NotFoundException(template(I18N_ITEM.ERRORS.NOT_FOUND, { id }));
     }
 
     Object.assign(item, updateItemDto);
@@ -170,7 +171,7 @@ export class ItemsService extends TransactionalService {
 
     const item = await this.itemRepository.findById(id);
     if (!item) {
-      throw new NotFoundException(`Item with ID ${id} not found`);
+      throw new NotFoundException(template(I18N_ITEM.ERRORS.NOT_FOUND, { id }));
     }
 
     await this.itemRepository.deleteById(item.id);

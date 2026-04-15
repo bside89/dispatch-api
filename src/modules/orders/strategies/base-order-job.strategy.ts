@@ -48,7 +48,9 @@ export abstract class BaseOrderJobStrategy<
     orderId: string,
     newStatus: OrderStatus,
   ): Promise<Order | null> {
-    const order = await this.orderRepository.findById(orderId);
+    const order = await this.orderRepository.findById(orderId, {
+      relations: ['user'],
+    });
     if (!order) {
       this.logger.error(`Order ${orderId} does not exist`);
       return null;
@@ -57,7 +59,7 @@ export abstract class BaseOrderJobStrategy<
     if (!preconditions.includes(order.status)) {
       this.logger.error(
         `Order ${orderId} must be ${preconditions.join(' or ')} ` +
-          `to proceed; current status: ${order!.status}`,
+          `to proceed; current status: ${order.status}`,
       );
       return null;
     }

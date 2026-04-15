@@ -5,6 +5,7 @@ import { OrderRepository } from '../repositories/order.repository';
 import { DataSource } from 'typeorm';
 import Redlock from 'redlock';
 import { ProcessOrderJobStrategy } from './process-order-job.strategy';
+import { OrderMessageFactory } from '../factories/order-message.factory';
 
 describe('ProcessOrderJobStrategy', () => {
   let strategy: ProcessOrderJobStrategy;
@@ -26,6 +27,10 @@ describe('ProcessOrderJobStrategy', () => {
           useValue: {
             add: jest.fn(),
           },
+        },
+        {
+          provide: OrderMessageFactory,
+          useValue: {},
         },
         {
           provide: OrderRepository,

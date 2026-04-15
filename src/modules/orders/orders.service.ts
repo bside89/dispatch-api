@@ -27,7 +27,7 @@ import {
 } from '@/shared/payloads/order-job.payload';
 import { ShipOrderDto } from './dto/ship-order.dto';
 import { ORDER_STATUS_PRECONDITIONS } from './constants/order-status-preconditions.constant';
-import { runAndIgnoreError } from '@/shared/helpers/functions';
+import { runAndIgnoreError, template, toCurrency } from '@/shared/helpers/functions';
 import { UseLock } from '@/shared/decorators/lock.decorator';
 import Redlock from 'redlock';
 import { ORDER_KEY } from '../../shared/modules/cache/constants/order.key';
@@ -38,6 +38,8 @@ import { ItemsService } from '../items/items.service';
 import { TransactionalService } from '@/shared/services/transactional.service';
 import { PaymentsGatewayService } from '../payments-gateway/payments-gateway.service';
 import { StripePaymentIntentCreateParams } from '../payments-gateway/types/payment-intent.types';
+import { OrderMessageFactory } from './factories/order-message.factory';
+import { I18N_ORDER } from '@/shared/constants/i18n/orders.tokens';
 
 @Injectable()
 export class OrdersService extends TransactionalService {
@@ -48,6 +50,7 @@ export class OrdersService extends TransactionalService {
     private readonly outboxService: OutboxService,
     private readonly paymentsGatewayService: PaymentsGatewayService,
     private readonly cacheService: CacheService,
+    private readonly messages: OrderMessageFactory,
     dataSource: DataSource,
     redlock: Redlock,
   ) {
@@ -84,7 +87,7 @@ export class OrdersService extends TransactionalService {
     const catalogItems = await this.itemsService.findManyByIds(itemIds);
     for (const dtoItem of dto.items) {
       if (!catalogItems.find((ci) => ci.id === dtoItem.itemId)) {
-        throw new NotFoundException(`Item with ID ${dtoItem.itemId} not found`);
+        throw new NotFoundException(template(I18N_ORDER.ERRORS.ORDER_NOT_FOUND));
       }
     }
 
@@ -115,7 +118,7 @@ export class OrdersService extends TransactionalService {
         const item = catalogItems.find((ci) => ci.id === dtoItem.itemId);
         if (item.stock < dtoItem.quantity) {
           throw new ForbiddenException(
-            `Insufficient stock for item ${item.name}. Available: ${item.stock}, requested: ${dtoItem.quantity}`,
+            template(I18N_ORDER.ERRORS.INSUFFICIENT_STOCK),
           );
         }
         return this.itemsService.decrementItemStock(item, dtoItem.quantity);
@@ -157,13 +160,19 @@ export class OrdersService extends TransactionalService {
     });
 
     // Notify the user
+    const user = completeOrder.user;
+    const totalPrice = toCurrency(
+      completeOrder.total,
+      user.language === 'en' ? 'en-US' : 'pt-BR',
+      user.language === 'en' ? 'USD' : 'BRL',
+    );
+    const message = await this.messages.notifications.orderCreated(
+      user.language,
+      totalPrice,
+    );
     await this.outboxService.add(
       OutboxType.EVENTS_NOTIFY_USER,
-      new NotifyUserJobPayload(
-        completeOrder.user.id,
-        completeOrder.user.name,
-        `<To user ${completeOrder.user.name}>: Your order has been created with ID ${completeOrder.id}. Total: ${completeOrder.total}. Please proceed to payment.`,
-      ),
+      new NotifyUserJobPayload(user.id, message),
     );
 
     const orderMapped = EntityMapper.map(completeOrder, OrderResponseDto);
@@ -249,10 +258,10 @@ export class OrdersService extends TransactionalService {
       relations: ['user', 'items'],
     });
     if (!order) {
-      throw new NotFoundException(`Order with ID ${id} not found`);
+      throw new NotFoundException(template(I18N_ORDER.ERRORS.ORDER_NOT_FOUND));
     }
 
-    this.assertOrderAccess(order.userId, requestUser, id);
+    this.assertOrderAccess(order.userId, requestUser);
 
     const paymentIntent = await this.paymentsGatewayService.paymentIntentsRetrieve(
       order.paymentIntentId,
@@ -285,7 +294,7 @@ export class OrdersService extends TransactionalService {
       relations: ['items', 'user'],
     });
     if (!order) {
-      throw new NotFoundException(`Order with ID ${id} not found`);
+      throw new NotFoundException(template(I18N_ORDER.ERRORS.ORDER_NOT_FOUND));
     }
 
     Object.assign(order, dto);
@@ -297,13 +306,14 @@ export class OrdersService extends TransactionalService {
     });
 
     // Notify the user
+    const user = order.user;
+    const message = await this.messages.notifications.orderUpdated(
+      user.language,
+      order.status,
+    );
     await this.outboxService.add(
       OutboxType.EVENTS_NOTIFY_USER,
-      new NotifyUserJobPayload(
-        order.user!.id,
-        order.user!.name,
-        `<To user ${order.user!.name}>: Your order with id ${order.id} status has been updated to ${dto.status}`,
-      ),
+      new NotifyUserJobPayload(user.id, message),
     );
 
     this.logger.debug('Order updated', { orderId: id });
@@ -318,7 +328,7 @@ export class OrdersService extends TransactionalService {
 
     const order = await this.orderRepository.findById(id);
     if (!order) {
-      throw new NotFoundException(`Order with ID ${id} not found`);
+      throw new NotFoundException(template(I18N_ORDER.ERRORS.ORDER_NOT_FOUND));
     }
 
     await this.orderRepository.deleteById(order.id);
@@ -343,7 +353,7 @@ export class OrdersService extends TransactionalService {
       relations: ['user', 'items'],
     });
     if (!order) {
-      throw new NotFoundException(`Order with ID ${orderId} not found`);
+      throw new NotFoundException(template(I18N_ORDER.ERRORS.ORDER_NOT_FOUND));
     }
 
     order.paymentIntentId = paymentIntentId;
@@ -359,7 +369,7 @@ export class OrdersService extends TransactionalService {
     // Kick off the order processing pipeline
     await this.outboxService.add(
       OutboxType.ORDER_PROCESS,
-      new ProcessOrderJobPayload(order.user.id, orderId, order.user.name),
+      new ProcessOrderJobPayload(orderId),
     );
 
     return EntityMapper.map(order, OrderResponseDto);
@@ -377,7 +387,7 @@ export class OrdersService extends TransactionalService {
       relations: ['user', 'items'],
     });
     if (!order) {
-      throw new NotFoundException(`Order with ID ${orderId} not found`);
+      throw new NotFoundException(template(I18N_ORDER.ERRORS.ORDER_NOT_FOUND));
     }
 
     order.paymentIntentId = paymentIntentId;
@@ -392,7 +402,7 @@ export class OrdersService extends TransactionalService {
     // Enqueue the cancellation job (restores stock and updates status)
     await this.outboxService.add(
       OutboxType.ORDER_CANCEL,
-      new CancelOrderJobPayload(order.user.id, orderId, order.user.name),
+      new CancelOrderJobPayload(orderId),
     );
 
     return EntityMapper.map(order, OrderResponseDto);
@@ -408,13 +418,16 @@ export class OrdersService extends TransactionalService {
       relations: ['user', 'items'],
     });
     if (!order) {
-      throw new NotFoundException(`Order with ID ${id} not found`);
+      throw new NotFoundException(template(I18N_ORDER.ERRORS.ORDER_NOT_FOUND));
     }
 
     const preconditions = ORDER_STATUS_PRECONDITIONS[OrderStatus.SHIPPED];
     if (!preconditions.includes(order.status)) {
       throw new BadRequestException(
-        `Order must be ${preconditions.join(' or ')} to be shipped; current status: ${order.status}`,
+        template(I18N_ORDER.ERRORS.BAD_PRECONDITIONS, {
+          status: OrderStatus.SHIPPED,
+          currentStatus: order.status,
+        }),
       );
     }
 
@@ -429,16 +442,12 @@ export class OrdersService extends TransactionalService {
       patterns: [ORDER_KEY.CACHE_FIND_ALL_PATTERN()],
     });
 
+    // Notify the user
+    const user = order.user;
+    const message = await this.messages.notifications.orderShipped(user.language);
     await this.outboxService.add(
       OutboxType.EVENTS_NOTIFY_USER,
-      new NotifyUserJobPayload(
-        order.user!.id,
-        order.user!.name,
-        `<To user ${order.user!.name}>: Your order with id ${order.id} has been shipped.` +
-          (order.trackingNumber
-            ? ` Tracking: ${order.trackingNumber} via ${order.carrier ?? 'carrier'}.`
-            : ''),
-      ),
+      new NotifyUserJobPayload(user.id, message),
     );
 
     this.logger.debug('Order shipped', { orderId: id });
@@ -455,13 +464,16 @@ export class OrdersService extends TransactionalService {
       relations: ['user', 'items'],
     });
     if (!order) {
-      throw new NotFoundException(`Order with ID ${id} not found`);
+      throw new NotFoundException(template(I18N_ORDER.ERRORS.ORDER_NOT_FOUND));
     }
 
     const preconditions = ORDER_STATUS_PRECONDITIONS[OrderStatus.DELIVERED];
     if (!preconditions.includes(order.status)) {
       throw new BadRequestException(
-        `Order must be ${preconditions.join(' or ')} to be delivered; current status: ${order.status}`,
+        template(I18N_ORDER.ERRORS.BAD_PRECONDITIONS, {
+          status: OrderStatus.DELIVERED,
+          currentStatus: order.status,
+        }),
       );
     }
 
@@ -474,13 +486,12 @@ export class OrdersService extends TransactionalService {
       patterns: [ORDER_KEY.CACHE_FIND_ALL_PATTERN()],
     });
 
+    // Notify the user
+    const user = order.user;
+    const message = await this.messages.notifications.orderDelivered(user.language);
     await this.outboxService.add(
       OutboxType.EVENTS_NOTIFY_USER,
-      new NotifyUserJobPayload(
-        order.user!.id,
-        order.user!.name,
-        `<To user ${order.user!.name}>: Your order with id ${order.id} has been delivered successfully.`,
-      ),
+      new NotifyUserJobPayload(user.id, message),
     );
 
     this.logger.debug('Order delivered', { orderId: id });
@@ -497,20 +508,23 @@ export class OrdersService extends TransactionalService {
       relations: ['user'],
     });
     if (!order) {
-      throw new NotFoundException(`Order with ID ${id} not found`);
+      throw new NotFoundException(template(I18N_ORDER.ERRORS.ORDER_NOT_FOUND));
     }
 
-    const preconditions = ORDER_STATUS_PRECONDITIONS[OrderStatus.CANCELLED];
+    const preconditions = ORDER_STATUS_PRECONDITIONS[OrderStatus.CANCELED];
     if (!preconditions.includes(order.status)) {
       throw new BadRequestException(
-        `Order must be ${preconditions.join(' or ')} to be cancelled; current status: ${order.status}`,
+        template(I18N_ORDER.ERRORS.BAD_PRECONDITIONS, {
+          status: OrderStatus.CANCELED,
+          currentStatus: order.status,
+        }),
       );
     }
 
     // Delegates to the job strategy which handles inventory release + status update
     await this.outboxService.add(
       OutboxType.ORDER_CANCEL,
-      new CancelOrderJobPayload(order.user!.id, id, order.user!.name),
+      new CancelOrderJobPayload(id),
     );
 
     this.logger.debug('Order cancel enqueued', { orderId: id });
@@ -526,20 +540,23 @@ export class OrdersService extends TransactionalService {
       relations: ['user'],
     });
     if (!order) {
-      throw new NotFoundException(`Order with ID ${id} not found`);
+      throw new NotFoundException(template(I18N_ORDER.ERRORS.ORDER_NOT_FOUND));
     }
 
     const preconditions = ORDER_STATUS_PRECONDITIONS[OrderStatus.REFUNDED];
     if (!preconditions.includes(order.status)) {
       throw new BadRequestException(
-        `Order must be ${preconditions.join(' or ')} to be refunded; current status: ${order.status}`,
+        template(I18N_ORDER.ERRORS.BAD_PRECONDITIONS, {
+          status: OrderStatus.REFUNDED,
+          currentStatus: order.status,
+        }),
       );
     }
 
     // Delegates to the job strategy which triggers the Stripe refund + status update
     await this.outboxService.add(
       OutboxType.ORDER_REFUND,
-      new RefundOrderJobPayload(order.user!.id, id, order.user!.name),
+      new RefundOrderJobPayload(id),
     );
 
     this.logger.debug('Order refund enqueued', { orderId: id });
@@ -548,15 +565,12 @@ export class OrdersService extends TransactionalService {
   private assertOrderAccess(
     orderOwnerId: string | undefined,
     requestUser: RequestUser | undefined,
-    orderId: string,
   ): void {
     if (requestUser?.jwtPayload?.role === UserRole.ADMIN) {
       return;
     }
     if (!requestUser || orderOwnerId !== requestUser.id) {
-      throw new ForbiddenException(
-        `You are not allowed to access order with ID ${orderId}`,
-      );
+      throw new ForbiddenException(template(I18N_ORDER.ERRORS.ACCESS_DENIED));
     }
   }
 }

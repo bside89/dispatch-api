@@ -10,6 +10,8 @@ import { STRIPE_CLIENT } from '../constants/stripe-client.token';
 import { CreateCustomerDto } from '@/modules/payments-gateway/dto/create-customer.dto';
 import { UpdateCustomerDto } from '@/modules/payments-gateway/dto/update-customer.dto';
 import { StripeCustomerMapper } from '../utils/stripe-customer-mapper';
+import { template } from '@/shared/helpers/functions';
+import { I18N_PAYMENTS } from '@/shared/constants/i18n/payments.tokens';
 
 @Injectable()
 export class StripeCustomersGateway extends BaseService {
@@ -37,7 +39,9 @@ export class StripeCustomersGateway extends BaseService {
     const customer = await this.stripe.customers.retrieve(customerId);
 
     if (this.isDeletedCustomer(customer)) {
-      throw new NotFoundException(`Stripe customer ${customerId} was deleted`);
+      throw new NotFoundException(
+        template(I18N_PAYMENTS.ERRORS.CUSTOMER_DELETED, { customerId }),
+      );
     }
 
     return StripeCustomerMapper.mapToPaymentCustomer(customer);
@@ -57,7 +61,9 @@ export class StripeCustomersGateway extends BaseService {
     );
 
     if (this.isDeletedCustomer(customer)) {
-      throw new NotFoundException(`Stripe customer ${customerId} was deleted`);
+      throw new NotFoundException(
+        template(I18N_PAYMENTS.ERRORS.CUSTOMER_DELETED, { customerId }),
+      );
     }
 
     return StripeCustomerMapper.mapToPaymentCustomer(customer);
@@ -66,7 +72,9 @@ export class StripeCustomersGateway extends BaseService {
   async delete(customerId: string, idempotencyKey: string): Promise<void> {
     const result = await this.stripe.customers.del(customerId, { idempotencyKey });
     if (!result.deleted) {
-      throw new NotFoundException(`Stripe customer ${customerId} not found`);
+      throw new NotFoundException(
+        template(I18N_PAYMENTS.ERRORS.CUSTOMER_NOT_FOUND, { customerId }),
+      );
     }
   }
 

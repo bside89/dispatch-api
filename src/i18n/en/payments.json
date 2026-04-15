@@ -1,0 +1,10 @@
+{
+  "errors": {
+    "stripeSignatureRequired": "The 'stripe-signature' header is required.",
+    "webhookSecretRequired": "STRIPE_WEBHOOK_SECRET is not configured.",
+    "createCustomerFailed": "Failed to create customer: No customer ID returned.",
+    "updateCustomerFailed": "Failed to update customer: No customer ID returned.",
+    "customerDeleted": "Stripe customer {customerId} has been deleted.",
+    "customerNotFound": "Stripe customer {customerId} not found."
+  }
+}

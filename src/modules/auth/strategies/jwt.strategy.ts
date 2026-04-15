@@ -8,6 +8,8 @@ import { CacheService } from '../../../shared/modules/cache/cache.service';
 import { Request } from 'express';
 import { RequestUser } from '../interfaces/request-user.interface';
 import { AUTH_KEY } from '../../../shared/modules/cache/constants/auth.key';
+import { template } from '@/shared/helpers/functions';
+import { I18N_AUTH } from '@/shared/constants/i18n';
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy, JwtStrategyName.ACCESS) {
@@ -28,7 +30,7 @@ export class JwtStrategy extends PassportStrategy(Strategy, JwtStrategyName.ACCE
       AUTH_KEY.BLACKLIST(payload.jti),
     );
     if (isBlacklisted) {
-      throw new UnauthorizedException('Token has been revoked');
+      throw new UnauthorizedException(template(I18N_AUTH.ERRORS.TOKEN_REVOKED));
     }
 
     const user: RequestUser = {

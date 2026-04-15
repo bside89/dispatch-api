@@ -2,7 +2,8 @@
 import { InternalServerErrorException } from '@nestjs/common';
 import { DataSource } from 'typeorm';
 import { TransactionContext } from '../utils/transaction-context';
-import { ensureError } from '../helpers/functions';
+import { ensureError, template } from '../helpers/functions';
+import { I18N_COMMON } from '../constants/i18n';
 
 /**
  * A decorator that wraps a method in a TypeORM transaction.
@@ -22,8 +23,11 @@ export function Transactional() {
       // The Service MUST have the dataSource injected for the decorator to work
       const dataSource = this.dataSource as DataSource;
       if (!dataSource) {
-        throw new InternalServerErrorException(
+        console.error(
           'DataSource not found in Service. Please inject DataSource as "protected readonly dataSource: DataSource".',
+        );
+        throw new InternalServerErrorException(
+          template(I18N_COMMON.ERRORS.INTERNAL_SERVER_ERROR),
         );
       }
 

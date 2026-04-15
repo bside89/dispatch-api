@@ -22,8 +22,10 @@ import {
 import { PaymentWebhookDto } from './dto/payment-webhook.dto';
 import { PaymentWebhookResponseDto } from './dto/payment-webhook-response.dto';
 import { ConfigService } from '@nestjs/config';
+import { I18N_PAYMENTS } from '@/shared/constants/i18n/payments.tokens';
+import { template } from '@/shared/helpers/functions';
 
-@Controller('payments')
+@Controller({ path: 'v1/payments', version: '1' })
 @ApiTags('payments')
 @ApiSecurity('bearer')
 export class PaymentsController extends BaseController {
@@ -63,12 +65,16 @@ export class PaymentsController extends BaseController {
     @Headers('stripe-signature') stripeSignature: string,
   ): Promise<PaymentWebhookResponseDto> {
     if (!stripeSignature) {
-      throw new BadRequestException('stripe-signature header is required');
+      throw new BadRequestException(
+        template(I18N_PAYMENTS.ERRORS.STRIPE_SIGNATURE_REQUIRED),
+      );
     }
 
     const webhookSecret = this.configService.get<string>('STRIPE_WEBHOOK_SECRET');
     if (!webhookSecret) {
-      throw new BadRequestException('STRIPE_WEBHOOK_SECRET is not configured');
+      throw new BadRequestException(
+        template(I18N_PAYMENTS.ERRORS.WEBHOOK_SECRET_REQUIRED),
+      );
     }
 
     await this.paymentsService.processWebhookEvent(

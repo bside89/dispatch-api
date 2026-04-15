@@ -1,0 +1,30 @@
+{
+  "responses": {
+    "create": "Order created successfully.",
+    "findOne": "Order retrieved successfully.",
+    "update": "Order updated successfully.",
+    "remove": "Order deleted successfully.",
+    "ship": "Order shipped successfully.",
+    "deliver": "Order delivered successfully.",
+    "cancel": "Order canceled successfully.",
+    "refund": "Refund processed successfully."
+  },
+  "notifications": {
+    "orderCreated": "Your order has been created successfully. Total: {total}. Please proceed to payment.",
+    "orderUpdated": "Your order status has been updated to {status}.",
+    "orderPaid": "Your payment has been received. We are processing your order.",
+    "orderProcessed": "Your order is being prepared for shipment.",
+    "orderShipped": "Your order has been shipped.",
+    "orderDelivered": "Your order has been delivered.",
+    "orderCanceled": "Your order has been canceled.",
+    "orderRefunded": "Your order has been refunded.",
+    "orderProcessFailed": "Processing your order failed. Please contact support."
+  },
+  "errors": {
+    "orderNotFound": "Order not found.",
+    "invalidOrderData": "Invalid order data.",
+    "insufficientStock": "Insufficient stock for item: {itemName}.",
+    "badPreconditions": "Cannot update order to status {status} from current status {currentStatus}.",
+    "accessDenied": "Forbidden access. You do not have permission to access this order."
+  }
+}

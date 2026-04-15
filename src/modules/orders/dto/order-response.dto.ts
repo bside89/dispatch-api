@@ -41,7 +41,7 @@ export class OrderResponseDto {
     enum: OrderStatus,
     example: OrderStatus.PENDING,
   })
-  status: string;
+  status: OrderStatus;
 
   @Expose()
   @ApiProperty({

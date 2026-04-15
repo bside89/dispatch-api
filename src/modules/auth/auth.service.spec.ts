@@ -3,6 +3,7 @@ import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { DataSource } from 'typeorm';
 import { AuthService } from './auth.service';
+import { AuthMessageFactory } from './factories/auth-message.factory';
 import { CacheService } from '../../shared/modules/cache/cache.service';
 import { UserRepository } from '../users/repositories/user.repository';
 import { OutboxService } from '../../shared/modules/outbox/outbox.service';
@@ -38,6 +39,17 @@ describe('AuthService', () => {
         {
           provide: OutboxService,
           useValue: { add: jest.fn() },
+        },
+        {
+          provide: AuthMessageFactory,
+          useValue: {
+            notifications: { login: jest.fn() },
+            responses: { login: jest.fn(), refresh: jest.fn(), logout: jest.fn() },
+            errors: {
+              invalidRefreshToken: jest.fn(),
+              invalidPassword: jest.fn(),
+            },
+          },
         },
         {
           provide: Redlock,

@@ -1,0 +1,30 @@
+export const I18N_ORDER = {
+  RESPONSES: {
+    CREATE: 'orders.responses.create',
+    FIND_ONE: 'orders.responses.findOne',
+    UPDATE: 'orders.responses.update',
+    REMOVE: 'orders.responses.remove',
+    SHIP: 'orders.responses.ship',
+    DELIVER: 'orders.responses.deliver',
+    CANCEL: 'orders.responses.cancel',
+    REFUND: 'orders.responses.refund',
+  },
+  NOTIFICATIONS: {
+    ORDER_CREATED: 'orders.notifications.orderCreated',
+    ORDER_UPDATED: 'orders.notifications.orderUpdated',
+    ORDER_PAID: 'orders.notifications.orderPaid',
+    ORDER_PROCESSED: 'orders.notifications.orderProcessed',
+    ORDER_SHIPPED: 'orders.notifications.orderShipped',
+    ORDER_DELIVERED: 'orders.notifications.orderDelivered',
+    ORDER_CANCELED: 'orders.notifications.orderCanceled',
+    ORDER_REFUNDED: 'orders.notifications.orderRefunded',
+    ORDER_PROCESS_FAILED: 'orders.notifications.orderProcessFailed',
+  },
+  ERRORS: {
+    ORDER_NOT_FOUND: 'orders.errors.orderNotFound',
+    INVALID_ORDER_DATA: 'orders.errors.invalidOrderData',
+    INSUFFICIENT_STOCK: 'orders.errors.insufficientStock',
+    BAD_PRECONDITIONS: 'orders.errors.badPreconditions',
+    ACCESS_DENIED: 'orders.errors.accessDenied',
+  },
+};

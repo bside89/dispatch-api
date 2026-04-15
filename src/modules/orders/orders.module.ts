@@ -12,6 +12,7 @@ import { CancelOrderJobStrategy, ProcessOrderJobStrategy } from './strategies';
 import { RefundOrderJobStrategy } from './strategies/refund-order-job.strategy';
 import { PaymentsGatewayModule } from '../payments-gateway/payments-gateway.module';
 import { ItemsModule } from '../items/items.module';
+import { OrderMessageFactory } from './factories/order-message.factory';
 
 @Module({
   imports: [
@@ -29,6 +30,7 @@ import { ItemsModule } from '../items/items.module';
     ProcessOrderJobStrategy,
     CancelOrderJobStrategy,
     RefundOrderJobStrategy,
+    OrderMessageFactory,
   ],
   exports: [OrdersService, OrderRepository, OrderItemRepository],
 })

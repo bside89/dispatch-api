@@ -15,12 +15,16 @@ import { GetUser } from '@/shared/decorators/get-user.decorator';
 import { BaseController } from '@/shared/controllers/base.controller';
 import { LoginResponseDto } from './dto/login-response.dto';
 import type { RequestUser } from './interfaces/request-user.interface';
+import { AuthMessageFactory } from './factories/auth-message.factory';
 
 @Controller({ path: 'v1/auth', version: '1' })
 @ApiTags('auth')
 @ApiSecurity('bearer')
 export class AuthController extends BaseController {
-  constructor(private readonly authService: AuthService) {
+  constructor(
+    private readonly authService: AuthService,
+    private readonly messages: AuthMessageFactory,
+  ) {
     super(AuthController.name);
   }
 
@@ -50,7 +54,8 @@ export class AuthController extends BaseController {
 
     const result = await this.authService.login(dto.email, dto.password);
 
-    return this.success(result, 'Login successful');
+    const message = await this.messages.responses.login(result.language);
+    return this.success(result, message);
   }
 
   @Post('refresh')
@@ -72,7 +77,8 @@ export class AuthController extends BaseController {
 
     const result = await this.authService.refresh(user);
 
-    return this.success(result, 'Token refreshed successfully');
+    const message = await this.messages.responses.refresh(result.language);
+    return this.success(result, message);
   }
 
   @Post('logout')
@@ -88,6 +94,7 @@ export class AuthController extends BaseController {
 
     await this.authService.logout(user);
 
-    return this.success({}, 'Logout successful');
+    const message = await this.messages.responses.logout(user.jwtPayload.language);
+    return this.success({}, message);
   }
 }

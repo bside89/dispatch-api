@@ -51,6 +51,13 @@ export class UserResponseDto {
 
   @Expose()
   @ApiProperty({
+    description: 'User preferred language',
+    example: 'pt-BR',
+  })
+  language: string;
+
+  @Expose()
+  @ApiProperty({
     description: 'User address',
     type: UserAddressResponseDto,
     nullable: true,

@@ -35,12 +35,20 @@ import { UserRole } from '../users/enums/user-role.enum';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { PaginatedResultDto } from '@/shared/dto/paginated-result.dto';
 import { BaseController } from '@/shared/controllers/base.controller';
+import { ItemMessageFactory } from './factories/item-message.factory';
+import { GetUser } from '@/shared/decorators/get-user.decorator';
+import type { RequestUser } from '../auth/interfaces/request-user.interface';
+import { I18N_COMMON } from '@/shared/constants/i18n/common.tokens';
+import { template } from '@/shared/helpers/functions';
 
 @Controller({ path: 'v1/items', version: '1' })
 @ApiTags('items')
 @ApiSecurity('bearer')
 export class ItemsController extends BaseController {
-  constructor(private readonly itemsService: ItemsService) {
+  constructor(
+    private readonly itemsService: ItemsService,
+    private readonly messages: ItemMessageFactory,
+  ) {
     super(ItemsController.name);
   }
 
@@ -69,17 +77,21 @@ export class ItemsController extends BaseController {
   @ApiBody({ type: CreateItemDto, description: 'Item creation data' })
   async create(
     @Body() createItemDto: CreateItemDto,
-    @Headers('idempotency-key') idempotencyKey?: string,
+    @Headers('idempotency-key') idempotencyKey: string,
+    @GetUser() user: RequestUser,
   ) {
     if (!idempotencyKey) {
-      throw new BadRequestException('idempotency-key header is required');
+      throw new BadRequestException(
+        template(I18N_COMMON.ERRORS.IDEMPOTENCY_KEY_REQUIRED),
+      );
     }
 
     this.logger.debug('POST /items - Creating item', { name: createItemDto.name });
 
     const result = await this.itemsService.create(createItemDto, idempotencyKey);
 
-    return this.success(result, 'Item created successfully');
+    const message = await this.messages.responses.create(user.jwtPayload.language);
+    return this.success(result, message);
   }
 
   @Get()
@@ -101,24 +113,36 @@ export class ItemsController extends BaseController {
 
   @Get(':id')
   @ApiOperation({ summary: 'Get item by ID' })
-  @ApiParam({ name: 'id', description: 'Item unique identifier (UUID)' })
+  @ApiParam({
+    name: 'id',
+    description: 'Item unique identifier (UUID)',
+    example: '550e8400-e29b-41d4-a716-446655440000',
+  })
   @ApiOkResponse({
     description: 'Item successfully retrieved',
     type: ItemResponseDto,
   })
   @ApiNotFoundResponse({ description: 'Item not found' })
-  async findOne(@Param('id', ParseUUIDPipe) id: string) {
+  async findOne(
+    @Param('id', ParseUUIDPipe) id: string,
+    @GetUser() user: RequestUser,
+  ) {
     this.logger.debug(`GET /items/${id} - Fetching item`, { itemId: id });
 
     const result = await this.itemsService.findOne(id);
 
-    return this.success(result, 'Item retrieved successfully');
+    const message = await this.messages.responses.findOne(user.jwtPayload.language);
+    return this.success(result, message);
   }
 
   @Patch(':id')
   @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: 'Update an item', description: 'Requires admin role.' })
-  @ApiParam({ name: 'id', description: 'Item unique identifier (UUID)' })
+  @ApiParam({
+    name: 'id',
+    description: 'Item unique identifier (UUID)',
+    example: '550e8400-e29b-41d4-a716-446655440000',
+  })
   @ApiOkResponse({
     description: 'Item successfully updated',
     type: ItemResponseDto,
@@ -129,27 +153,37 @@ export class ItemsController extends BaseController {
   async update(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() updateItemDto: UpdateItemDto,
+    @GetUser() user: RequestUser,
   ) {
     this.logger.debug(`PATCH /items/${id} - Updating item`, { itemId: id });
 
     const result = await this.itemsService.update(id, updateItemDto);
 
-    return this.success(result, 'Item updated successfully');
+    const message = await this.messages.responses.update(user.jwtPayload.language);
+    return this.success(result, message);
   }
 
   @Delete(':id')
   @Roles(UserRole.ADMIN)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Delete an item', description: 'Requires admin role.' })
-  @ApiParam({ name: 'id', description: 'Item unique identifier (UUID)' })
+  @ApiParam({
+    name: 'id',
+    description: 'Item unique identifier (UUID)',
+    example: '550e8400-e29b-41d4-a716-446655440000',
+  })
   @ApiOkResponse({ description: 'Item successfully deleted' })
   @ApiNotFoundResponse({ description: 'Item not found' })
   @ApiForbiddenResponse({ description: 'Requires admin role' })
-  async remove(@Param('id', ParseUUIDPipe) id: string) {
+  async remove(
+    @Param('id', ParseUUIDPipe) id: string,
+    @GetUser() user: RequestUser,
+  ) {
     this.logger.debug(`DELETE /items/${id} - Deleting item`, { itemId: id });
 
     await this.itemsService.remove(id);
 
-    return this.success({}, 'Item deleted successfully');
+    const message = await this.messages.responses.remove(user.jwtPayload.language);
+    return this.success({}, message);
   }
 }

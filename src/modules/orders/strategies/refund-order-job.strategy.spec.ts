@@ -12,12 +12,14 @@ import {
   createOutboxServiceMock,
   createRedlockMock,
 } from '@/shared/testing/provider-mocks';
+import { OrderMessageFactory } from '../factories/order-message.factory';
 
 describe('RefundOrderJobStrategy', () => {
   let strategy: RefundOrderJobStrategy;
   let cacheService: jest.Mocked<CacheService>;
   let outboxService: jest.Mocked<OutboxService>;
   let orderRepository: jest.Mocked<OrderRepository>;
+  let messages: jest.Mocked<OrderMessageFactory>;
   let dataSource: jest.Mocked<DataSource>;
   let redlock: jest.Mocked<Redlock>;
 
@@ -25,6 +27,12 @@ describe('RefundOrderJobStrategy', () => {
     cacheService = createCacheServiceMock() as any;
 
     outboxService = createOutboxServiceMock() as any;
+
+    messages = {
+      notifications: {
+        orderRefunded: jest.fn(),
+      },
+    } as any;
 
     orderRepository = {
       getAndValidate: jest.fn(),
@@ -41,6 +49,7 @@ describe('RefundOrderJobStrategy', () => {
         { provide: OrderRepository, useValue: orderRepository },
         { provide: DataSource, useValue: dataSource },
         { provide: Redlock, useValue: redlock },
+        { provide: OrderMessageFactory, useValue: messages },
       ],
     }).compile();
 

@@ -1,6 +1,5 @@
 import { Injectable } from '@nestjs/common';
 import { Job } from 'bullmq';
-import { CacheService } from '../../cache/cache.service';
 import { delay } from '../../../helpers/functions';
 import { NotifyUserJobPayload } from '../../../payloads/event-job.payload';
 import { Transactional } from '@/shared/decorators/transactional.decorator';
@@ -8,14 +7,12 @@ import { BaseEventJobStrategy } from './base-event-job.strategy';
 
 @Injectable()
 export class NotifyUserJobStrategy extends BaseEventJobStrategy<NotifyUserJobPayload> {
-  constructor(protected readonly cacheService: CacheService) {
+  constructor() {
     super(NotifyUserJobStrategy.name);
   }
 
   async execute(job: Job<NotifyUserJobPayload>): Promise<void> {
-    const { userId, message } = job.data;
-
-    await this.notifyUser(userId, message);
+    await this.notifyUser(job.data);
   }
 
   @Transactional()
@@ -30,7 +27,8 @@ export class NotifyUserJobStrategy extends BaseEventJobStrategy<NotifyUserJobPay
     );
   }
 
-  private async notifyUser(userId: string, message: string) {
+  private async notifyUser(payload: NotifyUserJobPayload) {
+    const { userId, message } = payload;
     // TODO: Add real notification logic (e.g., send email, push notification, etc.)
     await delay(1000);
 

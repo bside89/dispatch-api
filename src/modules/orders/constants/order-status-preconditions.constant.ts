@@ -11,7 +11,7 @@ export const ORDER_STATUS_PRECONDITIONS: Record<OrderStatus, OrderStatus[]> = {
   [OrderStatus.PROCESSED]: [OrderStatus.PAID],
   [OrderStatus.SHIPPED]: [OrderStatus.PROCESSED],
   [OrderStatus.DELIVERED]: [OrderStatus.SHIPPED],
-  [OrderStatus.CANCELLED]: [
+  [OrderStatus.CANCELED]: [
     OrderStatus.PENDING,
     OrderStatus.PAID,
     OrderStatus.PROCESSED,

@@ -1,0 +1,19 @@
+{
+  "responses": {
+    "created": "Usuário criado com sucesso.",
+    "retrieved": "Usuário recuperado com sucesso.",
+    "updated": "Usuário atualizado com sucesso.",
+    "login_updated": "Login do usuário atualizado com sucesso.",
+    "deleted": "Usuário excluído com sucesso."
+  },
+  "notifications": {},
+  "errors": {
+    "userNotFound": "Usuário não encontrado.",
+    "emailAlreadyExists": "Este email já existe.",
+    "invalidUserId": "ID de usuário inválido.",
+    "currentPasswordRequired": "A senha atual é necessária para alterar a senha.",
+    "currentPasswordInvalid": "A senha atual está incorreta.",
+    "authIsRequired": "Autenticação é necessária.",
+    "accessForbidden": "Você não tem permissão para acessar este usuário."
+  }
+}

@@ -12,6 +12,7 @@ import {
   createOutboxServiceMock,
   createRedlockMock,
 } from '@/shared/testing/provider-mocks';
+import { OrderMessageFactory } from '../factories/order-message.factory';
 
 describe('CancelOrderJobStrategy', () => {
   let strategy: CancelOrderJobStrategy;
@@ -34,6 +35,10 @@ describe('CancelOrderJobStrategy', () => {
             findManyByIds: jest.fn(),
             incrementItemStock: jest.fn(),
           },
+        },
+        {
+          provide: OrderMessageFactory,
+          useValue: {},
         },
         {
           provide: OrderRepository,

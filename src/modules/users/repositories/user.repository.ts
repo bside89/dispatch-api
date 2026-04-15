@@ -12,10 +12,7 @@ const user = col<User>(aliasUser);
 
 @Injectable()
 export class UserRepository extends BaseRepository<User> {
-  constructor(
-    @InjectRepository(User)
-    protected readonly repository: Repository<User>,
-  ) {
+  constructor(@InjectRepository(User) repository: Repository<User>) {
     super(repository);
   }
 

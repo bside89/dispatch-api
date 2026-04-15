@@ -434,7 +434,7 @@ describe('Orders (Integration)', () => {
     it('should cancel the Order when the payment webhook reports a failure', async () => {
       // Arrange: when Stripe fires payment_intent.payment_failed, PaymentsService
       // calls ordersService.markPaymentAsFailed(), which enqueues ORDER_CANCEL.
-      // CancelOrderJobStrategy then restores stock and sets the order to CANCELLED.
+      // CancelOrderJobStrategy then restores stock and sets the order to CANCELED.
       // The order never enters the processing pipeline.
 
       // Arrange: create a real user
@@ -482,7 +482,7 @@ describe('Orders (Integration)', () => {
 
       // Wait for the cancellation pipeline to complete:
       //   webhook → markPaymentAsFailed → Outbox → ORDER_CANCEL
-      //   Outbox → ORDER_CANCEL → restores stock + order = CANCELLED
+      //   Outbox → ORDER_CANCEL → restores stock + order = CANCELED
       //
       // delay() is mocked and setImmediate triggers process() after each add().
       await waitFor(
@@ -491,18 +491,18 @@ describe('Orders (Integration)', () => {
             `SELECT status FROM orders WHERE id = $1`,
             [orderId],
           );
-          return rows.length === 1 && rows[0].status === 'CANCELLED';
+          return rows.length === 1 && rows[0].status === 'CANCELED';
         },
         15_000, // 15s (ORDER_CANCEL step + CI margin)
         250,
       );
 
-      // Assert: final order status is CANCELLED
+      // Assert: final order status is CANCELED
       const [finalOrder] = await dataSource.query(
         `SELECT status FROM orders WHERE id = $1`,
         [orderId],
       );
-      expect(finalOrder.status).toBe('CANCELLED');
+      expect(finalOrder.status).toBe('CANCELED');
 
       // Assert: outbox should be fully consumed
       await waitFor(

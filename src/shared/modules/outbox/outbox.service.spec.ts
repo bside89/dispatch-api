@@ -162,12 +162,13 @@ describe('OutboxService', () => {
     });
 
     it('should dispatch payment-type messages to the payment queue and delete them', async () => {
-      const payload = new CreateCustomerJobPayload(
-        'u1',
-        'User Name',
-        'user@email.com',
-        { city: 'Sao Paulo' },
-      );
+      const payload = new CreateCustomerJobPayload({
+        id: 'u1',
+        name: 'User Name',
+        email: 'user@email.com',
+        address: { city: 'Sao Paulo' },
+      });
+
       const messages = [
         makeOutbox({
           id: 'uuid-4',
@@ -250,7 +251,7 @@ describe('OutboxService', () => {
   describe('add()', () => {
     it('should create and save an outbox entry using correlationId from context', async () => {
       const type = OutboxType.ORDER_PROCESS;
-      const payload = new ProcessOrderJobPayload('user-1', '123', 'user-name-1');
+      const payload = new ProcessOrderJobPayload('123');
       const correlationId = 'ctx-correlation-id';
       const mockEntry = makeOutbox({ type, payload, correlationId });
 
@@ -269,7 +270,7 @@ describe('OutboxService', () => {
 
     it('should generate a UUID correlationId when context has none', async () => {
       const type = OutboxType.ORDER_CANCEL;
-      const payload = new CancelOrderJobPayload('user-1', '456', 'user-name-1');
+      const payload = new CancelOrderJobPayload('456');
       const mockEntry = makeOutbox({ type, payload });
 
       (repository.createEntity as jest.Mock).mockReturnValue(mockEntry);

@@ -40,7 +40,9 @@ import { OrderResponseDto } from './dto/order-response.dto';
 import { BaseController } from '@/shared/controllers/base.controller';
 import { ErrorResponseDto } from '@/shared/dto/error-response.dto';
 import type { RequestUser } from '../auth/interfaces/request-user.interface';
-import { PaymentsGatewayService } from '../payments-gateway/payments-gateway.service';
+import { OrderMessageFactory } from './factories/order-message.factory';
+import { template } from '@/shared/helpers/functions';
+import { I18N_COMMON } from '@/shared/constants/i18n/common.tokens';
 
 @Controller({ path: 'v1/orders', version: '1' })
 @ApiTags('orders')
@@ -48,7 +50,7 @@ import { PaymentsGatewayService } from '../payments-gateway/payments-gateway.ser
 export class OrdersController extends BaseController {
   constructor(
     private readonly ordersService: OrdersService,
-    private readonly paymentsGatewayService: PaymentsGatewayService,
+    private readonly messages: OrderMessageFactory,
   ) {
     super(OrdersController.name);
   }
@@ -84,7 +86,9 @@ export class OrdersController extends BaseController {
     @GetUser() user: RequestUser,
   ) {
     if (!idempotencyKey) {
-      throw new BadRequestException('idempotency-key header is required');
+      throw new BadRequestException(
+        template(I18N_COMMON.ERRORS.IDEMPOTENCY_KEY_REQUIRED),
+      );
     }
 
     this.logger.debug('POST /orders - Creating order', {
@@ -98,7 +102,8 @@ export class OrdersController extends BaseController {
       idempotencyKey,
     );
 
-    return this.success(result, 'Order created successfully');
+    const message = await this.messages.responses.create(user.jwtPayload.language);
+    return this.success(result, message);
   }
 
   @Get()
@@ -173,7 +178,8 @@ export class OrdersController extends BaseController {
 
     const result = await this.ordersService.findOne(id, user);
 
-    return this.success(result, 'Order retrieved successfully');
+    const message = await this.messages.responses.findOne(user.jwtPayload.language);
+    return this.success(result, message);
   }
 
   @Patch(':id')
@@ -203,6 +209,7 @@ export class OrdersController extends BaseController {
   async update(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() updateOrderDto: UpdateOrderDto,
+    @GetUser() user: RequestUser,
   ) {
     this.logger.debug(`PATCH /orders/${id} - Updating order`, {
       orderId: id,
@@ -211,7 +218,11 @@ export class OrdersController extends BaseController {
 
     const result = await this.ordersService.update(id, updateOrderDto);
 
-    return this.success(result, 'Order updated successfully');
+    const message = await this.messages.responses.update(
+      user.jwtPayload.language,
+      result.status,
+    );
+    return this.success(result, message);
   }
 
   @Delete(':id')
@@ -237,12 +248,16 @@ export class OrdersController extends BaseController {
     description: 'Invalid UUID format',
     type: ErrorResponseDto,
   })
-  async remove(@Param('id', ParseUUIDPipe) id: string) {
+  async remove(
+    @Param('id', ParseUUIDPipe) id: string,
+    @GetUser() user: RequestUser,
+  ) {
     this.logger.debug(`DELETE /orders/${id} - Deleting order`, { orderId: id });
 
     await this.ordersService.remove(id);
 
-    return this.success(null, 'Order deleted successfully');
+    const message = await this.messages.responses.remove(user.jwtPayload.language);
+    return this.success(null, message);
   }
 
   @Patch(':id/ship')
@@ -267,12 +282,14 @@ export class OrdersController extends BaseController {
   async ship(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() shipOrderDto: ShipOrderDto,
+    @GetUser() user: RequestUser,
   ) {
     this.logger.debug(`PATCH /orders/${id}/ship - Shipping order`, { orderId: id });
 
     const result = await this.ordersService.ship(id, shipOrderDto);
 
-    return this.success(result, 'Order marked as shipped successfully');
+    const message = await this.messages.responses.ship(user.jwtPayload.language);
+    return this.success(result, message);
   }
 
   @Patch(':id/deliver')
@@ -291,14 +308,18 @@ export class OrdersController extends BaseController {
   @ApiBadRequestResponse({
     description: 'Order is not in a valid status for delivery',
   })
-  async deliver(@Param('id', ParseUUIDPipe) id: string) {
+  async deliver(
+    @Param('id', ParseUUIDPipe) id: string,
+    @GetUser() user: RequestUser,
+  ) {
     this.logger.debug(`PATCH /orders/${id}/deliver - Delivering order`, {
       orderId: id,
     });
 
     const result = await this.ordersService.deliver(id);
 
-    return this.success(result, 'Order marked as delivered successfully');
+    const message = await this.messages.responses.deliver(user.jwtPayload.language);
+    return this.success(result, message);
   }
 
   @Patch(':id/cancel')
@@ -316,14 +337,18 @@ export class OrdersController extends BaseController {
   @ApiBadRequestResponse({
     description: 'Order is not in a valid status for cancellation',
   })
-  async cancel(@Param('id', ParseUUIDPipe) id: string) {
+  async cancel(
+    @Param('id', ParseUUIDPipe) id: string,
+    @GetUser() user: RequestUser,
+  ) {
     this.logger.debug(`PATCH /orders/${id}/cancel - Cancelling order`, {
       orderId: id,
     });
 
     await this.ordersService.cancel(id);
 
-    return this.success(null, 'Order cancellation enqueued successfully');
+    const message = await this.messages.responses.cancel(user.jwtPayload.language);
+    return this.success(null, message);
   }
 
   @Patch(':id/refund')
@@ -341,13 +366,17 @@ export class OrdersController extends BaseController {
   @ApiBadRequestResponse({
     description: 'Order is not in a valid status for refunding',
   })
-  async refund(@Param('id', ParseUUIDPipe) id: string) {
+  async refund(
+    @Param('id', ParseUUIDPipe) id: string,
+    @GetUser() user: RequestUser,
+  ) {
     this.logger.debug(`PATCH /orders/${id}/refund - Refunding order`, {
       orderId: id,
     });
 
     await this.ordersService.refund(id);
 
-    return this.success(null, 'Order refund enqueued successfully');
+    const message = await this.messages.responses.refund(user.jwtPayload.language);
+    return this.success(null, message);
   }
 }

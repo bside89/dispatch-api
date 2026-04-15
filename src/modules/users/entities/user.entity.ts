@@ -28,6 +28,9 @@ export class User extends BaseEntity {
   @Column({ nullable: true })
   refreshToken?: string;
 
+  @Column({ default: 'en' })
+  language: string;
+
   @OneToMany(() => Order, (order) => order.user, { cascade: true })
   orders: Order[];
 }

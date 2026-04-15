@@ -2,14 +2,10 @@ import { ExecutionContext, Injectable } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { AuthGuard } from '@nestjs/passport';
 import { JwtStrategyName } from '../enums/jwt-strategy-name.enum';
-import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class JwtAuthGuard extends AuthGuard(JwtStrategyName.ACCESS) {
-  constructor(
-    private reflector: Reflector,
-    private readonly configService: ConfigService,
-  ) {
+  constructor(private reflector: Reflector) {
     super();
   }
 

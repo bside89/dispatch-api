@@ -32,6 +32,15 @@ import {
 import { PaymentsModule } from './modules/payments/payments.module';
 import { PaymentsGatewayModule } from './modules/payments-gateway/payments-gateway.module';
 import { ItemsModule } from './modules/items/items.module';
+import * as path from 'path';
+import { existsSync } from 'fs';
+import { AcceptLanguageResolver, I18nModule, QueryResolver } from 'nestjs-i18n';
+
+const i18nPath = [
+  path.join(__dirname, 'i18n'),
+  path.join(__dirname, '..', 'i18n'),
+  path.join(process.cwd(), 'src', 'i18n'),
+].find((candidatePath) => existsSync(candidatePath));
 
 @Module({
   imports: [
@@ -85,6 +94,16 @@ import { ItemsModule } from './modules/items/items.module';
         adapter: BullMQAdapter,
       },
     ),
+
+    // Internationalization (i18n)
+    I18nModule.forRoot({
+      fallbackLanguage: 'en',
+      loaderOptions: {
+        path: i18nPath ?? path.join(__dirname, 'i18n'),
+        watch: true,
+      },
+      resolvers: [{ use: QueryResolver, options: ['lang'] }, AcceptLanguageResolver],
+    }),
 
     // Scheduler (for cron jobs)
     ScheduleModule.forRoot(),

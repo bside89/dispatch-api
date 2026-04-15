@@ -55,6 +55,7 @@ describe('JwtStrategy', () => {
       email: 'user@example.com',
       role: UserRole.USER,
       jti: 'token-jti-123',
+      language: 'en',
     };
 
     it('should return the user object when the token is valid and not blacklisted', async () => {
@@ -72,6 +73,7 @@ describe('JwtStrategy', () => {
           email: validPayload.email,
           role: validPayload.role,
           jti: validPayload.jti,
+          language: validPayload.language,
         },
       });
     });
@@ -81,9 +83,6 @@ describe('JwtStrategy', () => {
 
       await expect(strategy.validate(mockReq, validPayload)).rejects.toThrow(
         UnauthorizedException,
-      );
-      await expect(strategy.validate(mockReq, validPayload)).rejects.toThrow(
-        'Token has been revoked',
       );
     });
 

@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, InternalServerErrorException } from '@nestjs/common';
 import { CreateCustomerJobPayload } from '@/shared/payloads/payment-job.payload';
 import { BasePaymentJobStrategy } from './base-payment-job.strategy';
 import { Job } from 'bullmq';
@@ -16,16 +16,18 @@ import {
   CreateCustomerDto,
 } from '@/modules/payments-gateway/dto/create-customer.dto';
 import { PAYMENT_KEY } from '@/shared/modules/cache/constants/payment.key';
+import { template } from '@/shared/helpers/functions';
+import { I18N_PAYMENTS } from '@/shared/constants/i18n/payments.tokens';
 
 @Injectable()
 export class CreateCustomerJobStrategy extends BasePaymentJobStrategy<CreateCustomerJobPayload> {
   constructor(
-    protected readonly paymentsGatewayService: PaymentsGatewayService,
-    protected readonly cacheService: CacheService,
-    protected readonly orderRepository: OrderRepository,
-    protected readonly userRepository: UserRepository,
-    protected readonly dataSource: DataSource,
-    protected readonly redlock: Redlock,
+    paymentsGatewayService: PaymentsGatewayService,
+    cacheService: CacheService,
+    orderRepository: OrderRepository,
+    userRepository: UserRepository,
+    dataSource: DataSource,
+    redlock: Redlock,
   ) {
     super(
       CreateCustomerJobStrategy.name,
@@ -39,24 +41,26 @@ export class CreateCustomerJobStrategy extends BasePaymentJobStrategy<CreateCust
   }
 
   async execute(job: Job<CreateCustomerJobPayload>): Promise<void> {
-    const { userId } = job.data;
+    const { userDto } = job.data;
 
     this.logger.log(
       `Creating customer, attempt ${job.attemptsMade + 1} of ${job.opts.attempts}`,
-      { userId },
+      { userId: userDto.id },
     );
 
     const customer = await this.createCustomer(job.data);
     if (!customer || !customer.id) {
-      throw new Error('Failed to create customer: No customer ID returned');
+      throw new InternalServerErrorException(
+        template(I18N_PAYMENTS.ERRORS.CREATE_CUSTOMER_FAILED),
+      );
     }
 
-    await this.updateUserWithLock(userId, {
+    await this.updateUserWithLock(userDto.id, {
       customerId: customer.id,
     });
 
     this.logger.log(`Customer created successfully with ID: ${customer.id}`, {
-      userId,
+      userId: userDto.id,
     });
   }
 
@@ -66,7 +70,7 @@ export class CreateCustomerJobStrategy extends BasePaymentJobStrategy<CreateCust
   ): Promise<void> {
     this.logger.error(
       `[CRITICAL] Failed to create customer for user after all retries: ${error.message}`,
-      { userId: job.data.userId },
+      { userId: job.data.userDto.id },
     );
   }
 
@@ -80,13 +84,12 @@ export class CreateCustomerJobStrategy extends BasePaymentJobStrategy<CreateCust
   }
 
   private toCreateCustomerDto(data: CreateCustomerJobPayload): CreateCustomerDto {
-    const address = this.toCreateCustomerAddressDto(data.address);
-
+    const address = this.toCreateCustomerAddressDto(data.userDto.address);
     return plainToInstance(CreateCustomerDto, {
-      email: data.email,
-      name: data.userName,
+      email: data.userDto.email,
+      name: data.userDto.name,
       address,
-      metadata: { userId: data.userId },
+      metadata: { userId: data.userDto.id },
     });
   }
 
@@ -96,7 +99,6 @@ export class CreateCustomerJobStrategy extends BasePaymentJobStrategy<CreateCust
     if (!address) {
       return undefined;
     }
-
     return plainToInstance(CreateCustomerAddressDto, address);
   }
 

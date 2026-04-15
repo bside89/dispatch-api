@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, InternalServerErrorException } from '@nestjs/common';
 import { UpdateCustomerJobPayload } from '@/shared/payloads/payment-job.payload';
 import { BasePaymentJobStrategy } from './base-payment-job.strategy';
 import { Job } from 'bullmq';
@@ -15,16 +15,18 @@ import {
   UpdateCustomerDto,
 } from '@/modules/payments-gateway/dto/update-customer.dto';
 import { PAYMENT_KEY } from '@/shared/modules/cache/constants/payment.key';
+import { template } from '@/shared/helpers/functions';
+import { I18N_PAYMENTS } from '@/shared/constants/i18n/payments.tokens';
 
 @Injectable()
 export class UpdateCustomerJobStrategy extends BasePaymentJobStrategy<UpdateCustomerJobPayload> {
   constructor(
-    protected readonly paymentsGatewayService: PaymentsGatewayService,
-    protected readonly cacheService: CacheService,
-    protected readonly orderRepository: OrderRepository,
-    protected readonly userRepository: UserRepository,
-    protected readonly dataSource: DataSource,
-    protected readonly redlock: Redlock,
+    paymentsGatewayService: PaymentsGatewayService,
+    cacheService: CacheService,
+    orderRepository: OrderRepository,
+    userRepository: UserRepository,
+    dataSource: DataSource,
+    redlock: Redlock,
   ) {
     super(
       UpdateCustomerJobStrategy.name,
@@ -38,20 +40,22 @@ export class UpdateCustomerJobStrategy extends BasePaymentJobStrategy<UpdateCust
   }
 
   async execute(job: Job<UpdateCustomerJobPayload>): Promise<void> {
-    const { userId } = job.data;
+    const { userDto } = job.data;
 
     this.logger.log(
       `Updating customer, attempt ${job.attemptsMade + 1} of ${job.opts.attempts}`,
-      { userId },
+      { userId: userDto.id },
     );
 
     const customer = await this.updateCustomer(job.data);
     if (!customer || !customer.id) {
-      throw new Error('Failed to update customer: No customer ID returned');
+      throw new InternalServerErrorException(
+        template(I18N_PAYMENTS.ERRORS.UPDATE_CUSTOMER_FAILED),
+      );
     }
 
     this.logger.log(`Customer updated successfully with ID: ${customer.id}`, {
-      userId,
+      userId: userDto.id,
     });
   }
 
@@ -59,33 +63,37 @@ export class UpdateCustomerJobStrategy extends BasePaymentJobStrategy<UpdateCust
     job: Job<UpdateCustomerJobPayload>,
     error: Error,
   ): Promise<void> {
+    const { userDto } = job.data;
     this.logger.error(
       `[CRITICAL] Failed to update customer for user after all retries: ${error.message}`,
-      { userId: job.data.userId },
+      { userId: userDto.id },
     );
   }
 
   private async updateCustomer(
     data: UpdateCustomerJobPayload,
   ): Promise<CustomerResponseDto> {
+    const { userDto } = data;
+
     const updateCustomerDto = this.toUpdateCustomerDto(data);
     const idempotencyKey = this.idempotencyKey(data.correlationId);
 
     return this.paymentsGatewayService.customersUpdate(
-      data.customerId,
+      userDto.customerId,
       updateCustomerDto,
       idempotencyKey,
     );
   }
 
   private toUpdateCustomerDto(data: UpdateCustomerJobPayload): UpdateCustomerDto {
-    const address = this.toUpdateCustomerAddressDto(data.address);
+    const { userDto } = data;
 
+    const address = this.toUpdateCustomerAddressDto(userDto.address);
     return plainToInstance(UpdateCustomerDto, {
-      email: data.email,
-      name: data.userName,
+      email: userDto.email,
+      name: userDto.name,
       address,
-      metadata: { userId: data.userId },
+      metadata: { userId: userDto.id },
     });
   }
 
@@ -95,7 +103,6 @@ export class UpdateCustomerJobStrategy extends BasePaymentJobStrategy<UpdateCust
     if (!address) {
       return undefined;
     }
-
     return plainToInstance(UpdateCustomerAddressDto, address);
   }
 

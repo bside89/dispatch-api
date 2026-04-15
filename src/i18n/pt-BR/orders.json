@@ -1,0 +1,30 @@
+{
+  "responses": {
+    "create": "Pedido criado com sucesso.",
+    "findOne": "Pedido encontrado com sucesso.",
+    "update": "Pedido atualizado com sucesso.",
+    "remove": "Pedido excluído com sucesso.",
+    "ship": "Pedido enviado com sucesso.",
+    "deliver": "Pedido entregue com sucesso.",
+    "cancel": "Pedido cancelado com sucesso.",
+    "refund": "Reembolso processado com sucesso."
+  },
+  "notifications": {
+    "orderCreated": "Seu pedido foi criado com sucesso. Total: {total}. Por favor, prossiga para o pagamento.",
+    "orderUpdated": "Seu pedido foi atualizado. Novo status: {status}.",
+    "orderPaid": "Seu pagamento foi recebido. Estamos processando seu pedido.",
+    "orderProcessed": "Seu pedido está sendo preparado para envio.",
+    "orderShipped": "Seu pedido foi enviado.",
+    "orderDelivered": "Seu pedido foi entregue.",
+    "orderCanceled": "Seu pedido foi cancelado.",
+    "orderRefunded": "O reembolso do seu pedido foi processado.",
+    "orderProcessFailed": "O processamento do seu pedido falhou. Por favor, entre em contato com o suporte."
+  },
+  "errors": {
+    "orderNotFound": "Pedido não encontrado.",
+    "invalidOrderData": "Dados do pedido inválidos.",
+    "insufficientStock": "Estoque insuficiente para o item: {itemName}.",
+    "badPreconditions": "Não é possível atualizar o pedido para o status {status} a partir do status atual {currentStatus}.",
+    "accessDenied": "Acesso proibido. Você não tem permissão para acessar este pedido."
+  }
+}

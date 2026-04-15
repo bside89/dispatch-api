@@ -12,11 +12,14 @@ import { DataSource } from 'typeorm';
 import { BaseOrderJobStrategy } from './base-order-job.strategy';
 import Redlock from 'redlock';
 import { delay } from '@/shared/helpers/functions';
+import { OrderMessageFactory } from '../factories/order-message.factory';
+import { Order } from '../entities/order.entity';
 
 @Injectable()
 export class RefundOrderJobStrategy extends BaseOrderJobStrategy<RefundOrderJobPayload> {
   constructor(
     private readonly outboxService: OutboxService,
+    private readonly messages: OrderMessageFactory,
     cacheService: CacheService,
     orderRepository: OrderRepository,
     dataSource: DataSource,
@@ -43,9 +46,9 @@ export class RefundOrderJobStrategy extends BaseOrderJobStrategy<RefundOrderJobP
       { orderId },
     );
 
-    await this.refundPayment(job.data);
+    await this.refundPayment(order);
 
-    await this.finish(job.data);
+    await this.finish(order);
   }
 
   @Transactional()
@@ -61,8 +64,8 @@ export class RefundOrderJobStrategy extends BaseOrderJobStrategy<RefundOrderJobP
     );
   }
 
-  private async refundPayment(data: RefundOrderJobPayload) {
-    const { orderId } = data;
+  private async refundPayment(order: Order) {
+    const { id: orderId } = order;
 
     // TODO: trigger Stripe PaymentIntent refund here
     await delay(1000);
@@ -70,21 +73,17 @@ export class RefundOrderJobStrategy extends BaseOrderJobStrategy<RefundOrderJobP
     this.logger.log(`Refund OK`, { orderId });
   }
 
-  private async finish(data: RefundOrderJobPayload) {
-    const { orderId, userId, userName } = data;
+  private async finish(order: Order) {
+    await this.updateOrderWithLock(order.id, { status: OrderStatus.REFUNDED });
 
-    await this.updateOrderWithLock(orderId, { status: OrderStatus.REFUNDED });
-
-    // Add to the outbox for sending notification to the user (Event Bus)
+    // Notify the user
+    const user = order.user;
+    const message = await this.messages.notifications.orderRefunded(user.language);
     await this.outboxService.add(
       OutboxType.EVENTS_NOTIFY_USER,
-      new NotifyUserJobPayload(
-        userId,
-        userName,
-        `<To user ${userName}>: Your order with id ${orderId} has been refunded successfully.`,
-      ),
+      new NotifyUserJobPayload(user.id, message),
     );
 
-    this.logger.log(`Order moved to REFUNDED`, { orderId });
+    this.logger.log(`Order moved to REFUNDED`, { orderId: order.id });
   }
 }

@@ -1,0 +1,10 @@
+{
+  "errors": {
+    "stripeSignatureRequired": "O cabeçalho 'stripe-signature' é obrigatório.",
+    "webhookSecretRequired": "STRIPE_WEBHOOK_SECRET não está configurado.",
+    "createCustomerFailed": "Falha ao criar cliente: Nenhum ID de cliente retornado.",
+    "updateCustomerFailed": "Falha ao atualizar cliente: Nenhum ID de cliente retornado.",
+    "customerDeleted": "Cliente Stripe {customerId} foi deletado.",
+    "customerNotFound": "Cliente Stripe {customerId} não encontrado."
+  }
+}

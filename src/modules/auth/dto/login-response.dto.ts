@@ -11,4 +11,7 @@ export class LoginResponseDto {
 
   @ApiProperty({ description: 'ID of the authenticated user' })
   userId: string;
+
+  @ApiProperty({ description: 'Language preference of the user' })
+  language: string;
 }

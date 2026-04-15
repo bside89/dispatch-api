@@ -4,6 +4,8 @@ import { ConfigService } from '@nestjs/config';
 
 import { JwtRefreshStrategy } from './jwt-refresh.strategy';
 import { UserRole } from '@/modules/users/enums/user-role.enum';
+import { CacheService } from '@/shared/modules/cache/cache.service';
+import { createCacheServiceMock } from '@/shared/testing/provider-mocks';
 
 // Stub out PassportStrategy so we can test validate() in isolation.
 jest.mock('@nestjs/passport', () => ({
@@ -16,8 +18,11 @@ jest.mock('@nestjs/passport', () => ({
 
 describe('JwtRefreshStrategy', () => {
   let strategy: JwtRefreshStrategy;
+  let cacheService: jest.Mocked<CacheService>;
 
   beforeEach(async () => {
+    cacheService = createCacheServiceMock() as any;
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         JwtRefreshStrategy,
@@ -26,6 +31,10 @@ describe('JwtRefreshStrategy', () => {
           useValue: {
             get: jest.fn().mockReturnValue('test-refresh-secret'),
           },
+        },
+        {
+          provide: CacheService,
+          useValue: cacheService,
         },
       ],
     }).compile();
@@ -41,6 +50,7 @@ describe('JwtRefreshStrategy', () => {
       email: 'user@example.com',
       role: UserRole.USER,
       jti: 'refresh-jti-456',
+      language: 'en',
     };
 
     it('should return user object with the raw refresh token from the Authorization header', async () => {
@@ -58,6 +68,7 @@ describe('JwtRefreshStrategy', () => {
           email: validPayload.email,
           role: validPayload.role,
           jti: validPayload.jti,
+          language: validPayload.language,
           refreshToken: rawToken,
         },
       });

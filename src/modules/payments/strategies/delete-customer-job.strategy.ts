@@ -13,12 +13,12 @@ import { PAYMENT_KEY } from '@/shared/modules/cache/constants/payment.key';
 @Injectable()
 export class DeleteCustomerJobStrategy extends BasePaymentJobStrategy<DeleteCustomerJobPayload> {
   constructor(
-    protected readonly paymentsGatewayService: PaymentsGatewayService,
-    protected readonly cacheService: CacheService,
-    protected readonly orderRepository: OrderRepository,
-    protected readonly userRepository: UserRepository,
-    protected readonly dataSource: DataSource,
-    protected readonly redlock: Redlock,
+    paymentsGatewayService: PaymentsGatewayService,
+    cacheService: CacheService,
+    orderRepository: OrderRepository,
+    userRepository: UserRepository,
+    dataSource: DataSource,
+    redlock: Redlock,
   ) {
     super(
       DeleteCustomerJobStrategy.name,
@@ -32,24 +32,24 @@ export class DeleteCustomerJobStrategy extends BasePaymentJobStrategy<DeleteCust
   }
 
   async execute(job: Job<DeleteCustomerJobPayload>): Promise<void> {
-    const { userId, customerId } = job.data;
+    const { userDto } = job.data;
 
     this.logger.log(
       `Deleting customer, attempt ${job.attemptsMade + 1} of ${job.opts.attempts}`,
-      { userId },
+      { userId: userDto.id },
     );
 
-    const user = await this.userRepository.findById(userId);
+    const user = await this.userRepository.findById(userDto.id);
     if (user) {
-      await this.updateUserWithLock(userId, {
+      await this.updateUserWithLock(userDto.id, {
         customerId: null,
       });
     }
 
     await this.deleteCustomer(job.data);
 
-    this.logger.log(`Customer deleted successfully with ID: ${customerId}`, {
-      userId,
+    this.logger.log(`Customer deleted successfully with ID: ${userDto.id}`, {
+      userId: userDto.id,
     });
   }
 
@@ -57,16 +57,18 @@ export class DeleteCustomerJobStrategy extends BasePaymentJobStrategy<DeleteCust
     job: Job<DeleteCustomerJobPayload>,
     error: Error,
   ): Promise<void> {
+    const { userDto } = job.data;
     this.logger.error(
       `[CRITICAL] Failed to delete customer for user after all retries: ${error.message}`,
-      { userId: job.data.userId },
+      { userId: userDto.id },
     );
   }
 
   private async deleteCustomer(data: DeleteCustomerJobPayload): Promise<void> {
+    const { userDto } = data;
     const idempotencyKey = this.idempotencyKey(data.correlationId);
     await this.paymentsGatewayService.customersDelete(
-      data.customerId,
+      userDto.customerId,
       idempotencyKey,
     );
   }

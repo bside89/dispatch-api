@@ -1,11 +1,7 @@
 import { BaseJobPayload } from '@/shared/payloads/base-job.payload';
 
 export class OrderJobPayload extends BaseJobPayload {
-  constructor(
-    public readonly userId: string,
-    public readonly orderId: string,
-    public readonly userName: string,
-  ) {
+  constructor(public readonly orderId: string) {
     super();
   }
 }

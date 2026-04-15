@@ -1,0 +1,11 @@
+{
+  "responses": {
+    "created": "Item criado com sucesso.",
+    "retrieved": "Item recuperado com sucesso.",
+    "updated": "Item atualizado com sucesso.",
+    "deleted": "Item excluído com sucesso."
+  },
+  "errors": {
+    "notFound": "Item não encontrado."
+  }
+}

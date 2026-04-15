@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { AppLogger } from '../utils/app-logger';
 
 /**
@@ -67,3 +68,18 @@ export function ensureError(value: unknown): Error {
 
   return new Error(`Unexpected error: ${stringified}`);
 }
+
+export const template = (key: string, args?: Record<string, any>) => ({
+  key,
+  args,
+});
+
+export const toCurrency = (
+  value: number,
+  locale: string = 'pt-BR',
+  currency: string = 'BRL',
+): string => {
+  return new Intl.NumberFormat(locale, { style: 'currency', currency }).format(
+    value / 100,
+  );
+};

@@ -16,11 +16,14 @@ import { OrderRepository } from '../repositories/order.repository';
 import { DataSource } from 'typeorm';
 import { BaseOrderJobStrategy } from './base-order-job.strategy';
 import Redlock from 'redlock';
+import { OrderMessageFactory } from '../factories/order-message.factory';
+import { Order } from '../entities/order.entity';
 
 @Injectable()
 export class ProcessOrderJobStrategy extends BaseOrderJobStrategy<ProcessOrderJobPayload> {
   constructor(
     private readonly outboxService: OutboxService,
+    private readonly messages: OrderMessageFactory,
     cacheService: CacheService,
     orderRepository: OrderRepository,
     dataSource: DataSource,
@@ -47,7 +50,7 @@ export class ProcessOrderJobStrategy extends BaseOrderJobStrategy<ProcessOrderJo
       { orderId },
     );
 
-    await this.finish(job.data);
+    await this.finish(order);
   }
 
   @Transactional()
@@ -63,7 +66,7 @@ export class ProcessOrderJobStrategy extends BaseOrderJobStrategy<ProcessOrderJo
     );
 
     try {
-      await this.compensationLogic(job.data, error);
+      await this.compensationLogic(orderId);
     } catch (e) {
       const err = ensureError(e);
       this.logger.error(
@@ -73,10 +76,10 @@ export class ProcessOrderJobStrategy extends BaseOrderJobStrategy<ProcessOrderJo
     }
   }
 
-  private async compensationLogic(data: ProcessOrderJobPayload, error: Error) {
-    const { orderId, userId, userName } = data;
-
-    const order = await this.orderRepository.findById(orderId);
+  private async compensationLogic(orderId: string) {
+    const order = await this.orderRepository.findById(orderId, {
+      relations: ['user'],
+    });
     if (!order) {
       this.logger.log(`Order ${orderId} does not exist, skipping compensation`);
       return;
@@ -93,41 +96,38 @@ export class ProcessOrderJobStrategy extends BaseOrderJobStrategy<ProcessOrderJo
       // Payment was already captured — refund
       await this.outboxService.add(
         OutboxType.ORDER_REFUND,
-        new RefundOrderJobPayload(userId, orderId, userName),
+        new RefundOrderJobPayload(orderId),
       );
     } else {
       // Payment was never captured — just cancel
       await this.outboxService.add(
         OutboxType.ORDER_CANCEL,
-        new CancelOrderJobPayload(userId, orderId, userName),
+        new CancelOrderJobPayload(orderId),
       );
     }
 
     // Notify the user about the failure
+    const user = order.user;
+    const message = await this.messages.notifications.orderProcessFailed(
+      user.language,
+    );
     await this.outboxService.add(
       OutboxType.EVENTS_NOTIFY_USER,
-      new NotifyUserJobPayload(
-        userId,
-        userName,
-        `<To user ${userName}>: Your order with id ${orderId} has failed to process. ` +
-          `Reason: ${error.message}`,
-      ),
+      new NotifyUserJobPayload(user.id, message),
     );
   }
 
-  private async finish(data: ProcessOrderJobPayload) {
-    const { orderId, userId, userName } = data;
+  private async finish(order: Order) {
+    const { id: orderId } = order;
 
     await this.updateOrderWithLock(orderId, { status: OrderStatus.PROCESSED });
 
     // Notify the user
+    const user = order.user;
+    const message = await this.messages.notifications.orderProcessed(user.language);
     await this.outboxService.add(
       OutboxType.EVENTS_NOTIFY_USER,
-      new NotifyUserJobPayload(
-        userId,
-        userName,
-        `<To user ${userName}>: Your order with id ${orderId} has been processed successfully. It is now awaiting shipment.`,
-      ),
+      new NotifyUserJobPayload(user.id, message),
     );
 
     this.logger.log(`Order moved to PROCESSED`, { orderId });

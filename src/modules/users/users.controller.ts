@@ -39,12 +39,18 @@ import { BaseController } from '@/shared/controllers/base.controller';
 import { PaginatedResponseDto } from '@/shared/dto/paginated-response.dto';
 import { GetUser } from '@/shared/decorators/get-user.decorator';
 import type { RequestUser } from '../auth/interfaces/request-user.interface';
+import { UserMessageFactory } from './factories/user-message.factory';
+import { I18N_COMMON } from '@/shared/constants/i18n';
+import { template } from '@/shared/helpers/functions';
 
 @Controller({ path: 'v1/users', version: '1' })
 @ApiTags('users')
 @ApiSecurity('bearer')
 export class UsersController extends BaseController {
-  constructor(private readonly usersService: UsersService) {
+  constructor(
+    private readonly usersService: UsersService,
+    private readonly messages: UserMessageFactory,
+  ) {
     super(UsersController.name);
   }
 
@@ -83,7 +89,9 @@ export class UsersController extends BaseController {
     @Headers('idempotency-key') idempotencyKey?: string,
   ) {
     if (!idempotencyKey) {
-      throw new BadRequestException('idempotency-key header is required');
+      throw new BadRequestException(
+        template(I18N_COMMON.ERRORS.IDEMPOTENCY_KEY_REQUIRED),
+      );
     }
 
     this.logger.debug('POST /users - Creating user', {
@@ -93,7 +101,8 @@ export class UsersController extends BaseController {
 
     const result = await this.usersService.create(createUserDto, idempotencyKey);
 
-    return this.success(result, 'User created successfully');
+    const message = await this.messages.responses.create(result.language);
+    return this.success(result, message);
   }
 
   @Get()
@@ -167,7 +176,8 @@ export class UsersController extends BaseController {
 
     const result = await this.usersService.findOne(id, user);
 
-    return this.success(result, 'User retrieved successfully');
+    const message = await this.messages.responses.findOne(result.language);
+    return this.success(result, message);
   }
 
   @Patch(':id')
@@ -211,7 +221,8 @@ export class UsersController extends BaseController {
 
     const result = await this.usersService.update(id, updateUserDto, user);
 
-    return this.success(result, 'User updated successfully');
+    const message = await this.messages.responses.update(result.language);
+    return this.success(result, message);
   }
 
   @Patch(':id/login')
@@ -256,7 +267,8 @@ export class UsersController extends BaseController {
 
     const result = await this.usersService.updateLogin(id, updateLoginDto, user);
 
-    return this.success(result, 'User login credentials updated successfully');
+    const message = await this.messages.responses.updateLogin(result.language);
+    return this.success(result, message);
   }
 
   @Delete(':id')
@@ -289,6 +301,7 @@ export class UsersController extends BaseController {
 
     await this.usersService.remove(id, user);
 
-    return this.success(null, 'User deleted successfully');
+    const message = await this.messages.responses.remove(user.jwtPayload.language);
+    return this.success(null, message);
   }
 }

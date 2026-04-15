@@ -18,7 +18,11 @@ import { HashUtils } from '@/shared/utils/hash.utils';
 import { DataSource } from 'typeorm';
 import { Transactional } from '@/shared/decorators/transactional.decorator';
 import { CACHE_TTL } from '@/shared/constants/cache-ttl.constant';
-import { ensureError, runAndIgnoreError } from '@/shared/helpers/functions';
+import {
+  ensureError,
+  runAndIgnoreError,
+  template,
+} from '@/shared/helpers/functions';
 import { UseLock } from '@/shared/decorators/lock.decorator';
 import Redlock from 'redlock';
 import { USER_KEY } from '../../shared/modules/cache/constants/user.key';
@@ -35,6 +39,11 @@ import { PaymentsGatewayService } from '../payments-gateway/payments-gateway.ser
 import { CustomerResponseDto } from '../payments-gateway/dto/customer-response.dto';
 import { LOCK_PREFIX } from '@/shared/constants/lock-prefix.constants';
 import { TransactionalService } from '@/shared/services/transactional.service';
+import { I18N_USERS } from '@/shared/constants/i18n/users.tokens';
+import {
+  UserAddressSnapshotDto,
+  UserSnapshotDto,
+} from '@/shared/dto/user-snapshot.dto';
 
 @Injectable()
 export class UsersService extends TransactionalService {
@@ -78,7 +87,9 @@ export class UsersService extends TransactionalService {
       where: { email: dto.email },
     });
     if (emailExists) {
-      throw new ConflictException('Email already exists');
+      throw new ConflictException(
+        template(I18N_USERS.ERRORS.EMAIL_ALREADY_EXISTS, { email: dto.email }),
+      );
     }
 
     this.logger.debug('Creating new user', {
@@ -94,14 +105,11 @@ export class UsersService extends TransactionalService {
     const userMapped = EntityMapper.map(savedUser, UserResponseDto);
 
     // Add outbox message for creating Stripe customer (job)
+    const snapshottedUser = EntityMapper.map(savedUser, UserSnapshotDto);
+    snapshottedUser.address = EntityMapper.map(dto.address, UserAddressSnapshotDto);
     await this.outboxService.add(
       OutboxType.PAYMENT_CREATE_CUSTOMER,
-      new CreateCustomerJobPayload(
-        savedUser.id,
-        savedUser.name,
-        savedUser.email,
-        dto.address,
-      ),
+      new CreateCustomerJobPayload(snapshottedUser),
     );
 
     await this.cacheService.set(
@@ -178,7 +186,9 @@ export class UsersService extends TransactionalService {
 
     const user = await this.userRepository.findById(id);
     if (!user) {
-      throw new NotFoundException(`User with ID ${id} not found`);
+      throw new NotFoundException(
+        template(I18N_USERS.ERRORS.USER_NOT_FOUND, { userId: id }),
+      );
     }
 
     this.logger.debug('User found', { id: user.id });
@@ -229,7 +239,9 @@ export class UsersService extends TransactionalService {
 
     const user = await this.userRepository.findOne({ where: { email } });
     if (!user) {
-      throw new NotFoundException(`User with email ${email} not found`);
+      throw new NotFoundException(
+        template(I18N_USERS.ERRORS.USER_NOT_FOUND, { userId: email }),
+      );
     }
 
     this.assertUserAccess(user.id, requestUser);
@@ -264,7 +276,7 @@ export class UsersService extends TransactionalService {
   @UseLock({ prefix: LOCK_PREFIX.USER.UPDATE, key: ([id]) => id })
   async update(
     id: string,
-    updateUserDto: UpdateUserDto,
+    dto: UpdateUserDto,
     requestUser?: RequestUser,
   ): Promise<UserResponseDto> {
     this.assertUserAccess(id, requestUser);
@@ -273,37 +285,37 @@ export class UsersService extends TransactionalService {
 
     const user = await this.userRepository.findById(id);
     if (!user) {
-      throw new NotFoundException(`User with ID ${id} not found`);
+      throw new NotFoundException(
+        template(I18N_USERS.ERRORS.USER_NOT_FOUND, { userId: id }),
+      );
     }
 
     // Check if email already exists (if email is being updated)
     const oldEmail = user.email;
-    const newEmail = updateUserDto.email;
+    const newEmail = dto.email;
     if (newEmail && newEmail !== oldEmail) {
       const emailExists = await this.userRepository.existsBy({
         where: { email: newEmail },
       });
       if (emailExists) {
-        throw new ConflictException('Email already exists');
+        throw new ConflictException(
+          template(I18N_USERS.ERRORS.EMAIL_ALREADY_EXISTS, { email: newEmail }),
+        );
       }
     }
 
     // This will only update the fields that are present in updateUserDto
-    Object.assign(user, updateUserDto);
+    Object.assign(user, dto);
     const updatedUser = await this.userRepository.save(user);
 
     this.logger.debug(`User updated successfully: ${updatedUser.id}`);
 
     // Add outbox message for updating Stripe customer (job)
+    const snapshottedUser = EntityMapper.map(updatedUser, UserSnapshotDto);
+    snapshottedUser.address = EntityMapper.map(dto.address, UserAddressSnapshotDto);
     await this.outboxService.add(
       OutboxType.PAYMENT_UPDATE_CUSTOMER,
-      new UpdateCustomerJobPayload(
-        updatedUser.id,
-        updatedUser.customerId,
-        updatedUser.name,
-        updatedUser.email,
-        updateUserDto.address,
-      ),
+      new UpdateCustomerJobPayload(snapshottedUser),
     );
 
     await this.cacheService.deleteBulk({
@@ -327,14 +339,16 @@ export class UsersService extends TransactionalService {
 
     const user = await this.userRepository.findById(id);
     if (!user) {
-      throw new NotFoundException(`User with ID ${id} not found`);
+      throw new NotFoundException(
+        template(I18N_USERS.ERRORS.USER_NOT_FOUND, { userId: id }),
+      );
     }
 
     // Validate current password if new password is provided
     if (updateLoginDto.newPassword) {
       if (!updateLoginDto.currentPassword) {
         throw new BadRequestException(
-          'Current password is required to change password',
+          template(I18N_USERS.ERRORS.CURRENT_PASSWORD_REQUIRED),
         );
       }
 
@@ -342,7 +356,9 @@ export class UsersService extends TransactionalService {
       if (
         !(await HashUtils.compare(user.password, updateLoginDto.currentPassword))
       ) {
-        throw new BadRequestException('Current password is incorrect');
+        throw new BadRequestException(
+          template(I18N_USERS.ERRORS.CURRENT_PASSWORD_INVALID),
+        );
       }
       user.password = await HashUtils.hash(updateLoginDto.newPassword);
     }
@@ -352,7 +368,11 @@ export class UsersService extends TransactionalService {
         where: { email: updateLoginDto.email },
       });
       if (emailExists) {
-        throw new ConflictException('Email already exists');
+        throw new ConflictException(
+          template(I18N_USERS.ERRORS.EMAIL_ALREADY_EXISTS, {
+            email: updateLoginDto.email,
+          }),
+        );
       }
       user.email = updateLoginDto.email;
     }
@@ -384,7 +404,9 @@ export class UsersService extends TransactionalService {
 
     const user = await this.userRepository.findById(id);
     if (!user) {
-      throw new NotFoundException(`User with ID ${id} not found`);
+      throw new NotFoundException(
+        template(I18N_USERS.ERRORS.USER_NOT_FOUND, { userId: id }),
+      );
     }
 
     await this.userRepository.deleteById(id);
@@ -392,9 +414,10 @@ export class UsersService extends TransactionalService {
     this.logger.debug('User deleted successfully', { userId: id });
 
     // Add outbox message for deleting Stripe customer (job)
+    const snapshottedUser = EntityMapper.map(user, UserSnapshotDto);
     await this.outboxService.add(
       OutboxType.PAYMENT_DELETE_CUSTOMER,
-      new DeleteCustomerJobPayload(user.id, user.customerId, user.name, user.email),
+      new DeleteCustomerJobPayload(snapshottedUser),
     );
 
     await this.cacheService.deleteBulk({
@@ -408,12 +431,14 @@ export class UsersService extends TransactionalService {
     requestUser?: RequestUser,
   ): Promise<PaginatedResultDto<UserResponseDto>> {
     if (!requestUser) {
-      throw new ForbiddenException('Authentication is required');
+      throw new ForbiddenException(template(I18N_USERS.ERRORS.AUTH_IS_REQUIRED));
     }
 
     const user = await this.userRepository.findById(requestUser.id);
     if (!user) {
-      throw new NotFoundException(`User with ID ${requestUser.id} not found`);
+      throw new NotFoundException(
+        template(I18N_USERS.ERRORS.USER_NOT_FOUND, { userId: requestUser.id }),
+      );
     }
 
     const matchesName =
@@ -435,9 +460,7 @@ export class UsersService extends TransactionalService {
       return;
     }
     if (!requestUser || requestUser.id !== targetUserId) {
-      throw new ForbiddenException(
-        `You are not allowed to access user with ID ${targetUserId}`,
-      );
+      throw new ForbiddenException(template(I18N_USERS.ERRORS.ACCESS_FORBIDDEN));
     }
   }
 

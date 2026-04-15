@@ -13,6 +13,7 @@ import {
   createOutboxServiceMock,
   createRedlockMock,
 } from '@/shared/testing/provider-mocks';
+import { ForbiddenException } from '@nestjs/common';
 
 describe('UsersService', () => {
   let service: UsersService;
@@ -126,7 +127,7 @@ describe('UsersService', () => {
     };
 
     await expect(service.findOne('user-2', requestUser as never)).rejects.toThrow(
-      'You are not allowed to access user with ID user-2',
+      ForbiddenException,
     );
   });
 });
