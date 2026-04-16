@@ -23,6 +23,7 @@ import { OutboxModule } from './shared/modules/outbox/outbox.module';
 import { ScheduleModule } from '@nestjs/schedule';
 import { MiddlewareConsumer, NestModule } from '@nestjs/common';
 import { CorrelationIdMiddleware } from './middleware/correlation-id.middleware';
+import { LoggingMiddleware } from './middleware/logging.middleware';
 import { TerminusModule } from '@nestjs/terminus';
 import { throttleConfig } from './config/throttle.config';
 import {
@@ -143,6 +144,6 @@ const i18nPath = [
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
-    consumer.apply(CorrelationIdMiddleware).forRoutes('*');
+    consumer.apply(CorrelationIdMiddleware, LoggingMiddleware).forRoutes('*');
   }
 }

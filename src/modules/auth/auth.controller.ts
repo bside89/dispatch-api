@@ -48,10 +48,6 @@ export class AuthController extends BaseController {
     description: 'Login credentials',
   })
   async login(@Body() dto: LoginDto) {
-    this.logger.debug('POST /auth/login - Attempting login', {
-      userEmail: dto.email,
-    });
-
     const result = await this.authService.login(dto.email, dto.password);
 
     const message = await this.messages.responses.login(result.language);
@@ -73,8 +69,6 @@ export class AuthController extends BaseController {
     description: 'Invalid refresh token',
   })
   async refresh(@GetUser() user: RequestUser) {
-    this.logger.debug('POST /auth/refresh - Refreshing token', { userId: user.id });
-
     const result = await this.authService.refresh(user);
 
     const message = await this.messages.responses.refresh(result.language);
@@ -90,8 +84,6 @@ export class AuthController extends BaseController {
     description: 'Logout successful',
   })
   async logout(@GetUser() user: RequestUser) {
-    this.logger.debug('POST /auth/logout - Logging out user', { userId: user.id });
-
     await this.authService.logout(user);
 
     const message = await this.messages.responses.logout(user.jwtPayload.language);

@@ -94,11 +94,6 @@ export class UsersController extends BaseController {
       );
     }
 
-    this.logger.debug('POST /users - Creating user', {
-      userEmail: createUserDto.email,
-      idempotencyKey,
-    });
-
     const result = await this.usersService.create(createUserDto, idempotencyKey);
 
     const message = await this.messages.responses.create(result.language);
@@ -140,8 +135,6 @@ export class UsersController extends BaseController {
     type: Number,
   })
   async findAll(@Query() queryDto: UserQueryDto, @GetUser() user: RequestUser) {
-    this.logger.debug('GET /users - Retrieving all users', { query: queryDto });
-
     const result = await this.usersService.findAll(queryDto, user);
 
     return this.paginate(result.data, result.total, result.page, result.limit);
@@ -172,8 +165,6 @@ export class UsersController extends BaseController {
     @Param('id', ParseUUIDPipe) id: string,
     @GetUser() user: RequestUser,
   ) {
-    this.logger.debug(`GET /users/${id} - Retrieving user`, { userId: id });
-
     const result = await this.usersService.findOne(id, user);
 
     const message = await this.messages.responses.findOne(result.language);
@@ -215,10 +206,6 @@ export class UsersController extends BaseController {
     @Body() updateUserDto: UpdateUserDto,
     @GetUser() user: RequestUser,
   ) {
-    this.logger.debug(`PATCH /users/${id} - Updating user`, {
-      userId: id,
-    });
-
     const result = await this.usersService.update(id, updateUserDto, user);
 
     const message = await this.messages.responses.update(result.language);
@@ -261,10 +248,6 @@ export class UsersController extends BaseController {
     @Body() updateLoginDto: UpdateLoginDto,
     @GetUser() user: RequestUser,
   ) {
-    this.logger.debug(`PATCH /users/${id}/login - Updating user login credentials`, {
-      userId: id,
-    });
-
     const result = await this.usersService.updateLogin(id, updateLoginDto, user);
 
     const message = await this.messages.responses.updateLogin(result.language);
@@ -297,8 +280,6 @@ export class UsersController extends BaseController {
     @Param('id', ParseUUIDPipe) id: string,
     @GetUser() user: RequestUser,
   ) {
-    this.logger.debug(`DELETE /users/${id} - Deleting user`, { userId: id });
-
     await this.usersService.remove(id, user);
 
     const message = await this.messages.responses.remove(user.jwtPayload.language);

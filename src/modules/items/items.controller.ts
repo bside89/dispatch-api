@@ -86,8 +86,6 @@ export class ItemsController extends BaseController {
       );
     }
 
-    this.logger.debug('POST /items - Creating item', { name: createItemDto.name });
-
     const result = await this.itemsService.create(createItemDto, idempotencyKey);
 
     const message = await this.messages.responses.create(user.jwtPayload.language);
@@ -104,8 +102,6 @@ export class ItemsController extends BaseController {
     type: PaginatedResultDto<ItemResponseDto>,
   })
   async findAll(@Query() queryDto: ItemQueryDto) {
-    this.logger.debug('GET /items - Fetching items with filters', { queryDto });
-
     const result = await this.itemsService.findAll(queryDto);
 
     return this.paginate(result.data, result.total, result.page, result.limit);
@@ -127,8 +123,6 @@ export class ItemsController extends BaseController {
     @Param('id', ParseUUIDPipe) id: string,
     @GetUser() user: RequestUser,
   ) {
-    this.logger.debug(`GET /items/${id} - Fetching item`, { itemId: id });
-
     const result = await this.itemsService.findOne(id);
 
     const message = await this.messages.responses.findOne(user.jwtPayload.language);
@@ -155,8 +149,6 @@ export class ItemsController extends BaseController {
     @Body() updateItemDto: UpdateItemDto,
     @GetUser() user: RequestUser,
   ) {
-    this.logger.debug(`PATCH /items/${id} - Updating item`, { itemId: id });
-
     const result = await this.itemsService.update(id, updateItemDto);
 
     const message = await this.messages.responses.update(user.jwtPayload.language);
@@ -179,8 +171,6 @@ export class ItemsController extends BaseController {
     @Param('id', ParseUUIDPipe) id: string,
     @GetUser() user: RequestUser,
   ) {
-    this.logger.debug(`DELETE /items/${id} - Deleting item`, { itemId: id });
-
     await this.itemsService.remove(id);
 
     const message = await this.messages.responses.remove(user.jwtPayload.language);

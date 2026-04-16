@@ -91,11 +91,6 @@ export class OrdersController extends BaseController {
       );
     }
 
-    this.logger.debug('POST /orders - Creating order', {
-      userId: user.id,
-      idempotencyKey,
-    });
-
     const result = await this.ordersService.create(
       createOrderDto,
       user.id,
@@ -147,8 +142,6 @@ export class OrdersController extends BaseController {
     description: 'Items per page (default: 10)',
   })
   async findAll(@Query() queryDto: OrderQueryDto, @GetUser() user: RequestUser) {
-    this.logger.debug(`GET /orders - Fetching orders with filters`, { queryDto });
-
     const result = await this.ordersService.findAll(queryDto, user);
 
     return this.paginate(result.data, result.total, result.page, result.limit);
@@ -174,8 +167,6 @@ export class OrdersController extends BaseController {
     @Param('id', ParseUUIDPipe) id: string,
     @GetUser() user: RequestUser,
   ) {
-    this.logger.debug(`GET /orders/${id} - Fetching order`, { orderId: id });
-
     const result = await this.ordersService.findOne(id, user);
 
     const message = await this.messages.responses.findOne(user.jwtPayload.language);
@@ -211,11 +202,6 @@ export class OrdersController extends BaseController {
     @Body() updateOrderDto: UpdateOrderDto,
     @GetUser() user: RequestUser,
   ) {
-    this.logger.debug(`PATCH /orders/${id} - Updating order`, {
-      orderId: id,
-      updateOrderDto,
-    });
-
     const result = await this.ordersService.update(id, updateOrderDto);
 
     const message = await this.messages.responses.update(
@@ -252,8 +238,6 @@ export class OrdersController extends BaseController {
     @Param('id', ParseUUIDPipe) id: string,
     @GetUser() user: RequestUser,
   ) {
-    this.logger.debug(`DELETE /orders/${id} - Deleting order`, { orderId: id });
-
     await this.ordersService.remove(id);
 
     const message = await this.messages.responses.remove(user.jwtPayload.language);
@@ -284,8 +268,6 @@ export class OrdersController extends BaseController {
     @Body() shipOrderDto: ShipOrderDto,
     @GetUser() user: RequestUser,
   ) {
-    this.logger.debug(`PATCH /orders/${id}/ship - Shipping order`, { orderId: id });
-
     const result = await this.ordersService.ship(id, shipOrderDto);
 
     const message = await this.messages.responses.ship(user.jwtPayload.language);
@@ -312,10 +294,6 @@ export class OrdersController extends BaseController {
     @Param('id', ParseUUIDPipe) id: string,
     @GetUser() user: RequestUser,
   ) {
-    this.logger.debug(`PATCH /orders/${id}/deliver - Delivering order`, {
-      orderId: id,
-    });
-
     const result = await this.ordersService.deliver(id);
 
     const message = await this.messages.responses.deliver(user.jwtPayload.language);
@@ -341,10 +319,6 @@ export class OrdersController extends BaseController {
     @Param('id', ParseUUIDPipe) id: string,
     @GetUser() user: RequestUser,
   ) {
-    this.logger.debug(`PATCH /orders/${id}/cancel - Cancelling order`, {
-      orderId: id,
-    });
-
     await this.ordersService.cancel(id);
 
     const message = await this.messages.responses.cancel(user.jwtPayload.language);
@@ -370,10 +344,6 @@ export class OrdersController extends BaseController {
     @Param('id', ParseUUIDPipe) id: string,
     @GetUser() user: RequestUser,
   ) {
-    this.logger.debug(`PATCH /orders/${id}/refund - Refunding order`, {
-      orderId: id,
-    });
-
     await this.ordersService.refund(id);
 
     const message = await this.messages.responses.refund(user.jwtPayload.language);
