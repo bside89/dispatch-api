@@ -1,4 +1,4 @@
-import { I18N_AUTH } from '@/shared/constants/i18n/auth.tokens';
+import { I18N_AUTH } from '@/shared/constants/i18n';
 import { BaseMessageFactory } from '@/shared/factories/base-message.factory';
 import { Injectable } from '@nestjs/common';
 import { I18nService } from 'nestjs-i18n';

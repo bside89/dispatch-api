@@ -1,17 +1,22 @@
+const SECONDS = 1000;
+const MINUTES = 60 * SECONDS;
+const HOURS = 60 * MINUTES;
+const DAYS = 24 * HOURS;
+
 export const CACHE_TTL = {
-  DEFAULT: 5 * 60 * 1000, // 5 minutes
+  DEFAULT: 5 * MINUTES,
 
-  LOCK: 5 * 1000, // 5 seconds
+  LOCK: 5 * SECONDS,
 
-  LIST: 60 * 1000, // 1 minute
+  LIST: 5 * MINUTES,
 
-  IDEMPOTENCY: 24 * 60 * 60 * 1000, // 24 hours
+  IDEMPOTENCY: 1 * DAYS,
 
-  PAYMENT_IDEMPOTENCY_TTL: 24 * 60 * 60 * 1000, // 24 hours
+  PAYMENT_IDEMPOTENCY_TTL: 1 * DAYS,
 
-  AUTH_BLACKLIST: 15 * 60 * 1000, // 15 minutes
+  AUTH_BLACKLIST: 15 * MINUTES,
 
-  JOB_LOCK: 30 * 1000, // 30 seconds
+  JOB_LOCK: 30 * SECONDS,
 
-  JOB_STRATEGY: 60 * 60 * 1000, // 1 hour
+  JOB_STRATEGY: 1 * HOURS,
 } as const;

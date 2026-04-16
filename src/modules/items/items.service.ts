@@ -15,7 +15,7 @@ import { CacheService } from '@/shared/modules/cache/cache.service';
 import { ITEM_KEY } from '@/shared/modules/cache/constants/item.key';
 import { CACHE_TTL } from '@/shared/constants/cache-ttl.constant';
 import { runAndIgnoreError, template } from '@/shared/helpers/functions';
-import { LOCK_PREFIX } from '@/shared/constants/lock-prefix.constants';
+import { LOCK_PREFIX } from '@/shared/constants/lock-prefix.constant';
 import { TransactionalService } from '@/shared/services/transactional.service';
 import { I18N_ITEM } from '@/shared/constants/i18n';
 
@@ -36,7 +36,7 @@ export class ItemsService extends TransactionalService {
     key: ([, idempotencyKey]) => idempotencyKey,
   })
   async create(
-    createItemDto: CreateItemDto,
+    dto: CreateItemDto,
     idempotencyKey: string,
   ): Promise<ItemResponseDto> {
     // Check if there's an existing item for the same idempotency key
@@ -55,9 +55,9 @@ export class ItemsService extends TransactionalService {
       return existingItem;
     }
 
-    this.logger.debug('Creating item', { name: createItemDto.name });
+    this.logger.debug('Creating item', { name: dto.name });
 
-    const item = this.itemRepository.createEntity(createItemDto);
+    const item = this.itemRepository.createEntity(dto);
     const savedItem = await this.itemRepository.save(item);
     const itemResponse = EntityMapper.map(savedItem, ItemResponseDto);
 
@@ -143,7 +143,7 @@ export class ItemsService extends TransactionalService {
 
   @Transactional()
   @UseLock({ prefix: LOCK_PREFIX.ITEM.UPDATE, key: ([id]) => id })
-  async update(id: string, updateItemDto: UpdateItemDto): Promise<ItemResponseDto> {
+  async update(id: string, dto: UpdateItemDto): Promise<ItemResponseDto> {
     this.logger.debug('Updating item', { itemId: id });
 
     const item = await this.itemRepository.findById(id);
@@ -151,7 +151,7 @@ export class ItemsService extends TransactionalService {
       throw new NotFoundException(template(I18N_ITEM.ERRORS.NOT_FOUND, { id }));
     }
 
-    Object.assign(item, updateItemDto);
+    Object.assign(item, dto);
     const savedItem = await this.itemRepository.save(item);
 
     this.logger.debug('Item updated and cached', { itemId: savedItem.id });

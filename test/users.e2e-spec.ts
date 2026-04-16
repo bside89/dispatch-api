@@ -152,16 +152,11 @@ describe('Users (E2E)', () => {
         .expect(HttpStatus.CREATED);
     });
 
-    it('DELETE /v1/users/:id - should allow a user to delete their own account', async () => {
+    it('DELETE /v1/users/:id - should forbid a regular user from deleting their own account', async () => {
       await request(app.getHttpServer())
         .delete(`/v1/users/${createdUserId}`)
         .set('Authorization', `Bearer ${userToken}`)
-        .expect(HttpStatus.NO_CONTENT);
-
-      await request(app.getHttpServer())
-        .get(`/v1/users/${createdUserId}`)
-        .set('Authorization', `Bearer ${adminToken}`)
-        .expect(HttpStatus.NOT_FOUND);
+        .expect(HttpStatus.FORBIDDEN);
     });
 
     it('DELETE /v1/users/:id - should block a user from deleting another user', async () => {

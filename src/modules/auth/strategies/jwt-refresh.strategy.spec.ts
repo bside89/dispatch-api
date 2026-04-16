@@ -3,7 +3,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
 
 import { JwtRefreshStrategy } from './jwt-refresh.strategy';
-import { UserRole } from '@/modules/users/enums/user-role.enum';
+import { UserRole } from '@/shared/enums/user-role.enum';
 import { CacheService } from '@/shared/modules/cache/cache.service';
 import { createCacheServiceMock } from '@/shared/testing/provider-mocks';
 

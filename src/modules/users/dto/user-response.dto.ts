@@ -1,7 +1,7 @@
 import { BaseAddressDto } from '@/shared/dto/base-address.dto';
 import { ApiProperty } from '@nestjs/swagger';
 import { Exclude, Expose } from 'class-transformer';
-import { UserRole } from '../enums/user-role.enum';
+import { UserRole } from '../../../shared/enums/user-role.enum';
 
 export class UserAddressResponseDto extends BaseAddressDto {}
 

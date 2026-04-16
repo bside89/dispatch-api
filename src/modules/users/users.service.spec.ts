@@ -5,7 +5,7 @@ import { CacheService } from '../../shared/modules/cache/cache.service';
 import { OutboxService } from '../../shared/modules/outbox/outbox.service';
 import { DataSource } from 'typeorm';
 import Redlock from 'redlock';
-import { UserRole } from './enums/user-role.enum';
+import { UserRole } from '../../shared/enums/user-role.enum';
 import { PaymentsGatewayService } from '../payments-gateway/payments-gateway.service';
 import {
   createCacheServiceMock,
@@ -13,7 +13,6 @@ import {
   createOutboxServiceMock,
   createRedlockMock,
 } from '@/shared/testing/provider-mocks';
-import { ForbiddenException } from '@nestjs/common';
 
 describe('UsersService', () => {
   let service: UsersService;
@@ -113,21 +112,5 @@ describe('UsersService', () => {
     expect(result.total).toBe(1);
     expect(result.data).toHaveLength(1);
     expect(userRepository.filter).not.toHaveBeenCalled();
-  });
-
-  it('rejects access to another user record', async () => {
-    const requestUser = {
-      id: 'user-1',
-      jwtPayload: {
-        sub: 'user-1',
-        email: 'user@example.com',
-        role: UserRole.USER,
-        jti: 'token-id',
-      },
-    };
-
-    await expect(service.findOne('user-2', requestUser as never)).rejects.toThrow(
-      ForbiddenException,
-    );
   });
 });

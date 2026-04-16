@@ -42,6 +42,9 @@ import type { RequestUser } from '../auth/interfaces/request-user.interface';
 import { UserMessageFactory } from './factories/user-message.factory';
 import { I18N_COMMON } from '@/shared/constants/i18n';
 import { template } from '@/shared/helpers/functions';
+import { UpdateUserRoleDto } from './dto/update-user-role.dto';
+import { UserRole } from '@/shared/enums/user-role.enum';
+import { Roles } from '../auth/decorators/roles.decorator';
 
 @Controller({ path: 'v1/users', version: '1' })
 @ApiTags('users')
@@ -255,6 +258,7 @@ export class UsersController extends BaseController {
   }
 
   @Delete(':id')
+  @Roles(UserRole.SUPERADMIN, UserRole.ADMIN)
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({
     summary: 'Delete user',
@@ -284,5 +288,42 @@ export class UsersController extends BaseController {
 
     const message = await this.messages.responses.remove(user.jwtPayload.language);
     return this.success(null, message);
+  }
+
+  @Patch(':id/role')
+  @Roles(UserRole.SUPERADMIN, UserRole.ADMIN)
+  @ApiOperation({
+    summary: 'Update user role',
+    description: 'Updates the role of a user by their unique identifier.',
+  })
+  @ApiParam({
+    name: 'id',
+    description: 'User unique identifier (UUID)',
+    type: String,
+    example: '550e8400-e29b-41d4-a716-446655440000',
+  })
+  @ApiOkResponse({
+    description: 'User role updated successfully',
+    type: UserResponseDto,
+  })
+  @ApiNotFoundResponse({
+    description: 'User not found',
+  })
+  @ApiBadRequestResponse({
+    description: 'Invalid UUID format or role',
+  })
+  @ApiBody({
+    type: UpdateUserRoleDto,
+    description: 'New role to assign to the user',
+  })
+  async updateRole(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() updateRoleDto: UpdateUserRoleDto,
+    @GetUser() user: RequestUser,
+  ) {
+    const result = await this.usersService.updateRole(id, updateRoleDto, user);
+
+    const message = await this.messages.responses.updateRole(result.language);
+    return this.success(result, message);
   }
 }

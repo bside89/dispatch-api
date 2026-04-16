@@ -12,7 +12,7 @@ import { JobStatus } from '../enums/job-status.enum';
 import { ensureError } from '../helpers/functions';
 import { BeforeApplicationShutdown, OnApplicationBootstrap } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { LOCK_PREFIX } from '../constants/lock-prefix.constants';
+import { LOCK_PREFIX } from '../constants/lock-prefix.constant';
 
 export abstract class BaseProcessor
   extends WorkerHost

@@ -10,7 +10,7 @@ import { UseLock } from '@/shared/decorators/lock.decorator';
 import { User } from '@/modules/users/entities/user.entity';
 import { USER_KEY } from '@/shared/modules/cache/constants/user.key';
 import { PaymentsGatewayService } from '@/modules/payments-gateway/payments-gateway.service';
-import { LOCK_PREFIX } from '@/shared/constants/lock-prefix.constants';
+import { LOCK_PREFIX } from '@/shared/constants/lock-prefix.constant';
 import { PaymentJobPayload } from '@/shared/payloads/payment-job.payload';
 
 export abstract class BasePaymentJobStrategy<

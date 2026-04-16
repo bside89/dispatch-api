@@ -2,7 +2,7 @@
 import { JwtService } from '@nestjs/jwt';
 import { DataSource } from 'typeorm';
 import { ADMIN_USER } from '../constants/admin-user.constant';
-import { UserRole } from '@/modules/users/enums/user-role.enum';
+import { UserRole } from '@/shared/enums/user-role.enum';
 import { HashUtils } from '@/shared/utils/hash.utils';
 import type ms from 'ms';
 

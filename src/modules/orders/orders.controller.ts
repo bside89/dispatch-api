@@ -17,7 +17,6 @@ import {
   ApiTags,
   ApiOperation,
   ApiParam,
-  ApiQuery,
   ApiBody,
   ApiHeader,
   ApiBadRequestResponse,
@@ -31,8 +30,7 @@ import { CreateOrderDto } from './dto/create-order.dto';
 import { UpdateOrderDto } from './dto/update-order.dto';
 import { ShipOrderDto } from './dto/ship-order.dto';
 import { OrderQueryDto } from './dto/order-query.dto';
-import { OrderStatus } from './enums/order-status.enum';
-import { UserRole } from '../users/enums/user-role.enum';
+import { UserRole } from '../../shared/enums/user-role.enum';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { PaginatedResultDto } from '@/shared/dto/paginated-result.dto';
 import { GetUser } from '@/shared/decorators/get-user.decorator';
@@ -42,7 +40,8 @@ import { ErrorResponseDto } from '@/shared/dto/error-response.dto';
 import type { RequestUser } from '../auth/interfaces/request-user.interface';
 import { OrderMessageFactory } from './factories/order-message.factory';
 import { template } from '@/shared/helpers/functions';
-import { I18N_COMMON } from '@/shared/constants/i18n/common.tokens';
+import { I18N_COMMON } from '@/shared/constants/i18n';
+import { OrderByUserQueryDto } from './dto/order-by-user-query.dto';
 
 @Controller({ path: 'v1/orders', version: '1' })
 @ApiTags('orders')
@@ -102,6 +101,7 @@ export class OrdersController extends BaseController {
   }
 
   @Get()
+  @Roles(UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.FINANCIAL)
   @ApiOperation({
     summary: 'Get all orders',
     description: 'Retrieve a paginated list of orders with optional filtering',
@@ -110,39 +110,27 @@ export class OrdersController extends BaseController {
     description: 'Orders successfully retrieved',
     type: PaginatedResultDto<OrderResponseDto>,
   })
-  @ApiQuery({
-    name: 'userId',
-    required: false,
-    description: 'Filter orders by user ID',
+  async findAll(@Query() queryDto: OrderQueryDto) {
+    const result = await this.ordersService.findAll(queryDto);
+
+    return this.paginate(result.data, result.total, result.page, result.limit);
+  }
+
+  @Get('me')
+  @ApiOperation({
+    summary: 'Get orders for the authenticated user',
+    description:
+      'Retrieve a paginated list of orders belonging to the authenticated user',
   })
-  @ApiQuery({
-    name: 'status',
-    required: false,
-    enum: OrderStatus,
-    description: 'Filter orders by status',
+  @ApiOkResponse({
+    description: 'Orders successfully retrieved',
+    type: PaginatedResultDto<OrderResponseDto>,
   })
-  @ApiQuery({
-    name: 'startDate',
-    required: false,
-    description: 'Filter orders from this date (ISO string)',
-  })
-  @ApiQuery({
-    name: 'endDate',
-    required: false,
-    description: 'Filter orders until this date (ISO string)',
-  })
-  @ApiQuery({
-    name: 'page',
-    required: false,
-    description: 'Page number (default: 1)',
-  })
-  @ApiQuery({
-    name: 'limit',
-    required: false,
-    description: 'Items per page (default: 10)',
-  })
-  async findAll(@Query() queryDto: OrderQueryDto, @GetUser() user: RequestUser) {
-    const result = await this.ordersService.findAll(queryDto, user);
+  async findByUser(
+    @Query() queryDto: OrderByUserQueryDto,
+    @GetUser() user: RequestUser,
+  ) {
+    const result = await this.ordersService.findByUser(queryDto, user.id);
 
     return this.paginate(result.data, result.total, result.page, result.limit);
   }
@@ -174,7 +162,7 @@ export class OrdersController extends BaseController {
   }
 
   @Patch(':id')
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.SUPERADMIN, UserRole.ADMIN)
   @ApiOperation({
     summary: 'Update an order',
     description: 'Update order details including status and items',
@@ -212,7 +200,7 @@ export class OrdersController extends BaseController {
   }
 
   @Delete(':id')
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.SUPERADMIN, UserRole.ADMIN)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Delete an order',
@@ -245,7 +233,7 @@ export class OrdersController extends BaseController {
   }
 
   @Patch(':id/ship')
-  @Roles(UserRole.ADMIN, UserRole.SHIPPER)
+  @Roles(UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.SHIPPER)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Mark order as shipped',
@@ -275,7 +263,7 @@ export class OrdersController extends BaseController {
   }
 
   @Patch(':id/deliver')
-  @Roles(UserRole.ADMIN, UserRole.DELIVERY)
+  @Roles(UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.DELIVERY)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Mark order as delivered',
@@ -301,7 +289,7 @@ export class OrdersController extends BaseController {
   }
 
   @Patch(':id/cancel')
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.FINANCIAL)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Cancel an order',
@@ -326,7 +314,7 @@ export class OrdersController extends BaseController {
   }
 
   @Patch(':id/refund')
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.FINANCIAL)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Refund an order',

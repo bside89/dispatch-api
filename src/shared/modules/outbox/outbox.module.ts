@@ -8,7 +8,7 @@ import { Outbox } from './entities/outbox.entity';
 import {
   ORDER_QUEUE_TOKEN,
   PAYMENT_QUEUE_TOKEN,
-} from '@/shared/constants/queue-tokens';
+} from '@/shared/constants/queue-tokens.constant';
 
 @Global()
 @Module({

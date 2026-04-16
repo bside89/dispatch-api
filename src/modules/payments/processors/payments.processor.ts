@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { OnWorkerEvent, Processor } from '@nestjs/bullmq';
 import { Job } from 'bullmq';
 import { BaseProcessor } from '@/shared/processors/base.processor';
-import { PAYMENT_QUEUE_TOKEN } from '@/shared/constants/queue-tokens';
+import { PAYMENT_QUEUE_TOKEN } from '@/shared/constants/queue-tokens.constant';
 import { PAYMENT_KEY } from '../../../shared/modules/cache/constants/payment.key';
 import Redlock from 'redlock';
 import { ConfigService } from '@nestjs/config';

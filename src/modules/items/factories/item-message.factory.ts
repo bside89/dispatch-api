@@ -11,12 +11,12 @@ export class ItemMessageFactory extends BaseMessageFactory {
 
   public responses = {
     create: async (language: string) =>
-      this.factory(I18N_ITEM.RESPONSES.CREATED, undefined, language),
+      this.factory(I18N_ITEM.RESPONSES.CREATE, undefined, language),
     findOne: async (language: string) =>
-      this.factory(I18N_ITEM.RESPONSES.RETRIEVED, undefined, language),
+      this.factory(I18N_ITEM.RESPONSES.FIND_ONE, undefined, language),
     update: async (language: string) =>
-      this.factory(I18N_ITEM.RESPONSES.UPDATED, undefined, language),
+      this.factory(I18N_ITEM.RESPONSES.UPDATE, undefined, language),
     remove: async (language: string) =>
-      this.factory(I18N_ITEM.RESPONSES.DELETED, undefined, language),
+      this.factory(I18N_ITEM.RESPONSES.DELETE, undefined, language),
   };
 }

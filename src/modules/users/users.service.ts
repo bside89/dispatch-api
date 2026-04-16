@@ -18,11 +18,7 @@ import { HashUtils } from '@/shared/utils/hash.utils';
 import { DataSource } from 'typeorm';
 import { Transactional } from '@/shared/decorators/transactional.decorator';
 import { CACHE_TTL } from '@/shared/constants/cache-ttl.constant';
-import {
-  ensureError,
-  runAndIgnoreError,
-  template,
-} from '@/shared/helpers/functions';
+import { ensureError, template } from '@/shared/helpers/functions';
 import { UseLock } from '@/shared/decorators/lock.decorator';
 import Redlock from 'redlock';
 import { USER_KEY } from '../../shared/modules/cache/constants/user.key';
@@ -34,16 +30,19 @@ import {
   UpdateCustomerJobPayload,
 } from '@/shared/payloads/payment-job.payload';
 import type { RequestUser } from '../auth/interfaces/request-user.interface';
-import { UserRole } from './enums/user-role.enum';
+import { UserRole } from '../../shared/enums/user-role.enum';
 import { PaymentsGatewayService } from '../payments-gateway/payments-gateway.service';
 import { CustomerResponseDto } from '../payments-gateway/dto/customer-response.dto';
-import { LOCK_PREFIX } from '@/shared/constants/lock-prefix.constants';
+import { LOCK_PREFIX } from '@/shared/constants/lock-prefix.constant';
 import { TransactionalService } from '@/shared/services/transactional.service';
-import { I18N_USERS } from '@/shared/constants/i18n/users.tokens';
+import { I18N_USERS } from '@/shared/constants/i18n';
 import {
   UserAddressSnapshotDto,
   UserSnapshotDto,
 } from '@/shared/dto/user-snapshot.dto';
+import { UpdateUserRoleDto } from './dto/update-user-role.dto';
+import { User } from './entities/user.entity';
+import { USER_ROLE_LEVEL } from '@/shared/constants/user-role-level.constant';
 
 @Injectable()
 export class UsersService extends TransactionalService {
@@ -123,10 +122,6 @@ export class UsersService extends TransactionalService {
       userId: savedUser.id,
     });
 
-    await this.cacheService.deleteBulk({
-      patterns: [USER_KEY.CACHE_FIND_ALL_PATTERN()],
-    });
-
     return userMapped;
   }
 
@@ -138,17 +133,6 @@ export class UsersService extends TransactionalService {
       return this.findOwnUserList(query, requestUser);
     }
 
-    const cacheKey = USER_KEY.CACHE_FIND_ALL(query);
-    const cachedResult = await runAndIgnoreError(
-      () => this.cacheService.get<PaginatedResultDto<UserResponseDto>>(cacheKey),
-      `fetching users list from cache with key: ${cacheKey}`,
-      this.logger,
-    );
-    if (cachedResult) {
-      this.logger.debug('Returning cached users list', { cacheKey });
-      return cachedResult;
-    }
-
     const result = await this.userRepository.filter(query);
     const resultMapped = new PaginatedResultDto<UserResponseDto>(
       result.total,
@@ -157,31 +141,12 @@ export class UsersService extends TransactionalService {
       EntityMapper.mapArray(result.data, UserResponseDto),
     );
 
-    await runAndIgnoreError(
-      () => this.cacheService.set(cacheKey, resultMapped, CACHE_TTL.LIST),
-      `caching users list with key: ${cacheKey}`,
-      this.logger,
-    );
-
-    this.logger.debug(`Retrieved ${result.data.length} users`, { cacheKey });
+    this.logger.debug(`Retrieved ${result.data.length} users`);
 
     return resultMapped;
   }
 
   async findOne(id: string, requestUser?: RequestUser): Promise<UserResponseDto> {
-    this.assertUserAccess(id, requestUser);
-
-    const cacheKey = USER_KEY.CACHE_FIND_ONE(id);
-    const cachedResult = await runAndIgnoreError(
-      () => this.cacheService.get<UserResponseDto>(cacheKey),
-      `fetching user from cache with key: ${cacheKey}`,
-      this.logger,
-    );
-    if (cachedResult) {
-      this.logger.debug('Returning cached user', { id });
-      return cachedResult;
-    }
-
     this.logger.debug('Retrieving user', { id });
 
     const user = await this.userRepository.findById(id);
@@ -190,6 +155,7 @@ export class UsersService extends TransactionalService {
         template(I18N_USERS.ERRORS.USER_NOT_FOUND, { userId: id }),
       );
     }
+    this.assertUserAccess(user, requestUser);
 
     this.logger.debug('User found', { id: user.id });
 
@@ -203,17 +169,6 @@ export class UsersService extends TransactionalService {
     const userMapped = EntityMapper.map(user, UserResponseDto);
     userMapped.address = EntityMapper.map(customer!.address, UserAddressResponseDto);
 
-    await runAndIgnoreError(
-      () =>
-        this.cacheService.set(
-          USER_KEY.CACHE_FIND_ONE(id),
-          userMapped,
-          CACHE_TTL.LIST,
-        ),
-      `caching user with ID: ${id}`,
-      this.logger,
-    );
-
     return userMapped;
   }
 
@@ -221,20 +176,6 @@ export class UsersService extends TransactionalService {
     email: string,
     requestUser?: RequestUser,
   ): Promise<UserResponseDto> {
-    const cacheKey = USER_KEY.CACHE_FIND_BY_EMAIL(email);
-    const cachedResult = await runAndIgnoreError(
-      () => this.cacheService.get<UserResponseDto>(cacheKey),
-      `fetching user from cache with key: ${cacheKey}`,
-      this.logger,
-    );
-    if (cachedResult) {
-      this.assertUserAccess(cachedResult.id, requestUser);
-
-      this.logger.debug('Returning cached user', { email });
-
-      return cachedResult;
-    }
-
     this.logger.debug('Finding user by email', { email });
 
     const user = await this.userRepository.findOne({ where: { email } });
@@ -244,7 +185,7 @@ export class UsersService extends TransactionalService {
       );
     }
 
-    this.assertUserAccess(user.id, requestUser);
+    this.assertUserAccess(user, requestUser);
 
     this.logger.debug('User found', { email });
 
@@ -258,17 +199,6 @@ export class UsersService extends TransactionalService {
     const userMapped = EntityMapper.map(user, UserResponseDto);
     userMapped.address = EntityMapper.map(customer!.address, UserAddressResponseDto);
 
-    await runAndIgnoreError(
-      () =>
-        this.cacheService.set(
-          USER_KEY.CACHE_FIND_BY_EMAIL(email),
-          userMapped,
-          CACHE_TTL.LIST,
-        ),
-      `caching user with email: ${email}`,
-      this.logger,
-    );
-
     return userMapped;
   }
 
@@ -279,8 +209,6 @@ export class UsersService extends TransactionalService {
     dto: UpdateUserDto,
     requestUser?: RequestUser,
   ): Promise<UserResponseDto> {
-    this.assertUserAccess(id, requestUser);
-
     this.logger.debug(`Updating user with ID: ${id}`);
 
     const user = await this.userRepository.findById(id);
@@ -289,6 +217,7 @@ export class UsersService extends TransactionalService {
         template(I18N_USERS.ERRORS.USER_NOT_FOUND, { userId: id }),
       );
     }
+    this.assertUserAccess(user, requestUser);
 
     // Check if email already exists (if email is being updated)
     const oldEmail = user.email;
@@ -318,11 +247,6 @@ export class UsersService extends TransactionalService {
       new UpdateCustomerJobPayload(snapshottedUser),
     );
 
-    await this.cacheService.deleteBulk({
-      keys: [USER_KEY.CACHE_FIND_BY_EMAIL(updatedUser.email)],
-      patterns: [USER_KEY.CACHE_FIND_ALL_PATTERN()],
-    });
-
     return EntityMapper.map(updatedUser, UserResponseDto);
   }
 
@@ -333,8 +257,6 @@ export class UsersService extends TransactionalService {
     updateLoginDto: UpdateLoginDto,
     requestUser?: RequestUser,
   ): Promise<UserResponseDto> {
-    this.assertUserAccess(id, requestUser);
-
     this.logger.debug('Updating login for user', { userId: id });
 
     const user = await this.userRepository.findById(id);
@@ -343,6 +265,7 @@ export class UsersService extends TransactionalService {
         template(I18N_USERS.ERRORS.USER_NOT_FOUND, { userId: id }),
       );
     }
+    this.assertUserAccess(user, requestUser);
 
     // Validate current password if new password is provided
     if (updateLoginDto.newPassword) {
@@ -378,28 +301,41 @@ export class UsersService extends TransactionalService {
     }
 
     const updatedUser = await this.userRepository.save(user);
-    const userMapped = EntityMapper.map(updatedUser, UserResponseDto);
-
-    await this.cacheService.deleteBulk({
-      keys: [
-        USER_KEY.CACHE_FIND_ONE(updatedUser.id),
-        USER_KEY.CACHE_FIND_BY_EMAIL(updatedUser.email),
-      ],
-      patterns: [USER_KEY.CACHE_FIND_ALL_PATTERN()],
-    });
 
     this.logger.debug('Login updated successfully for user', {
-      userEmail: userMapped.email,
+      userEmail: updatedUser.email,
     });
 
-    return userMapped;
+    return EntityMapper.map(updatedUser, UserResponseDto);
+  }
+
+  async updateRole(
+    id: string,
+    dto: UpdateUserRoleDto,
+    requestUser?: RequestUser,
+  ): Promise<UserResponseDto> {
+    const user = await this.userRepository.findById(id);
+    if (!user) {
+      throw new NotFoundException(
+        template(I18N_USERS.ERRORS.USER_NOT_FOUND, { userId: id }),
+      );
+    }
+    this.assertUserAccess(user, requestUser);
+
+    // Only allow role updates if the requester has a higher role level than the target role
+    if (USER_ROLE_LEVEL[requestUser.jwtPayload.role] <= USER_ROLE_LEVEL[dto.role]) {
+      throw new ForbiddenException(template(I18N_USERS.ERRORS.ACCESS_FORBIDDEN));
+    }
+
+    user.role = dto.role;
+    const updatedUser = await this.userRepository.save(user);
+
+    return EntityMapper.map(updatedUser, UserResponseDto);
   }
 
   @Transactional()
   @UseLock({ prefix: LOCK_PREFIX.USER.REMOVE, key: ([id]) => id })
   async remove(id: string, requestUser?: RequestUser): Promise<void> {
-    this.assertUserAccess(id, requestUser);
-
     this.logger.debug('Deleting user', { id });
 
     const user = await this.userRepository.findById(id);
@@ -408,6 +344,7 @@ export class UsersService extends TransactionalService {
         template(I18N_USERS.ERRORS.USER_NOT_FOUND, { userId: id }),
       );
     }
+    this.assertUserAccess(user, requestUser);
 
     await this.userRepository.deleteById(id);
 
@@ -419,11 +356,6 @@ export class UsersService extends TransactionalService {
       OutboxType.PAYMENT_DELETE_CUSTOMER,
       new DeleteCustomerJobPayload(snapshottedUser),
     );
-
-    await this.cacheService.deleteBulk({
-      keys: [USER_KEY.CACHE_FIND_ONE(id), USER_KEY.CACHE_FIND_BY_EMAIL(user.email)],
-      patterns: [USER_KEY.CACHE_FIND_ALL_PATTERN()],
-    });
   }
 
   private async findOwnUserList(
@@ -455,13 +387,15 @@ export class UsersService extends TransactionalService {
     return new PaginatedResultDto(total, page, limit, data);
   }
 
-  private assertUserAccess(targetUserId: string, requestUser?: RequestUser): void {
-    if (requestUser?.jwtPayload?.role === UserRole.ADMIN) {
+  private assertUserAccess(targetUser: User, requestUser: RequestUser): void {
+    const userRole = requestUser.jwtPayload.role;
+    if (userRole === UserRole.ADMIN || userRole === UserRole.SUPERADMIN) {
+      return; // Admins and Superadmins have access to all users
+    }
+    if (USER_ROLE_LEVEL[userRole] >= USER_ROLE_LEVEL[targetUser.role]) {
       return;
     }
-    if (!requestUser || requestUser.id !== targetUserId) {
-      throw new ForbiddenException(template(I18N_USERS.ERRORS.ACCESS_FORBIDDEN));
-    }
+    throw new ForbiddenException(template(I18N_USERS.ERRORS.ACCESS_FORBIDDEN));
   }
 
   private async ensureCustomersRetrieve(

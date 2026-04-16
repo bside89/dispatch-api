@@ -1,4 +1,4 @@
-import { I18N_ORDER } from '@/shared/constants/i18n/orders.tokens';
+import { I18N_ORDER } from '@/shared/constants/i18n';
 import { BaseMessageFactory } from '@/shared/factories/base-message.factory';
 import { I18nService } from 'nestjs-i18n';
 import { OrderStatus } from '../enums/order-status.enum';

@@ -6,7 +6,7 @@ import { CacheService } from '@/shared/modules/cache/cache.service';
 import Redlock from 'redlock';
 import { EventJobHandlerFactory } from '../factories/event-job-handler.factory';
 import { EVENT_KEY } from '../constants/event.key';
-import { EVENT_QUEUE_TOKEN } from '@/shared/constants/queue-tokens';
+import { EVENT_QUEUE_TOKEN } from '@/shared/constants/queue-tokens.constant';
 import { Injectable } from '@nestjs/common';
 
 @Injectable()

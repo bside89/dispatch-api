@@ -1,7 +1,7 @@
 import { ConfigService } from '@nestjs/config';
 import { DataSource } from 'typeorm';
 import { User } from '@/modules/users/entities/user.entity';
-import { UserRole } from '@/modules/users/enums/user-role.enum';
+import { UserRole } from '@/shared/enums/user-role.enum';
 import { HashUtils } from '../utils/hash.utils';
 
 type SeedLogger = {

@@ -29,7 +29,7 @@ import { throttleConfig } from './config/throttle.config';
 import {
   EVENT_QUEUE_TOKEN,
   ORDER_QUEUE_TOKEN,
-} from './shared/constants/queue-tokens';
+} from './shared/constants/queue-tokens.constant';
 import { PaymentsModule } from './modules/payments/payments.module';
 import { PaymentsGatewayModule } from './modules/payments-gateway/payments-gateway.module';
 import { ItemsModule } from './modules/items/items.module';

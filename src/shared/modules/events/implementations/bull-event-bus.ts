@@ -2,7 +2,7 @@ import { InjectQueue } from '@nestjs/bullmq';
 import { Injectable } from '@nestjs/common';
 import { BulkJobOptions, Queue } from 'bullmq';
 import { EventBus } from '../interfaces/event-bus.interface';
-import { EVENT_QUEUE_TOKEN } from '@/shared/constants/queue-tokens';
+import { EVENT_QUEUE_TOKEN } from '@/shared/constants/queue-tokens.constant';
 import { EventBusJob } from '../interfaces/event-bus-job.interface';
 
 @Injectable()

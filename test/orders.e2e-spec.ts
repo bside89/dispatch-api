@@ -174,10 +174,14 @@ describe('Orders (E2E)', () => {
       expect(orders).toHaveLength(0);
     });
 
-    it('GET /v1/orders - should return orders list (requires auth)', async () => {
+    it('GET /v1/orders - should be restricted to privileged users', async () => {
+      const originalTestEnv = process.env.TEST_ENV;
+      process.env.TEST_ENV = 'false';
+
       await request(app.getHttpServer())
         .get('/v1/orders')
-        .expect(HttpStatus.UNAUTHORIZED);
+        .set('Authorization', `Bearer ${userToken}`)
+        .expect(HttpStatus.FORBIDDEN);
 
       const res = await request(app.getHttpServer())
         .get('/v1/orders')
@@ -185,6 +189,44 @@ describe('Orders (E2E)', () => {
         .expect(HttpStatus.OK);
 
       expect(res.body.data).toBeInstanceOf(Array);
+
+      process.env.TEST_ENV = originalTestEnv;
+    });
+
+    it('GET /v1/orders/me - should return only the authenticated user orders', async () => {
+      const originalTestEnv = process.env.TEST_ENV;
+      process.env.TEST_ENV = 'false';
+
+      const userPayload = {
+        items: [{ itemId: testItemId, quantity: 1 }],
+      };
+      const adminPayload = {
+        items: [{ itemId: testItemId, quantity: 2 }],
+      };
+
+      const createdUserOrder = await request(app.getHttpServer())
+        .post('/v1/orders')
+        .set('idempotency-key', 'order-me-user-key')
+        .set('Authorization', `Bearer ${userToken}`)
+        .send(userPayload)
+        .expect(HttpStatus.CREATED);
+
+      await request(app.getHttpServer())
+        .post('/v1/orders')
+        .set('idempotency-key', 'order-me-admin-key')
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send(adminPayload)
+        .expect(HttpStatus.CREATED);
+
+      const res = await request(app.getHttpServer())
+        .get('/v1/orders/me')
+        .set('Authorization', `Bearer ${userToken}`)
+        .expect(HttpStatus.OK);
+
+      expect(res.body.data).toHaveLength(1);
+      expect(res.body.data[0].id).toBe(createdUserOrder.body.data.id);
+
+      process.env.TEST_ENV = originalTestEnv;
     });
 
     it('GET /v1/orders/:id - should get own order', async () => {

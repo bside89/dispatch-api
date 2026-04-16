@@ -11,7 +11,7 @@ import { CreateCustomerDto } from '@/modules/payments-gateway/dto/create-custome
 import { UpdateCustomerDto } from '@/modules/payments-gateway/dto/update-customer.dto';
 import { StripeCustomerMapper } from '../utils/stripe-customer-mapper';
 import { template } from '@/shared/helpers/functions';
-import { I18N_PAYMENTS } from '@/shared/constants/i18n/payments.tokens';
+import { I18N_PAYMENTS } from '@/shared/constants/i18n';
 
 @Injectable()
 export class StripeCustomersGateway extends BaseService {

@@ -14,7 +14,7 @@ import { Transactional } from '@/shared/decorators/transactional.decorator';
 import {
   ORDER_QUEUE_TOKEN,
   PAYMENT_QUEUE_TOKEN,
-} from '@/shared/constants/queue-tokens';
+} from '@/shared/constants/queue-tokens.constant';
 import { OutboxPayloadMap } from './types/outbox-payload.map';
 import { ensureError } from '@/shared/helpers/functions';
 import { EventBusJob } from '../events/interfaces/event-bus-job.interface';

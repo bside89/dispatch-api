@@ -1,10 +1,11 @@
 export const I18N_USERS = {
   RESPONSES: {
-    CREATED: 'users.responses.created',
-    RETRIEVED: 'users.responses.retrieved',
-    UPDATED: 'users.responses.updated',
-    LOGIN_UPDATED: 'users.responses.loginUpdated',
-    DELETED: 'users.responses.deleted',
+    CREATE: 'users.responses.create',
+    FIND_ONE: 'users.responses.findOne',
+    UPDATE: 'users.responses.update',
+    UPDATE_LOGIN: 'users.responses.updateLogin',
+    DELETE: 'users.responses.delete',
+    UPDATE_ROLE: 'users.responses.updateRole',
   },
   ERRORS: {
     USER_NOT_FOUND: 'users.errors.userNotFound',
@@ -12,6 +13,6 @@ export const I18N_USERS = {
     CURRENT_PASSWORD_REQUIRED: 'users.errors.currentPasswordRequired',
     CURRENT_PASSWORD_INVALID: 'users.errors.currentPasswordInvalid',
     AUTH_IS_REQUIRED: 'users.errors.authIsRequired',
-    ACCESS_FORBIDDEN: 'users.errors.accessForbidden`',
+    ACCESS_FORBIDDEN: 'users.errors.accessForbidden',
   },
 };

@@ -1,6 +1,6 @@
 import { Entity, Column, OneToMany, Index } from 'typeorm';
 import { Order } from '../../orders/entities/order.entity';
-import { UserRole } from '../enums/user-role.enum';
+import { UserRole } from '../../../shared/enums/user-role.enum';
 import { BaseEntity } from '@/shared/entities/base.entity';
 
 @Entity('users')

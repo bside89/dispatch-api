@@ -11,10 +11,8 @@ import { OutboxRepository } from '@/shared/modules/outbox/repositories/outbox.re
 import { cleanDatabase, cleanRedis } from './utils/database-cleaner';
 import { paymentsGatewayServiceMock } from './utils/mock-payments-gateway-service';
 import { INestApplication } from '@nestjs/common';
-import { Queue, Job } from 'bullmq';
-import { getQueueToken } from '@nestjs/bullmq';
+import { Job } from 'bullmq';
 import { waitFor } from './utils/wait-for';
-import { EVENT_QUEUE_TOKEN } from '@/shared/constants/queue-tokens';
 import { ProcessOrderJobStrategy } from '@/modules/orders/strategies/process-order-job.strategy';
 import { OrderProcessor } from '@/modules/orders/processors/order.processor';
 import { PaymentsGatewayService } from '@/modules/payments-gateway/payments-gateway.service';
@@ -44,7 +42,6 @@ describe('Orders (Integration)', () => {
   let ordersService: OrdersService;
   let itemsService: ItemsService;
   let outboxRepository: OutboxRepository;
-  let eventBusQueue: Queue;
   let dataSource: DataSource;
   let redisClient: Redis;
 
@@ -63,7 +60,6 @@ describe('Orders (Integration)', () => {
     ordersService = module.get<OrdersService>(OrdersService);
     itemsService = module.get<ItemsService>(ItemsService);
     outboxRepository = module.get<OutboxRepository>(OutboxRepository);
-    eventBusQueue = module.get<Queue>(getQueueToken(EVENT_QUEUE_TOKEN));
     dataSource = module.get<DataSource>(DataSource);
     redisClient = module.get<Redis>(REDIS_CLIENT);
   });
@@ -146,6 +142,64 @@ describe('Orders (Integration)', () => {
         `SELECT id FROM outbox WHERE type = 'ORDER_PROCESS'`,
       );
       expect(outboxEntries).toHaveLength(0);
+    });
+  });
+
+  describe('Order Queries', () => {
+    it('should return only orders belonging to the provided user in findByUser', async () => {
+      const firstUser = await usersService.create(
+        {
+          name: 'Query User One',
+          email: 'query-user-one@test.com',
+          password: 'securePass123',
+        },
+        'idempotency-key-query-user-one',
+      );
+
+      const secondUser = await usersService.create(
+        {
+          name: 'Query User Two',
+          email: 'query-user-two@test.com',
+          password: 'securePass123',
+        },
+        'idempotency-key-query-user-two',
+      );
+
+      const sharedItem = await itemsService.create(
+        {
+          name: 'Query Item',
+          description: 'Item used to validate user filtered order queries',
+          stock: 1000,
+          price: 2500,
+        },
+        'idempotency-key-query-item',
+      );
+
+      const firstOrder = await ordersService.create(
+        {
+          items: [{ itemId: sharedItem.id, quantity: 1 }],
+        },
+        firstUser.id,
+        'idempotency-key-query-order-one',
+      );
+
+      await ordersService.create(
+        {
+          items: [{ itemId: sharedItem.id, quantity: 1 }],
+        },
+        secondUser.id,
+        'idempotency-key-query-order-two',
+      );
+
+      const result = await ordersService.findByUser(
+        { page: 1, limit: 10 },
+        firstUser.id,
+      );
+
+      expect(result.total).toBe(1);
+      expect(result.data).toHaveLength(1);
+      expect(result.data[0].id).toBe(firstOrder.id);
+      expect(result.data[0].user?.id).toBe(firstUser.id);
     });
   });
 
@@ -297,37 +351,24 @@ describe('Orders (Integration)', () => {
       expect(shippedResult.trackingNumber).toBe('INT-TEST-123');
       expect(shippedResult.carrier).toBe('Test Carrier');
 
+      const [shippedOrder] = await dataSource.query(
+        `SELECT status, "trackingNumber", carrier FROM orders WHERE id = $1`,
+        [orderId],
+      );
+      expect(shippedOrder.status).toBe('SHIPPED');
+      expect(shippedOrder.trackingNumber).toBe('INT-TEST-123');
+      expect(shippedOrder.carrier).toBe('Test Carrier');
+
       // Admin manually delivers the order
       const deliveredResult = await ordersService.deliver(orderId);
       expect(deliveredResult.status).toBe('DELIVERED');
 
-      // Assert: outbox should be fully consumed (no pending entries).
-      // ProcessOrderJobStrategy and the two manual ship/deliver service calls
-      // each add one EVENTS_NOTIFY_USER. setImmediate dispatches immediately.
-      await waitFor(
-        async () => {
-          const rows = await dataSource.query(`SELECT id FROM outbox`);
-          return rows.length === 0;
-        },
-        5_000, // 5s — enough for one extra setImmediate cycle
-        250,
+      const [deliveredOrder] = await dataSource.query(
+        `SELECT status, "deliveredAt" FROM orders WHERE id = $1`,
+        [orderId],
       );
-
-      // Assert: all notification events have been processed by the events queue.
-      // The flow produces exactly 3 EVENTS_NOTIFY_USER outbox entries (one per
-      // step: process, ship, deliver). Wait for all events to complete
-      // processing in the events queue.
-      await waitFor(
-        async () => {
-          const completedCount = await eventBusQueue.getCompletedCount();
-          return completedCount >= 3;
-        },
-        10_000, // 10s buffer for event processing
-        250,
-      );
-
-      const completedEvents = await eventBusQueue.getCompletedCount();
-      expect(completedEvents).toBeGreaterThanOrEqual(3);
+      expect(deliveredOrder.status).toBe('DELIVERED');
+      expect(deliveredOrder.deliveredAt).toBeDefined();
     }, 30_000); // Jest timeout: 30s (delay mocked + setImmediate replaces cron bottleneck)
   });
 

@@ -7,7 +7,7 @@ import { bullmqDefaultJobOptions } from '../../../config/bullmq.config';
 import { CacheModule } from '../cache/cache.module';
 import { NotifyUserJobStrategy } from './strategies';
 import { EventJobHandlerFactory } from './factories/event-job-handler.factory';
-import { EVENT_QUEUE_TOKEN } from '@/shared/constants/queue-tokens';
+import { EVENT_QUEUE_TOKEN } from '@/shared/constants/queue-tokens.constant';
 
 @Global()
 @Module({

@@ -6,7 +6,7 @@ import { BaseProcessor } from '@/shared/processors/base.processor';
 import { ConfigService } from '@nestjs/config';
 import Redlock from 'redlock';
 import { ORDER_KEY } from '../../../shared/modules/cache/constants/order.key';
-import { ORDER_QUEUE_TOKEN } from '@/shared/constants/queue-tokens';
+import { ORDER_QUEUE_TOKEN } from '@/shared/constants/queue-tokens.constant';
 import { Injectable } from '@nestjs/common';
 
 @Injectable()

@@ -1,10 +1,11 @@
 {
   "responses": {
-    "created": "Usuário criado com sucesso.",
-    "retrieved": "Usuário recuperado com sucesso.",
-    "updated": "Usuário atualizado com sucesso.",
-    "login_updated": "Login do usuário atualizado com sucesso.",
-    "deleted": "Usuário excluído com sucesso."
+    "create": "Usuário criado com sucesso.",
+    "findOne": "Usuário recuperado com sucesso.",
+    "update": "Usuário atualizado com sucesso.",
+    "updateLogin": "Login do usuário atualizado com sucesso.",
+    "delete": "Usuário excluído com sucesso.",
+    "updateRole": "Função do usuário atualizada com sucesso."
   },
   "notifications": {},
   "errors": {

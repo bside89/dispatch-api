@@ -16,7 +16,7 @@ import Redlock from 'redlock';
 import type { RequestUser } from './interfaces/request-user.interface';
 import { AUTH_KEY } from '../../shared/modules/cache/constants/auth.key';
 import type ms from 'ms';
-import { LOCK_PREFIX } from '@/shared/constants/lock-prefix.constants';
+import { LOCK_PREFIX } from '@/shared/constants/lock-prefix.constant';
 import { DataSource } from 'typeorm';
 import { Transactional } from '@/shared/decorators/transactional.decorator';
 import { TransactionalService } from '@/shared/services/transactional.service';

@@ -22,7 +22,7 @@ import {
 import { PaymentWebhookDto } from './dto/payment-webhook.dto';
 import { PaymentWebhookResponseDto } from './dto/payment-webhook-response.dto';
 import { ConfigService } from '@nestjs/config';
-import { I18N_PAYMENTS } from '@/shared/constants/i18n/payments.tokens';
+import { I18N_PAYMENTS } from '@/shared/constants/i18n';
 import { template } from '@/shared/helpers/functions';
 
 @Controller({ path: 'v1/payments', version: '1' })

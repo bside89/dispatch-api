@@ -73,13 +73,3 @@ export const template = (key: string, args?: Record<string, any>) => ({
   key,
   args,
 });
-
-export const toCurrency = (
-  value: number,
-  locale: string = 'pt-BR',
-  currency: string = 'BRL',
-): string => {
-  return new Intl.NumberFormat(locale, { style: 'currency', currency }).format(
-    value / 100,
-  );
-};

@@ -1,9 +1,9 @@
 {
   "responses": {
-    "created": "Item criado com sucesso.",
-    "retrieved": "Item recuperado com sucesso.",
-    "updated": "Item atualizado com sucesso.",
-    "deleted": "Item excluído com sucesso."
+    "create": "Item criado com sucesso.",
+    "findOne": "Item recuperado com sucesso.",
+    "update": "Item atualizado com sucesso.",
+    "delete": "Item excluído com sucesso."
   },
   "errors": {
     "notFound": "Item não encontrado."

@@ -4,10 +4,9 @@ import { OrderStatus } from '../enums/order-status.enum';
 import { DataSource } from 'typeorm';
 import { UseLock } from '@/shared/decorators/lock.decorator';
 import Redlock from 'redlock';
-import { ORDER_KEY } from '../../../shared/modules/cache/constants/order.key';
 import { BaseJobStrategy } from '@/shared/strategies/base-job.strategy';
 import { Order } from '../entities/order.entity';
-import { LOCK_PREFIX } from '@/shared/constants/lock-prefix.constants';
+import { LOCK_PREFIX } from '@/shared/constants/lock-prefix.constant';
 import { OrderJobPayload } from '@/shared/payloads/order-job.payload';
 import { ORDER_STATUS_PRECONDITIONS } from '../constants/order-status-preconditions.constant';
 
@@ -37,11 +36,6 @@ export abstract class BaseOrderJobStrategy<
     updateData: Partial<Order>,
   ): Promise<void> {
     await this.orderRepository.update(orderId, updateData);
-
-    await this.cacheService.deleteBulk({
-      keys: [ORDER_KEY.CACHE_FIND_ONE(orderId)],
-      patterns: [ORDER_KEY.CACHE_FIND_ALL_PATTERN()],
-    });
   }
 
   protected async getAndValidate(

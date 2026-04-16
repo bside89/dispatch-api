@@ -27,19 +27,27 @@ import {
 } from '@/shared/payloads/order-job.payload';
 import { ShipOrderDto } from './dto/ship-order.dto';
 import { ORDER_STATUS_PRECONDITIONS } from './constants/order-status-preconditions.constant';
-import { runAndIgnoreError, template, toCurrency } from '@/shared/helpers/functions';
+import { template } from '@/shared/helpers/functions';
 import { UseLock } from '@/shared/decorators/lock.decorator';
 import Redlock from 'redlock';
 import { ORDER_KEY } from '../../shared/modules/cache/constants/order.key';
 import type { RequestUser } from '../auth/interfaces/request-user.interface';
-import { UserRole } from '../users/enums/user-role.enum';
-import { LOCK_PREFIX } from '@/shared/constants/lock-prefix.constants';
+import { UserRole } from '../../shared/enums/user-role.enum';
+import { LOCK_PREFIX } from '@/shared/constants/lock-prefix.constant';
 import { ItemsService } from '../items/items.service';
 import { TransactionalService } from '@/shared/services/transactional.service';
 import { PaymentsGatewayService } from '../payments-gateway/payments-gateway.service';
 import { StripePaymentIntentCreateParams } from '../payments-gateway/types/payment-intent.types';
 import { OrderMessageFactory } from './factories/order-message.factory';
-import { I18N_ORDER } from '@/shared/constants/i18n/orders.tokens';
+import { I18N_ORDER } from '@/shared/constants/i18n';
+import {
+  languageToCurrency,
+  languageToLocale,
+  toCurrencyFormatted,
+} from './helpers/functions';
+import { OrderByUserQueryDto } from './dto/order-by-user-query.dto';
+import { Order } from './entities/order.entity';
+import { USER_ROLE_LEVEL } from '@/shared/constants/user-role-level.constant';
 
 @Injectable()
 export class OrdersService extends TransactionalService {
@@ -154,17 +162,12 @@ export class OrdersService extends TransactionalService {
     completeOrder.paymentIntentStatus = paymentIntent.status;
     await this.orderRepository.save(completeOrder);
 
-    await this.cacheService.deleteBulk({
-      keys: [ORDER_KEY.CACHE_FIND_ONE(completeOrder.id)],
-      patterns: [ORDER_KEY.CACHE_FIND_ALL_PATTERN()],
-    });
-
     // Notify the user
     const user = completeOrder.user;
-    const totalPrice = toCurrency(
+    const totalPrice = toCurrencyFormatted(
       completeOrder.total,
-      user.language === 'en' ? 'en-US' : 'pt-BR',
-      user.language === 'en' ? 'USD' : 'BRL',
+      languageToLocale(user.language),
+      languageToCurrency(user.language),
     );
     const message = await this.messages.notifications.orderCreated(
       user.language,
@@ -197,28 +200,8 @@ export class OrdersService extends TransactionalService {
 
   async findAll(
     queryDto: OrderQueryDto,
-    requestUser?: RequestUser,
   ): Promise<PaginatedResultDto<OrderResponseDto>> {
-    const effectiveQuery =
-      requestUser?.jwtPayload?.role === UserRole.ADMIN
-        ? queryDto
-        : {
-            ...queryDto,
-            userId: requestUser?.id,
-          };
-
-    const cacheKey = ORDER_KEY.CACHE_FIND_ALL(effectiveQuery);
-    const cachedResult = await runAndIgnoreError(
-      () => this.cacheService.get<PaginatedResultDto<OrderResponseDto>>(cacheKey),
-      `fetching orders list from cache with key: ${cacheKey}`,
-      this.logger,
-    );
-    if (cachedResult) {
-      this.logger.debug('Returning cached orders list', { cacheKey });
-      return cachedResult;
-    }
-
-    const result = await this.orderRepository.filter(effectiveQuery);
+    const result = await this.orderRepository.filter(queryDto);
 
     this.logger.debug(`Found ${result.data.length} orders`, {
       page: queryDto.page,
@@ -232,27 +215,28 @@ export class OrdersService extends TransactionalService {
       EntityMapper.mapArray(result.data, OrderResponseDto),
     );
 
-    await runAndIgnoreError(
-      () => this.cacheService.set(cacheKey, resultMapped, CACHE_TTL.LIST),
-      `caching orders list with key: ${cacheKey}`,
-      this.logger,
+    return resultMapped;
+  }
+
+  async findByUser(queryDto: OrderByUserQueryDto, userId: string) {
+    const result = await this.orderRepository.filter({ ...queryDto, userId });
+
+    this.logger.debug(`Found ${result.data.length} orders for user ${userId}`, {
+      page: queryDto.page,
+      totalPages: result.totalPages,
+    });
+
+    const resultMapped = new PaginatedResultDto<OrderResponseDto>(
+      result.total,
+      result.page,
+      result.limit,
+      EntityMapper.mapArray(result.data, OrderResponseDto),
     );
 
     return resultMapped;
   }
 
   async findOne(id: string, requestUser?: RequestUser): Promise<OrderResponseDto> {
-    const cacheKey = ORDER_KEY.CACHE_FIND_ONE(id);
-    const cachedOrder = await runAndIgnoreError(
-      () => this.cacheService.get<OrderResponseDto>(cacheKey),
-      `fetching order from cache with key: ${cacheKey}`,
-      this.logger,
-    );
-    if (cachedOrder) {
-      this.logger.debug('Returning cached order', { orderId: id });
-      return cachedOrder;
-    }
-
     const order = await this.orderRepository.findOne({
       where: { id },
       relations: ['user', 'items'],
@@ -260,8 +244,7 @@ export class OrdersService extends TransactionalService {
     if (!order) {
       throw new NotFoundException(template(I18N_ORDER.ERRORS.ORDER_NOT_FOUND));
     }
-
-    this.assertOrderAccess(order.userId, requestUser);
+    this.assertOrderAccess(order, requestUser);
 
     const paymentIntent = await this.paymentsGatewayService.paymentIntentsRetrieve(
       order.paymentIntentId,
@@ -271,12 +254,6 @@ export class OrdersService extends TransactionalService {
     orderMapped.paymentIntent = EntityMapper.map(
       paymentIntent,
       OrderPaymentIntentDto,
-    );
-
-    await runAndIgnoreError(
-      () => this.cacheService.set(cacheKey, orderMapped, CACHE_TTL.DEFAULT),
-      `caching order with key: ${cacheKey}`,
-      this.logger,
     );
 
     this.logger.debug('Found order', { orderId: id });
@@ -299,11 +276,6 @@ export class OrdersService extends TransactionalService {
 
     Object.assign(order, dto);
     await this.orderRepository.save(order);
-
-    await this.cacheService.deleteBulk({
-      keys: [ORDER_KEY.CACHE_FIND_ONE(id)],
-      patterns: [ORDER_KEY.CACHE_FIND_ALL_PATTERN()],
-    });
 
     // Notify the user
     const user = order.user;
@@ -333,11 +305,6 @@ export class OrdersService extends TransactionalService {
 
     await this.orderRepository.deleteById(order.id);
 
-    await this.cacheService.deleteBulk({
-      keys: [ORDER_KEY.CACHE_FIND_ONE(id)],
-      patterns: [ORDER_KEY.CACHE_FIND_ALL_PATTERN()],
-    });
-
     this.logger.debug('Order deleted', { orderId: id });
   }
 
@@ -361,10 +328,6 @@ export class OrdersService extends TransactionalService {
     order.status = OrderStatus.PAID;
 
     await this.orderRepository.save(order);
-    await this.cacheService.deleteBulk({
-      keys: [ORDER_KEY.CACHE_FIND_ONE(orderId)],
-      patterns: [ORDER_KEY.CACHE_FIND_ALL_PATTERN()],
-    });
 
     // Kick off the order processing pipeline
     await this.outboxService.add(
@@ -394,10 +357,6 @@ export class OrdersService extends TransactionalService {
     order.paymentIntentStatus = paymentIntentStatus;
 
     await this.orderRepository.save(order);
-    await this.cacheService.deleteBulk({
-      keys: [ORDER_KEY.CACHE_FIND_ONE(orderId)],
-      patterns: [ORDER_KEY.CACHE_FIND_ALL_PATTERN()],
-    });
 
     // Enqueue the cancellation job (restores stock and updates status)
     await this.outboxService.add(
@@ -437,10 +396,6 @@ export class OrdersService extends TransactionalService {
     if (dto.carrier !== undefined) order.carrier = dto.carrier;
 
     await this.orderRepository.save(order);
-    await this.cacheService.deleteBulk({
-      keys: [ORDER_KEY.CACHE_FIND_ONE(id)],
-      patterns: [ORDER_KEY.CACHE_FIND_ALL_PATTERN()],
-    });
 
     // Notify the user
     const user = order.user;
@@ -481,10 +436,6 @@ export class OrdersService extends TransactionalService {
     order.deliveredAt = new Date();
 
     await this.orderRepository.save(order);
-    await this.cacheService.deleteBulk({
-      keys: [ORDER_KEY.CACHE_FIND_ONE(id)],
-      patterns: [ORDER_KEY.CACHE_FIND_ALL_PATTERN()],
-    });
 
     // Notify the user
     const user = order.user;
@@ -562,15 +513,17 @@ export class OrdersService extends TransactionalService {
     this.logger.debug('Order refund enqueued', { orderId: id });
   }
 
-  private assertOrderAccess(
-    orderOwnerId: string | undefined,
-    requestUser: RequestUser | undefined,
-  ): void {
-    if (requestUser?.jwtPayload?.role === UserRole.ADMIN) {
+  private assertOrderAccess(order: Order, requestUser: RequestUser): void {
+    const userRole = requestUser.jwtPayload.role;
+    if (
+      [UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.FINANCIAL].includes(userRole)
+    ) {
+      return; // Admins, Superadmins, Financial have access to all orders
+    }
+    const targetUser = order.user;
+    if (USER_ROLE_LEVEL[userRole] >= USER_ROLE_LEVEL[targetUser.role]) {
       return;
     }
-    if (!requestUser || orderOwnerId !== requestUser.id) {
-      throw new ForbiddenException(template(I18N_ORDER.ERRORS.ACCESS_DENIED));
-    }
+    throw new ForbiddenException(template(I18N_ORDER.ERRORS.ACCESS_DENIED));
   }
 }

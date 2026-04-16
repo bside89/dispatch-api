@@ -6,7 +6,7 @@ import { ConfigService } from '@nestjs/config';
 import { JwtStrategy } from './jwt.strategy';
 import { CacheService } from '../../../shared/modules/cache/cache.service';
 import { AUTH_KEY } from '../../../shared/modules/cache/constants/auth.key';
-import { UserRole } from '@/modules/users/enums/user-role.enum';
+import { UserRole } from '@/shared/enums/user-role.enum';
 import { createCacheServiceMock } from '@/shared/testing/provider-mocks';
 
 // Stub out the PassportStrategy base so we can instantiate JwtStrategy

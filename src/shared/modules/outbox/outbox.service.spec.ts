@@ -6,7 +6,7 @@ import { getQueueToken } from '@nestjs/bullmq';
 import {
   ORDER_QUEUE_TOKEN,
   PAYMENT_QUEUE_TOKEN,
-} from '@/shared/constants/queue-tokens';
+} from '@/shared/constants/queue-tokens.constant';
 import { EVENT_BUS } from '../events/constants/event-bus.token';
 import { DataSource } from 'typeorm';
 import { OutboxType } from './enums/outbox-type.enum';

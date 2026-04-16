@@ -17,7 +17,7 @@ import {
 } from '@/modules/payments-gateway/dto/create-customer.dto';
 import { PAYMENT_KEY } from '@/shared/modules/cache/constants/payment.key';
 import { template } from '@/shared/helpers/functions';
-import { I18N_PAYMENTS } from '@/shared/constants/i18n/payments.tokens';
+import { I18N_PAYMENTS } from '@/shared/constants/i18n';
 
 @Injectable()
 export class CreateCustomerJobStrategy extends BasePaymentJobStrategy<CreateCustomerJobPayload> {

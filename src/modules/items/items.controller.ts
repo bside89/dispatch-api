@@ -31,14 +31,14 @@ import { CreateItemDto } from './dto/create-item.dto';
 import { UpdateItemDto } from './dto/update-item.dto';
 import { ItemQueryDto } from './dto/item-query.dto';
 import { ItemResponseDto } from './dto/item-response.dto';
-import { UserRole } from '../users/enums/user-role.enum';
+import { UserRole } from '../../shared/enums/user-role.enum';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { PaginatedResultDto } from '@/shared/dto/paginated-result.dto';
 import { BaseController } from '@/shared/controllers/base.controller';
 import { ItemMessageFactory } from './factories/item-message.factory';
 import { GetUser } from '@/shared/decorators/get-user.decorator';
 import type { RequestUser } from '../auth/interfaces/request-user.interface';
-import { I18N_COMMON } from '@/shared/constants/i18n/common.tokens';
+import { I18N_COMMON } from '@/shared/constants/i18n';
 import { template } from '@/shared/helpers/functions';
 
 @Controller({ path: 'v1/items', version: '1' })
@@ -53,7 +53,7 @@ export class ItemsController extends BaseController {
   }
 
   @Post()
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.SUPERADMIN, UserRole.ADMIN)
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({
     summary: 'Create a new item',
@@ -130,7 +130,7 @@ export class ItemsController extends BaseController {
   }
 
   @Patch(':id')
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.SUPERADMIN, UserRole.ADMIN)
   @ApiOperation({ summary: 'Update an item', description: 'Requires admin role.' })
   @ApiParam({
     name: 'id',
@@ -156,7 +156,7 @@ export class ItemsController extends BaseController {
   }
 
   @Delete(':id')
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.SUPERADMIN, UserRole.ADMIN)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Delete an item', description: 'Requires admin role.' })
   @ApiParam({
