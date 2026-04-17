@@ -7,9 +7,11 @@ import {
   MaxLength,
   IsOptional,
   ValidateNested,
+  IsEnum,
 } from 'class-validator';
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional, OmitType } from '@nestjs/swagger';
 import { BaseAddressDto } from '@/shared/dto/base-address.dto';
+import { UserRole } from '@/shared/enums/user-role.enum';
 
 export class CreateUserAddressDto extends BaseAddressDto {}
 
@@ -48,6 +50,22 @@ export class CreateUserDto {
   password: string;
 
   @ApiPropertyOptional({
+    description: 'User preferred language',
+    example: 'pt-BR',
+  })
+  @IsOptional()
+  @IsString()
+  language?: string;
+
+  @ApiPropertyOptional({
+    description: 'User role',
+    example: UserRole.USER,
+  })
+  @IsOptional()
+  @IsEnum(UserRole)
+  role?: UserRole;
+
+  @ApiPropertyOptional({
     description: 'User address',
     type: CreateUserAddressDto,
   })
@@ -56,3 +74,7 @@ export class CreateUserDto {
   @Type(() => CreateUserAddressDto)
   address?: CreateUserAddressDto;
 }
+
+export class PublicCreateUserDto extends OmitType(CreateUserDto, [
+  'role',
+] as const) {}

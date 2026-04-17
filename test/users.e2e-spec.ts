@@ -122,9 +122,9 @@ describe('Users (E2E)', () => {
       expect(res.body.data.id).toBe(createdUserId);
     });
 
-    it('PATCH /v1/users/:id - should update user information', async () => {
+    it('PATCH /v1/users/me - should update user information', async () => {
       const res = await request(app.getHttpServer())
-        .patch(`/v1/users/${createdUserId}`)
+        .patch(`/v1/users/me`)
         .set('Authorization', `Bearer ${userToken}`)
         .send({ name: 'Updated Name' })
         .expect(HttpStatus.OK);
@@ -132,34 +132,22 @@ describe('Users (E2E)', () => {
       expect(res.body.data.name).toBe('Updated Name');
     });
 
-    it('PATCH /v1/users/:id/login - should update login credentials', async () => {
-      await request(app.getHttpServer())
-        .patch(`/v1/users/${createdUserId}/login`)
-        .set('Authorization', `Bearer ${userToken}`)
-        .send({
-          email: 'regular.new@test.com',
-          currentPassword: 'StrongPassword123!',
-        })
-        .expect(HttpStatus.OK);
+    it('DELETE /v1/admin/users/:id - should forbid a regular user from deleting', async () => {
+      const originalTestEnv = process.env.TEST_ENV;
+      process.env.TEST_ENV = 'false';
 
-      // Verify login works with new email
       await request(app.getHttpServer())
-        .post('/v1/auth/login')
-        .send({
-          email: 'regular.new@test.com',
-          password: 'StrongPassword123!',
-        })
-        .expect(HttpStatus.CREATED);
-    });
-
-    it('DELETE /v1/users/:id - should forbid a regular user from deleting their own account', async () => {
-      await request(app.getHttpServer())
-        .delete(`/v1/users/${createdUserId}`)
+        .delete(`/v1/admin/users/${createdUserId}`)
         .set('Authorization', `Bearer ${userToken}`)
         .expect(HttpStatus.FORBIDDEN);
+
+      process.env.TEST_ENV = originalTestEnv;
     });
 
-    it('DELETE /v1/users/:id - should block a user from deleting another user', async () => {
+    it('DELETE /v1/admin/users/:id - should block a regular user from deleting another user', async () => {
+      const originalTestEnv = process.env.TEST_ENV;
+      process.env.TEST_ENV = 'false';
+
       const randomSuffix = Math.random().toString(36).substring(7);
       const otherUserPayload = {
         name: 'Other User',
@@ -174,23 +162,25 @@ describe('Users (E2E)', () => {
         .expect(HttpStatus.CREATED);
 
       await request(app.getHttpServer())
-        .delete(`/v1/users/${otherUserCreated.data.id}`)
+        .delete(`/v1/admin/users/${otherUserCreated.data.id}`)
         .set('Authorization', `Bearer ${userToken}`)
         .expect(HttpStatus.FORBIDDEN);
+
+      process.env.TEST_ENV = originalTestEnv;
     });
 
-    it('DELETE /v1/users/:id - should allow admin user', async () => {
+    it('DELETE /v1/admin/users/:id - should allow admin user', async () => {
       // Temporarily set TEST_ENV to false so RolesGuard won't bypass the check
       const originalTestEnv = process.env.TEST_ENV;
       process.env.TEST_ENV = 'false';
 
       // The Admin user has ADMIN role and should succeed
       await request(app.getHttpServer())
-        .delete(`/v1/users/${createdUserId}`)
+        .delete(`/v1/admin/users/${createdUserId}`)
         .set('Authorization', `Bearer ${adminToken}`)
-        .expect(HttpStatus.NO_CONTENT); // DELETE typically returns 204 No Content
+        .expect(HttpStatus.NO_CONTENT);
 
-      // Verify user is deleted
+      // Verify user is soft-deleted (public endpoint returns 404)
       await request(app.getHttpServer())
         .get(`/v1/users/${createdUserId}`)
         .set('Authorization', `Bearer ${adminToken}`)

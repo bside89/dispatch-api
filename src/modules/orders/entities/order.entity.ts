@@ -2,10 +2,10 @@ import { Entity, Column, OneToMany, ManyToOne, JoinColumn } from 'typeorm';
 import { OrderStatus } from '../enums/order-status.enum';
 import { OrderItem } from './order-item.entity';
 import { User } from '../../users/entities/user.entity';
-import { BaseEntity } from '@/shared/entities/base.entity';
+import { DeactivatableEntity } from '@/shared/entities/deactivatable.entity';
 
 @Entity('orders')
-export class Order extends BaseEntity {
+export class Order extends DeactivatableEntity {
   @ManyToOne(() => User, (user) => user.orders, {
     onDelete: 'CASCADE',
   })

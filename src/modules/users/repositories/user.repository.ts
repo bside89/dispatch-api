@@ -19,6 +19,9 @@ export class UserRepository extends BaseRepository<User> {
   async filter(query: Partial<UserQueryDto>): Promise<PaginatedResultDto<User>> {
     const queryBuilder = this.createQueryBuilder(aliasUser);
 
+    queryBuilder.where(`${user('deactivated')} = :deactivated`, {
+      deactivated: false,
+    });
     if (query.name) {
       queryBuilder.andWhere(`${user('name')} ILIKE :name`, {
         name: `%${query.name}%`,

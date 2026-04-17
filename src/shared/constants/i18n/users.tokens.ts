@@ -13,6 +13,7 @@ export const I18N_USERS = {
     CURRENT_PASSWORD_REQUIRED: 'users.errors.currentPasswordRequired',
     CURRENT_PASSWORD_INVALID: 'users.errors.currentPasswordInvalid',
     AUTH_IS_REQUIRED: 'users.errors.authIsRequired',
-    ACCESS_FORBIDDEN: 'users.errors.accessForbidden',
+    ACCESS_DENIED: 'users.errors.accessDenied',
+    ROLE_CHANGE_DENIED: 'users.errors.roleChangeDenied',
   },
 };

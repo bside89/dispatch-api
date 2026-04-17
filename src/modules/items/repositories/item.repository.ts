@@ -23,6 +23,9 @@ export class ItemRepository extends BaseRepository<Item> {
   async filter(query: Partial<ItemQueryDto>): Promise<PaginatedResultDto<Item>> {
     const queryBuilder = this.createQueryBuilder(aliasItem);
 
+    queryBuilder.where(`${item('deactivated')} = :deactivated`, {
+      deactivated: false,
+    });
     if (query.name) {
       queryBuilder.andWhere(`${item('name')} ILIKE :name`, {
         name: `%${query.name}%`,

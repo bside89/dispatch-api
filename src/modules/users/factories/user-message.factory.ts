@@ -1,4 +1,3 @@
-import { I18N_COMMON } from '@/shared/constants/i18n';
 import { I18N_USERS } from '@/shared/constants/i18n';
 import { BaseMessageFactory } from '@/shared/factories/base-message.factory';
 import { Injectable } from '@nestjs/common';
@@ -13,20 +12,14 @@ export class UserMessageFactory extends BaseMessageFactory {
   public responses = {
     create: async (language: string) =>
       this.factory(I18N_USERS.RESPONSES.CREATE, undefined, language),
+
     findOne: async (language: string) =>
       this.factory(I18N_USERS.RESPONSES.FIND_ONE, undefined, language),
+
     update: async (language: string) =>
       this.factory(I18N_USERS.RESPONSES.UPDATE, undefined, language),
-    updateLogin: async (language: string) =>
-      this.factory(I18N_USERS.RESPONSES.UPDATE_LOGIN, undefined, language),
+
     remove: async (language: string) =>
       this.factory(I18N_USERS.RESPONSES.DELETE, undefined, language),
-    updateRole: async (language: string) =>
-      this.factory(I18N_USERS.RESPONSES.UPDATE_ROLE, undefined, language),
-  };
-
-  public errors = {
-    userNotFound: async (language: string) =>
-      this.factory(I18N_COMMON.ERRORS.USER_NOT_FOUND, undefined, language),
   };
 }

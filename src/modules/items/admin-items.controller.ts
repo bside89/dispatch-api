@@ -25,6 +25,7 @@ import {
   ApiSecurity,
   ApiForbiddenResponse,
   ApiHeader,
+  ApiQuery,
 } from '@nestjs/swagger';
 import { ItemsService } from './items.service';
 import { CreateItemDto } from './dto/create-item.dto';
@@ -35,21 +36,21 @@ import { UserRole } from '../../shared/enums/user-role.enum';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { PaginatedResultDto } from '@/shared/dto/paginated-result.dto';
 import { BaseController } from '@/shared/controllers/base.controller';
-import { ItemMessageFactory } from './factories/item-message.factory';
 import { GetUser } from '@/shared/decorators/get-user.decorator';
+import { ItemMessageFactory } from './factories/item-message.factory';
 import type { RequestUser } from '../auth/interfaces/request-user.interface';
 import { I18N_COMMON } from '@/shared/constants/i18n';
 import { template } from '@/shared/helpers/functions';
 
-@Controller({ path: 'v1/items', version: '1' })
-@ApiTags('items')
+@Controller({ path: 'v1/admin/items', version: '1' })
+@ApiTags('items-admin')
 @ApiSecurity('bearer')
-export class ItemsController extends BaseController {
+export class AdminItemsController extends BaseController {
   constructor(
     private readonly itemsService: ItemsService,
     private readonly messages: ItemMessageFactory,
   ) {
-    super(ItemsController.name);
+    super(AdminItemsController.name);
   }
 
   @Post()
@@ -86,29 +87,36 @@ export class ItemsController extends BaseController {
       );
     }
 
-    const result = await this.itemsService.create(createItemDto, idempotencyKey);
+    const result = await this.itemsService.adminCreate(
+      createItemDto,
+      idempotencyKey,
+    );
 
     const message = await this.messages.responses.create(user.jwtPayload.language);
     return this.success(result, message);
   }
 
   @Get()
+  @Roles(UserRole.SUPERADMIN, UserRole.ADMIN)
   @ApiOperation({
-    summary: 'Get all items',
-    description: 'Retrieve a paginated list of items with optional filtering',
+    summary: 'Get all items (admin)',
+    description:
+      'Retrieve a paginated list of items with full details including payment gateway price ID.',
   })
   @ApiOkResponse({
     description: 'Items successfully retrieved',
     type: PaginatedResultDto<ItemResponseDto>,
   })
+  @ApiQuery({ type: () => ItemQueryDto })
   async findAll(@Query() queryDto: ItemQueryDto) {
-    const result = await this.itemsService.findAll(queryDto);
+    const result = await this.itemsService.adminFindAll(queryDto);
 
     return this.paginate(result.data, result.total, result.page, result.limit);
   }
 
   @Get(':id')
-  @ApiOperation({ summary: 'Get item by ID' })
+  @Roles(UserRole.SUPERADMIN, UserRole.ADMIN)
+  @ApiOperation({ summary: 'Get item by ID (admin)' })
   @ApiParam({
     name: 'id',
     description: 'Item unique identifier (UUID)',
@@ -119,11 +127,12 @@ export class ItemsController extends BaseController {
     type: ItemResponseDto,
   })
   @ApiNotFoundResponse({ description: 'Item not found' })
+  @ApiForbiddenResponse({ description: 'Requires admin role' })
   async findOne(
     @Param('id', ParseUUIDPipe) id: string,
     @GetUser() user: RequestUser,
   ) {
-    const result = await this.itemsService.findOne(id);
+    const result = await this.itemsService.adminFindOne(id);
 
     const message = await this.messages.responses.findOne(user.jwtPayload.language);
     return this.success(result, message);
@@ -149,7 +158,7 @@ export class ItemsController extends BaseController {
     @Body() updateItemDto: UpdateItemDto,
     @GetUser() user: RequestUser,
   ) {
-    const result = await this.itemsService.update(id, updateItemDto);
+    const result = await this.itemsService.adminUpdate(id, updateItemDto);
 
     const message = await this.messages.responses.update(user.jwtPayload.language);
     return this.success(result, message);
@@ -157,7 +166,7 @@ export class ItemsController extends BaseController {
 
   @Delete(':id')
   @Roles(UserRole.SUPERADMIN, UserRole.ADMIN)
-  @HttpCode(HttpStatus.OK)
+  @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Delete an item', description: 'Requires admin role.' })
   @ApiParam({
     name: 'id',
@@ -171,7 +180,7 @@ export class ItemsController extends BaseController {
     @Param('id', ParseUUIDPipe) id: string,
     @GetUser() user: RequestUser,
   ) {
-    await this.itemsService.remove(id);
+    await this.itemsService.adminRemove(id);
 
     const message = await this.messages.responses.remove(user.jwtPayload.language);
     return this.success({}, message);

@@ -76,7 +76,7 @@ describe('Orders (Integration)', () => {
   describe('Order Creation Flow', () => {
     it('should create an Order with status PENDING and no Outbox entries', async () => {
       // Arrange: create a real user via UsersService
-      const createdUser = await usersService.create(
+      const createdUser = await usersService.publicCreate(
         {
           name: 'Integration User',
           email: 'integration@test.com',
@@ -87,7 +87,7 @@ describe('Orders (Integration)', () => {
       const userId = createdUser.id;
 
       // Arrange: create two items at different prices
-      const itemA = await itemsService.create(
+      const itemA = await itemsService.adminCreate(
         {
           name: 'Product AAA',
           description: 'Integration test item A',
@@ -96,7 +96,7 @@ describe('Orders (Integration)', () => {
         },
         'idempotency-key-create-order-test-itemA',
       );
-      const itemB = await itemsService.create(
+      const itemB = await itemsService.adminCreate(
         {
           name: 'Product BBB',
           description: 'Integration test item B',
@@ -113,7 +113,11 @@ describe('Orders (Integration)', () => {
           { itemId: itemB.id, quantity: 1 },
         ],
       };
-      await ordersService.create(createOrderDto, userId, 'idempotency-key-order-1');
+      await ordersService.publicCreate(
+        createOrderDto,
+        userId,
+        'idempotency-key-order-1',
+      );
 
       // Assert: verify the state directly in the database
       const orders = await dataSource.query(
@@ -147,7 +151,7 @@ describe('Orders (Integration)', () => {
 
   describe('Order Queries', () => {
     it('should return only orders belonging to the provided user in findByUser', async () => {
-      const firstUser = await usersService.create(
+      const firstUser = await usersService.publicCreate(
         {
           name: 'Query User One',
           email: 'query-user-one@test.com',
@@ -156,7 +160,7 @@ describe('Orders (Integration)', () => {
         'idempotency-key-query-user-one',
       );
 
-      const secondUser = await usersService.create(
+      const secondUser = await usersService.publicCreate(
         {
           name: 'Query User Two',
           email: 'query-user-two@test.com',
@@ -165,7 +169,7 @@ describe('Orders (Integration)', () => {
         'idempotency-key-query-user-two',
       );
 
-      const sharedItem = await itemsService.create(
+      const sharedItem = await itemsService.adminCreate(
         {
           name: 'Query Item',
           description: 'Item used to validate user filtered order queries',
@@ -175,7 +179,7 @@ describe('Orders (Integration)', () => {
         'idempotency-key-query-item',
       );
 
-      const firstOrder = await ordersService.create(
+      const firstOrder = await ordersService.publicCreate(
         {
           items: [{ itemId: sharedItem.id, quantity: 1 }],
         },
@@ -183,7 +187,7 @@ describe('Orders (Integration)', () => {
         'idempotency-key-query-order-one',
       );
 
-      await ordersService.create(
+      await ordersService.publicCreate(
         {
           items: [{ itemId: sharedItem.id, quantity: 1 }],
         },
@@ -191,7 +195,7 @@ describe('Orders (Integration)', () => {
         'idempotency-key-query-order-two',
       );
 
-      const result = await ordersService.findByUser(
+      const result = await ordersService.publicFindByUser(
         { page: 1, limit: 10 },
         firstUser.id,
       );
@@ -199,7 +203,6 @@ describe('Orders (Integration)', () => {
       expect(result.total).toBe(1);
       expect(result.data).toHaveLength(1);
       expect(result.data[0].id).toBe(firstOrder.id);
-      expect(result.data[0].user?.id).toBe(firstUser.id);
     });
   });
 
@@ -224,7 +227,7 @@ describe('Orders (Integration)', () => {
       // Act: create the order (create() does not touch the outbox, so the spy
       // is not triggered here — paymentIntentsCreate is handled by the mock).
       const createOrderDto = { items: [{ itemId, quantity: 1 }] };
-      const createdOrder = await ordersService.create(
+      const createdOrder = await ordersService.publicCreate(
         createOrderDto,
         userId,
         'idempotency-key-order-rollback',
@@ -262,7 +265,7 @@ describe('Orders (Integration)', () => {
   describe('Order Full Processing Flow', () => {
     it('should process an Order through the entire async pipeline until DELIVERED status', async () => {
       // Arrange: create a real user
-      const createdUser = await usersService.create(
+      const createdUser = await usersService.publicCreate(
         {
           name: 'Pipeline User',
           email: 'pipeline@test.com',
@@ -273,7 +276,7 @@ describe('Orders (Integration)', () => {
       const userId = createdUser.id;
 
       // Arrange: create items so the order total is deterministic
-      const itemX = await itemsService.create(
+      const itemX = await itemsService.adminCreate(
         {
           name: 'Product XXX',
           description: 'Pipeline test item X',
@@ -282,7 +285,7 @@ describe('Orders (Integration)', () => {
         },
         'idempotency-key-full-flow-itemX',
       );
-      const itemY = await itemsService.create(
+      const itemY = await itemsService.adminCreate(
         {
           name: 'Product YYY',
           description: 'Pipeline test item Y',
@@ -299,7 +302,7 @@ describe('Orders (Integration)', () => {
           { itemId: itemY.id, quantity: 2 },
         ],
       };
-      const createdOrder = await ordersService.create(
+      const createdOrder = await ordersService.publicCreate(
         createOrderDto,
         userId,
         'idempotency-key-full-flow-order',
@@ -389,7 +392,7 @@ describe('Orders (Integration)', () => {
 
       try {
         // Arrange: create a real user
-        const createdUser = await usersService.create(
+        const createdUser = await usersService.publicCreate(
           {
             name: 'Compensation User',
             email: 'compensation@test.com',
@@ -400,7 +403,7 @@ describe('Orders (Integration)', () => {
         const userId = createdUser.id;
 
         // Arrange: create an item for the order
-        const compItem = await itemsService.create(
+        const compItem = await itemsService.adminCreate(
           {
             name: 'Compensation Item',
             description: 'Item for compensation test',
@@ -414,7 +417,7 @@ describe('Orders (Integration)', () => {
         const createOrderDto = {
           items: [{ itemId: compItem.id, quantity: 2 }],
         };
-        const createdOrder = await ordersService.create(
+        const createdOrder = await ordersService.publicCreate(
           createOrderDto,
           userId,
           'idempotency-key-compensation-order',
@@ -479,7 +482,7 @@ describe('Orders (Integration)', () => {
       // The order never enters the processing pipeline.
 
       // Arrange: create a real user
-      const createdUser = await usersService.create(
+      const createdUser = await usersService.publicCreate(
         {
           name: 'Payment Failure User',
           email: 'payment-failure@test.com',
@@ -490,7 +493,7 @@ describe('Orders (Integration)', () => {
       const userId = createdUser.id;
 
       // Arrange: create an item for the order
-      const failItem = await itemsService.create(
+      const failItem = await itemsService.adminCreate(
         {
           name: 'Payment Failure Item',
           description: 'Item for payment failure test',
@@ -504,7 +507,7 @@ describe('Orders (Integration)', () => {
       const createOrderDto = {
         items: [{ itemId: failItem.id, quantity: 1 }],
       };
-      const createdOrder = await ordersService.create(
+      const createdOrder = await ordersService.publicCreate(
         createOrderDto,
         userId,
         'idempotency-key-payment-failure-order',

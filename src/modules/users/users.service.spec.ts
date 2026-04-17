@@ -5,7 +5,6 @@ import { CacheService } from '../../shared/modules/cache/cache.service';
 import { OutboxService } from '../../shared/modules/outbox/outbox.service';
 import { DataSource } from 'typeorm';
 import Redlock from 'redlock';
-import { UserRole } from '../../shared/enums/user-role.enum';
 import { PaymentsGatewayService } from '../payments-gateway/payments-gateway.service';
 import {
   createCacheServiceMock,
@@ -85,32 +84,5 @@ describe('UsersService', () => {
 
   it('should be defined', () => {
     expect(service).toBeDefined();
-  });
-
-  it('scopes the user list to the authenticated user when not admin', async () => {
-    const requestUser = {
-      id: 'user-1',
-      jwtPayload: {
-        sub: 'user-1',
-        email: 'user@example.com',
-        role: UserRole.USER,
-        jti: 'token-id',
-      },
-    };
-
-    userRepository.findById.mockResolvedValue({
-      id: 'user-1',
-      name: 'Jane Doe',
-      email: 'jane@example.com',
-    });
-
-    const result = await service.findAll(
-      { page: 1, limit: 10, name: 'Jane' } as never,
-      requestUser as never,
-    );
-
-    expect(result.total).toBe(1);
-    expect(result.data).toHaveLength(1);
-    expect(userRepository.filter).not.toHaveBeenCalled();
   });
 });

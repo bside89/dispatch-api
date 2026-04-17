@@ -1,18 +1,18 @@
 import { Entity, Column, OneToMany, Index } from 'typeorm';
 import { Order } from '../../orders/entities/order.entity';
 import { UserRole } from '../../../shared/enums/user-role.enum';
-import { BaseEntity } from '@/shared/entities/base.entity';
+import { DeactivatableEntity } from '@/shared/entities/deactivatable.entity';
 
 @Entity('users')
-@Index('IDX_user_email', ['email'], { unique: true })
-export class User extends BaseEntity {
+@Index('IDX_user_email', ['email', 'deactivated'], { unique: true })
+export class User extends DeactivatableEntity {
   @Column({ nullable: false })
   name: string;
 
   @Column({ nullable: true })
   customerId?: string;
 
-  @Column({ nullable: false, unique: true })
+  @Column({ nullable: false })
   email: string;
 
   @Column({ nullable: false })

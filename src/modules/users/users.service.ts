@@ -3,16 +3,19 @@ import {
   Injectable,
   NotFoundException,
   ConflictException,
-  BadRequestException,
 } from '@nestjs/common';
 import { CacheService } from '../../shared/modules/cache/cache.service';
-import { CreateUserDto } from './dto/create-user.dto';
-import { UpdateUserDto } from './dto/update-user.dto';
-import { UpdateLoginDto } from './dto/update-login.dto';
-import { UserQueryDto } from './dto/user-query.dto';
+import { CreateUserDto, PublicCreateUserDto } from './dto/create-user.dto';
+import { PublicUpdateUserDto, UpdateUserDto } from './dto/update-user.dto';
+import { PublicUserQueryDto, UserQueryDto } from './dto/user-query.dto';
 import { UserRepository } from './repositories/user.repository';
 import { PaginatedResultDto } from '@/shared/dto/paginated-result.dto';
-import { UserAddressResponseDto, UserResponseDto } from './dto/user-response.dto';
+import {
+  PublicUserResponseDto,
+  UserAddressResponseDto,
+  UserResponseDto,
+  UserSelfResponseDto,
+} from './dto/user-response.dto';
 import { EntityMapper } from '@/shared/utils/entity-mapper';
 import { HashUtils } from '@/shared/utils/hash.utils';
 import { DataSource } from 'typeorm';
@@ -40,7 +43,6 @@ import {
   UserAddressSnapshotDto,
   UserSnapshotDto,
 } from '@/shared/dto/user-snapshot.dto';
-import { UpdateUserRoleDto } from './dto/update-user-role.dto';
 import { User } from './entities/user.entity';
 import { USER_ROLE_LEVEL } from '@/shared/constants/user-role-level.constant';
 
@@ -57,21 +59,24 @@ export class UsersService extends TransactionalService {
     super(UsersService.name, dataSource, redlock);
   }
 
+  //#region Public endpoints
+
   @Transactional()
   @UseLock({
     prefix: LOCK_PREFIX.USER.CREATE,
     key: ([, idempotencyKey]) => idempotencyKey,
   })
-  async create(
-    dto: CreateUserDto,
+  async publicCreate(
+    dto: PublicCreateUserDto,
     idempotencyKey: string,
-  ): Promise<UserResponseDto> {
-    // Check if there's an existing user for the same idempotency key
+  ): Promise<UserSelfResponseDto> {
+    /** 1. VALIDATION AND IDEMPOTENCY CHECK */
+
     const idempotencyKeyFormatted = USER_KEY.IDEMPOTENCY(
-      this.create.name,
+      this.publicCreate.name,
       idempotencyKey,
     );
-    const existingUser = await this.cacheService.get<UserResponseDto>(
+    const existingUser = await this.cacheService.get<UserSelfResponseDto>(
       idempotencyKeyFormatted,
     );
     if (existingUser) {
@@ -91,9 +96,7 @@ export class UsersService extends TransactionalService {
       );
     }
 
-    this.logger.debug('Creating new user', {
-      idempotencyKey: idempotencyKeyFormatted,
-    });
+    /** 2. CREATE USER */
 
     const user = this.userRepository.createEntity({
       name: dto.name,
@@ -101,9 +104,10 @@ export class UsersService extends TransactionalService {
       password: await HashUtils.hash(dto.password),
     });
     const savedUser = await this.userRepository.save(user);
-    const userMapped = EntityMapper.map(savedUser, UserResponseDto);
+    const userMapped = EntityMapper.map(savedUser, UserSelfResponseDto);
 
-    // Add outbox message for creating Stripe customer (job)
+    /** 3. SIDE EFFECTS */
+
     const snapshottedUser = EntityMapper.map(savedUser, UserSnapshotDto);
     snapshottedUser.address = EntityMapper.map(dto.address, UserAddressSnapshotDto);
     await this.outboxService.add(
@@ -125,15 +129,222 @@ export class UsersService extends TransactionalService {
     return userMapped;
   }
 
-  async findAll(
-    query: UserQueryDto,
-    requestUser?: RequestUser,
-  ): Promise<PaginatedResultDto<UserResponseDto>> {
-    if (requestUser?.jwtPayload?.role !== UserRole.ADMIN) {
-      return this.findOwnUserList(query, requestUser);
+  async publicFindMe(requestUser: RequestUser): Promise<UserSelfResponseDto> {
+    const user = await this.userRepository.findById(requestUser.id);
+    if (!user || user.deactivated) {
+      throw new NotFoundException(template(I18N_USERS.ERRORS.USER_NOT_FOUND));
     }
 
+    const customer = await this.ensureCustomersRetrieve(user.id, user.customerId);
+
+    this.logger.debug('Retrieved customer data from payments gateway', {
+      userId: user.id,
+      customerId: user.customerId,
+    });
+
+    const userMapped = EntityMapper.map(user, UserSelfResponseDto);
+    userMapped.address = EntityMapper.map(customer!.address, UserAddressResponseDto);
+
+    this.logger.debug('Retrieved user profile', { id: userMapped.id });
+
+    return userMapped;
+  }
+
+  async publicFindOne(id: string): Promise<PublicUserResponseDto> {
+    const user = await this.userRepository.findById(id);
+    if (!user || user.deactivated) {
+      throw new NotFoundException(template(I18N_USERS.ERRORS.USER_NOT_FOUND));
+    }
+
+    this.logger.debug('Retrieved customer data from payments gateway', {
+      userId: user.id,
+      customerId: user.customerId,
+    });
+
+    const userMapped = EntityMapper.map(user, PublicUserResponseDto);
+
+    this.logger.debug('User found', { id: userMapped.id });
+
+    return userMapped;
+  }
+
+  async publicFindAll(
+    query: PublicUserQueryDto,
+  ): Promise<PaginatedResultDto<PublicUserResponseDto>> {
     const result = await this.userRepository.filter(query);
+
+    const resultMapped = new PaginatedResultDto<PublicUserResponseDto>(
+      result.total,
+      result.page,
+      result.limit,
+      EntityMapper.mapArray(result.data, PublicUserResponseDto),
+    );
+
+    this.logger.debug(`Retrieved ${result.data.length} users with public query`, {
+      query,
+    });
+
+    return resultMapped;
+  }
+
+  @Transactional()
+  @UseLock({ prefix: LOCK_PREFIX.USER.UPDATE, key: ([id]) => id })
+  async publicUpdate(
+    dto: PublicUpdateUserDto,
+    requestUser: RequestUser,
+  ): Promise<UserSelfResponseDto> {
+    const user = await this.userRepository.findById(requestUser.id);
+
+    /** 1. VALIDATION */
+
+    if (!user || user.deactivated) {
+      throw new NotFoundException(template(I18N_USERS.ERRORS.USER_NOT_FOUND));
+    }
+
+    const oldEmail = user.email;
+    const newEmail = dto.email;
+    if (newEmail && newEmail !== oldEmail) {
+      const emailExists = await this.userRepository.existsBy({
+        where: { email: newEmail },
+      });
+      if (emailExists) {
+        throw new ConflictException(
+          template(I18N_USERS.ERRORS.EMAIL_ALREADY_EXISTS),
+        );
+      }
+    }
+
+    /** 2. UPDATE USER */
+
+    Object.assign(user, dto);
+    const updatedUser = await this.userRepository.save(user);
+
+    /** 3. SIDE EFFECTS */
+
+    const snapshottedUser = EntityMapper.map(updatedUser, UserSnapshotDto);
+    snapshottedUser.address = EntityMapper.map(dto.address, UserAddressSnapshotDto);
+    await this.outboxService.add(
+      OutboxType.PAYMENT_UPDATE_CUSTOMER,
+      new UpdateCustomerJobPayload(snapshottedUser),
+    );
+
+    this.logger.debug(`User updated successfully: ${updatedUser.id}`);
+
+    return EntityMapper.map(updatedUser, UserSelfResponseDto);
+  }
+
+  @Transactional()
+  @UseLock({
+    prefix: LOCK_PREFIX.USER.REMOVE,
+    key: ([requestUser]) => requestUser.id,
+  })
+  async publicRemove(requestUser: RequestUser): Promise<void> {
+    const user = await this.userRepository.findById(requestUser.id);
+
+    /** 1. VALIDATION */
+
+    if (!user || user.deactivated) {
+      throw new NotFoundException(template(I18N_USERS.ERRORS.USER_NOT_FOUND));
+    }
+    await this.assertWriteAccess(user, requestUser);
+
+    /** 2. DEACTIVATE USER */
+
+    await this.userRepository.update(user.id, {
+      deactivated: true,
+      deactivatedAt: new Date(),
+    });
+
+    /** 3. SIDE EFFECTS */
+
+    const snapshottedUser = EntityMapper.map(user, UserSnapshotDto);
+    await this.outboxService.add(
+      OutboxType.PAYMENT_DELETE_CUSTOMER,
+      new DeleteCustomerJobPayload(snapshottedUser),
+    );
+  }
+
+  //#endregion
+
+  //#region Admin endpoints
+
+  @Transactional()
+  @UseLock({
+    prefix: LOCK_PREFIX.USER.CREATE,
+    key: ([, idempotencyKey]) => idempotencyKey,
+  })
+  async adminCreate(
+    dto: CreateUserDto,
+    idempotencyKey: string,
+    requestUser: RequestUser,
+  ): Promise<UserResponseDto> {
+    /** 1. VALIDATION AND IDEMPOTENCY CHECK */
+
+    const idempotencyKeyFormatted = USER_KEY.IDEMPOTENCY(
+      this.adminCreate.name,
+      idempotencyKey,
+    );
+    const existingUser = await this.cacheService.get<UserResponseDto>(
+      idempotencyKeyFormatted,
+    );
+    if (existingUser) {
+      this.logger.debug('Returning existing user for idempotency key', {
+        idempotencyKey: idempotencyKeyFormatted,
+        userId: existingUser.id,
+      });
+      return existingUser;
+    }
+
+    const emailExists = await this.userRepository.existsBy({
+      where: { email: dto.email },
+    });
+    if (emailExists) {
+      throw new ConflictException(
+        template(I18N_USERS.ERRORS.EMAIL_ALREADY_EXISTS, { email: dto.email }),
+      );
+    }
+    await this.assertRoleWriteAccess(dto.role, requestUser);
+
+    /** 2. CREATE USER */
+
+    const user = this.userRepository.createEntity({
+      name: dto.name,
+      email: dto.email,
+      password: await HashUtils.hash(dto.password),
+      language: dto.language || 'en',
+      role: dto.role || UserRole.USER,
+    });
+    const savedUser = await this.userRepository.save(user);
+    const userMapped = EntityMapper.map(savedUser, UserResponseDto);
+
+    /** 3. SIDE EFFECTS */
+
+    const snapshottedUser = EntityMapper.map(savedUser, UserSnapshotDto);
+    snapshottedUser.address = EntityMapper.map(dto.address, UserAddressSnapshotDto);
+    await this.outboxService.add(
+      OutboxType.PAYMENT_CREATE_CUSTOMER,
+      new CreateCustomerJobPayload(snapshottedUser),
+    );
+
+    await this.cacheService.set(
+      idempotencyKeyFormatted,
+      userMapped,
+      CACHE_TTL.IDEMPOTENCY,
+    );
+
+    this.logger.debug('User created and cached', {
+      idempotencyKey: idempotencyKeyFormatted,
+      userId: savedUser.id,
+    });
+
+    return userMapped;
+  }
+
+  async adminFindAll(
+    query: UserQueryDto,
+  ): Promise<PaginatedResultDto<UserResponseDto>> {
+    const result = await this.userRepository.filter(query);
+
     const resultMapped = new PaginatedResultDto<UserResponseDto>(
       result.total,
       result.page,
@@ -146,18 +357,11 @@ export class UsersService extends TransactionalService {
     return resultMapped;
   }
 
-  async findOne(id: string, requestUser?: RequestUser): Promise<UserResponseDto> {
-    this.logger.debug('Retrieving user', { id });
-
+  async adminFindOne(id: string): Promise<UserResponseDto> {
     const user = await this.userRepository.findById(id);
-    if (!user) {
-      throw new NotFoundException(
-        template(I18N_USERS.ERRORS.USER_NOT_FOUND, { userId: id }),
-      );
+    if (!user || user.deactivated) {
+      throw new NotFoundException(template(I18N_USERS.ERRORS.USER_NOT_FOUND));
     }
-    this.assertUserAccess(user, requestUser);
-
-    this.logger.debug('User found', { id: user.id });
 
     const customer = await this.ensureCustomersRetrieve(user.id, user.customerId);
 
@@ -169,57 +373,26 @@ export class UsersService extends TransactionalService {
     const userMapped = EntityMapper.map(user, UserResponseDto);
     userMapped.address = EntityMapper.map(customer!.address, UserAddressResponseDto);
 
-    return userMapped;
-  }
-
-  async findByEmail(
-    email: string,
-    requestUser?: RequestUser,
-  ): Promise<UserResponseDto> {
-    this.logger.debug('Finding user by email', { email });
-
-    const user = await this.userRepository.findOne({ where: { email } });
-    if (!user) {
-      throw new NotFoundException(
-        template(I18N_USERS.ERRORS.USER_NOT_FOUND, { userId: email }),
-      );
-    }
-
-    this.assertUserAccess(user, requestUser);
-
-    this.logger.debug('User found', { email });
-
-    const customer = await this.ensureCustomersRetrieve(user.id, user.customerId);
-
-    this.logger.debug('Retrieved customer data from payments gateway', {
-      userId: user.id,
-      customerId: user.customerId,
-    });
-
-    const userMapped = EntityMapper.map(user, UserResponseDto);
-    userMapped.address = EntityMapper.map(customer!.address, UserAddressResponseDto);
+    this.logger.debug('User found', { id: userMapped.id });
 
     return userMapped;
   }
 
   @Transactional()
   @UseLock({ prefix: LOCK_PREFIX.USER.UPDATE, key: ([id]) => id })
-  async update(
+  async adminUpdate(
     id: string,
     dto: UpdateUserDto,
-    requestUser?: RequestUser,
+    requestUser: RequestUser,
   ): Promise<UserResponseDto> {
-    this.logger.debug(`Updating user with ID: ${id}`);
-
     const user = await this.userRepository.findById(id);
-    if (!user) {
-      throw new NotFoundException(
-        template(I18N_USERS.ERRORS.USER_NOT_FOUND, { userId: id }),
-      );
-    }
-    this.assertUserAccess(user, requestUser);
 
-    // Check if email already exists (if email is being updated)
+    /** 1. VALIDATION */
+
+    if (!user || user.deactivated) {
+      throw new NotFoundException(template(I18N_USERS.ERRORS.USER_NOT_FOUND));
+    }
+
     const oldEmail = user.email;
     const newEmail = dto.email;
     if (newEmail && newEmail !== oldEmail) {
@@ -228,18 +401,19 @@ export class UsersService extends TransactionalService {
       });
       if (emailExists) {
         throw new ConflictException(
-          template(I18N_USERS.ERRORS.EMAIL_ALREADY_EXISTS, { email: newEmail }),
+          template(I18N_USERS.ERRORS.EMAIL_ALREADY_EXISTS),
         );
       }
     }
+    await this.assertWriteAccess(user, requestUser);
 
-    // This will only update the fields that are present in updateUserDto
+    /** 2. UPDATE USER */
+
     Object.assign(user, dto);
     const updatedUser = await this.userRepository.save(user);
 
-    this.logger.debug(`User updated successfully: ${updatedUser.id}`);
+    /** 3. SIDE EFFECTS */
 
-    // Add outbox message for updating Stripe customer (job)
     const snapshottedUser = EntityMapper.map(updatedUser, UserSnapshotDto);
     snapshottedUser.address = EntityMapper.map(dto.address, UserAddressSnapshotDto);
     await this.outboxService.add(
@@ -247,155 +421,72 @@ export class UsersService extends TransactionalService {
       new UpdateCustomerJobPayload(snapshottedUser),
     );
 
-    return EntityMapper.map(updatedUser, UserResponseDto);
-  }
-
-  @Transactional()
-  @UseLock({ prefix: LOCK_PREFIX.USER.UPDATE, key: ([id]) => id })
-  async updateLogin(
-    id: string,
-    updateLoginDto: UpdateLoginDto,
-    requestUser?: RequestUser,
-  ): Promise<UserResponseDto> {
-    this.logger.debug('Updating login for user', { userId: id });
-
-    const user = await this.userRepository.findById(id);
-    if (!user) {
-      throw new NotFoundException(
-        template(I18N_USERS.ERRORS.USER_NOT_FOUND, { userId: id }),
-      );
-    }
-    this.assertUserAccess(user, requestUser);
-
-    // Validate current password if new password is provided
-    if (updateLoginDto.newPassword) {
-      if (!updateLoginDto.currentPassword) {
-        throw new BadRequestException(
-          template(I18N_USERS.ERRORS.CURRENT_PASSWORD_REQUIRED),
-        );
-      }
-
-      // Verify current password
-      if (
-        !(await HashUtils.compare(user.password, updateLoginDto.currentPassword))
-      ) {
-        throw new BadRequestException(
-          template(I18N_USERS.ERRORS.CURRENT_PASSWORD_INVALID),
-        );
-      }
-      user.password = await HashUtils.hash(updateLoginDto.newPassword);
-    }
-
-    if (updateLoginDto.email && updateLoginDto.email !== user.email) {
-      const emailExists = await this.userRepository.existsBy({
-        where: { email: updateLoginDto.email },
-      });
-      if (emailExists) {
-        throw new ConflictException(
-          template(I18N_USERS.ERRORS.EMAIL_ALREADY_EXISTS, {
-            email: updateLoginDto.email,
-          }),
-        );
-      }
-      user.email = updateLoginDto.email;
-    }
-
-    const updatedUser = await this.userRepository.save(user);
-
-    this.logger.debug('Login updated successfully for user', {
-      userEmail: updatedUser.email,
-    });
-
-    return EntityMapper.map(updatedUser, UserResponseDto);
-  }
-
-  async updateRole(
-    id: string,
-    dto: UpdateUserRoleDto,
-    requestUser?: RequestUser,
-  ): Promise<UserResponseDto> {
-    const user = await this.userRepository.findById(id);
-    if (!user) {
-      throw new NotFoundException(
-        template(I18N_USERS.ERRORS.USER_NOT_FOUND, { userId: id }),
-      );
-    }
-    this.assertUserAccess(user, requestUser);
-
-    // Only allow role updates if the requester has a higher role level than the target role
-    if (USER_ROLE_LEVEL[requestUser.jwtPayload.role] <= USER_ROLE_LEVEL[dto.role]) {
-      throw new ForbiddenException(template(I18N_USERS.ERRORS.ACCESS_FORBIDDEN));
-    }
-
-    user.role = dto.role;
-    const updatedUser = await this.userRepository.save(user);
+    this.logger.debug(`User updated successfully: ${updatedUser.id}`);
 
     return EntityMapper.map(updatedUser, UserResponseDto);
   }
 
   @Transactional()
   @UseLock({ prefix: LOCK_PREFIX.USER.REMOVE, key: ([id]) => id })
-  async remove(id: string, requestUser?: RequestUser): Promise<void> {
-    this.logger.debug('Deleting user', { id });
-
+  async adminRemove(id: string, requestUser: RequestUser): Promise<void> {
     const user = await this.userRepository.findById(id);
-    if (!user) {
-      throw new NotFoundException(
-        template(I18N_USERS.ERRORS.USER_NOT_FOUND, { userId: id }),
-      );
+
+    /** 1. VALIDATION */
+
+    if (!user || user.deactivated) {
+      throw new NotFoundException(template(I18N_USERS.ERRORS.USER_NOT_FOUND));
     }
-    this.assertUserAccess(user, requestUser);
+    await this.assertWriteAccess(user, requestUser);
 
-    await this.userRepository.deleteById(id);
+    /** 2. DELETE USER */
 
-    this.logger.debug('User deleted successfully', { userId: id });
+    await this.userRepository.update(id, {
+      deactivated: true,
+      deactivatedAt: new Date(),
+    });
 
-    // Add outbox message for deleting Stripe customer (job)
+    /** 3. SIDE EFFECTS */
+
     const snapshottedUser = EntityMapper.map(user, UserSnapshotDto);
     await this.outboxService.add(
       OutboxType.PAYMENT_DELETE_CUSTOMER,
       new DeleteCustomerJobPayload(snapshottedUser),
     );
+
+    this.logger.debug('User deleted successfully', { userId: id });
   }
 
-  private async findOwnUserList(
-    query: UserQueryDto,
-    requestUser?: RequestUser,
-  ): Promise<PaginatedResultDto<UserResponseDto>> {
+  //#endregion
+
+  //#region Private methods
+
+  private async assertWriteAccess(targetUser: User, requestUser?: RequestUser) {
     if (!requestUser) {
       throw new ForbiddenException(template(I18N_USERS.ERRORS.AUTH_IS_REQUIRED));
     }
 
-    const user = await this.userRepository.findById(requestUser.id);
-    if (!user) {
-      throw new NotFoundException(
-        template(I18N_USERS.ERRORS.USER_NOT_FOUND, { userId: requestUser.id }),
-      );
+    const requestUserRoleLevel = USER_ROLE_LEVEL[requestUser.jwtPayload.role];
+    const targetUserRoleLevel = USER_ROLE_LEVEL[targetUser.role];
+
+    if (requestUserRoleLevel <= targetUserRoleLevel) {
+      throw new ForbiddenException(template(I18N_USERS.ERRORS.ACCESS_DENIED));
     }
-
-    const matchesName =
-      !query.name || user.name.toLowerCase().includes(query.name.toLowerCase());
-    const matchesEmail =
-      !query.email || user.email.toLowerCase().includes(query.email.toLowerCase());
-
-    const data =
-      matchesName && matchesEmail ? [EntityMapper.map(user, UserResponseDto)] : [];
-    const total = data.length;
-    const limit = query.limit ?? 10;
-    const page = query.page ?? 1;
-
-    return new PaginatedResultDto(total, page, limit, data);
   }
 
-  private assertUserAccess(targetUser: User, requestUser: RequestUser): void {
-    const userRole = requestUser.jwtPayload.role;
-    if (userRole === UserRole.ADMIN || userRole === UserRole.SUPERADMIN) {
-      return; // Admins and Superadmins have access to all users
+  private async assertRoleWriteAccess(
+    targetRole: UserRole,
+    requestUser?: RequestUser,
+  ) {
+    if (!requestUser) {
+      throw new ForbiddenException(template(I18N_USERS.ERRORS.AUTH_IS_REQUIRED));
     }
-    if (USER_ROLE_LEVEL[userRole] >= USER_ROLE_LEVEL[targetUser.role]) {
-      return;
+
+    const requestUserRoleLevel = USER_ROLE_LEVEL[requestUser.jwtPayload.role];
+    const targetRoleLevel = USER_ROLE_LEVEL[targetRole];
+
+    if (requestUserRoleLevel <= targetRoleLevel) {
+      throw new ForbiddenException(template(I18N_USERS.ERRORS.ROLE_CHANGE_DENIED));
     }
-    throw new ForbiddenException(template(I18N_USERS.ERRORS.ACCESS_FORBIDDEN));
   }
 
   private async ensureCustomersRetrieve(
@@ -420,4 +511,6 @@ export class UsersService extends TransactionalService {
       throw error;
     }
   }
+
+  //#endregion
 }

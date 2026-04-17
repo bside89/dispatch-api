@@ -15,6 +15,7 @@
     "currentPasswordRequired": "A senha atual é necessária para alterar a senha.",
     "currentPasswordInvalid": "A senha atual está incorreta.",
     "authIsRequired": "Autenticação é necessária.",
-    "accessForbidden": "Você não tem permissão para acessar este usuário."
+    "accessDenied": "Você não tem permissão para acessar este usuário.",
+    "roleChangeDenied": "Você não tem permissão para mudar para o papel especificado."
   }
 }

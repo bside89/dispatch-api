@@ -174,17 +174,17 @@ describe('Orders (E2E)', () => {
       expect(orders).toHaveLength(0);
     });
 
-    it('GET /v1/orders - should be restricted to privileged users', async () => {
+    it('GET /v1/admin/orders - should be restricted to privileged users', async () => {
       const originalTestEnv = process.env.TEST_ENV;
       process.env.TEST_ENV = 'false';
 
       await request(app.getHttpServer())
-        .get('/v1/orders')
+        .get('/v1/admin/orders')
         .set('Authorization', `Bearer ${userToken}`)
         .expect(HttpStatus.FORBIDDEN);
 
       const res = await request(app.getHttpServer())
-        .get('/v1/orders')
+        .get('/v1/admin/orders')
         .set('Authorization', `Bearer ${adminToken}`)
         .expect(HttpStatus.OK);
 
@@ -267,13 +267,13 @@ describe('Orders (E2E)', () => {
         .expect(HttpStatus.FORBIDDEN);
     });
 
-    it('PATCH /v1/orders/:id - should block normal user (403 Forbidden)', async () => {
+    it('PATCH /v1/admin/orders/:id - should block normal user (403 Forbidden)', async () => {
       // Temporarily set TEST_ENV to false so RolesGuard won't bypass the check
       const originalTestEnv = process.env.TEST_ENV;
       process.env.TEST_ENV = 'false';
 
       await request(app.getHttpServer())
-        .patch('/v1/orders/123e4567-e89b-12d3-a456-426614174000')
+        .patch('/v1/admin/orders/123e4567-e89b-12d3-a456-426614174000')
         .set('Authorization', `Bearer ${userToken}`)
         .send({ status: OrderStatus.REFUNDED })
         .expect(HttpStatus.FORBIDDEN);
@@ -281,7 +281,7 @@ describe('Orders (E2E)', () => {
       process.env.TEST_ENV = originalTestEnv;
     });
 
-    it('PATCH /v1/orders/:id - should allow admin user', async () => {
+    it('PATCH /v1/admin/orders/:id - should allow admin user', async () => {
       // Temporarily set TEST_ENV to false so RolesGuard won't bypass the check
       const originalTestEnv = process.env.TEST_ENV;
       process.env.TEST_ENV = 'false';
@@ -298,7 +298,7 @@ describe('Orders (E2E)', () => {
       const orderId = created.body.data.id;
 
       await request(app.getHttpServer())
-        .patch(`/v1/orders/${orderId}`)
+        .patch(`/v1/admin/orders/${orderId}`)
         .set('Authorization', `Bearer ${adminToken}`)
         .send({ status: OrderStatus.REFUNDED })
         .expect(HttpStatus.OK);
@@ -306,19 +306,19 @@ describe('Orders (E2E)', () => {
       process.env.TEST_ENV = originalTestEnv;
     });
 
-    it('DELETE /v1/orders/:id - should block normal user (403 Forbidden)', async () => {
+    it('DELETE /v1/admin/orders/:id - should block normal user (403 Forbidden)', async () => {
       const originalTestEnv = process.env.TEST_ENV;
       process.env.TEST_ENV = 'false';
 
       await request(app.getHttpServer())
-        .delete('/v1/orders/123e4567-e89b-12d3-a456-426614174000')
+        .delete('/v1/admin/orders/123e4567-e89b-12d3-a456-426614174000')
         .set('Authorization', `Bearer ${userToken}`)
         .expect(HttpStatus.FORBIDDEN);
 
       process.env.TEST_ENV = originalTestEnv;
     });
 
-    it('DELETE /v1/orders/:id - should allow admin user', async () => {
+    it('DELETE /v1/admin/orders/:id - should allow admin user', async () => {
       const originalTestEnv = process.env.TEST_ENV;
       process.env.TEST_ENV = 'false';
 
@@ -332,19 +332,19 @@ describe('Orders (E2E)', () => {
       const orderId = created.body.data.id;
 
       await request(app.getHttpServer())
-        .delete(`/v1/orders/${orderId}`)
+        .delete(`/v1/admin/orders/${orderId}`)
         .set('Authorization', `Bearer ${adminToken}`)
-        .expect(HttpStatus.OK); // Orders remove endpoint returns 200 OK, not 204.
+        .expect(HttpStatus.NO_CONTENT);
 
       process.env.TEST_ENV = originalTestEnv;
     });
 
-    it('PATCH /v1/orders/:id/ship - should block normal user (403 Forbidden)', async () => {
+    it('PATCH /v1/admin/orders/:id/ship - should block normal user (403 Forbidden)', async () => {
       const originalTestEnv = process.env.TEST_ENV;
       process.env.TEST_ENV = 'false';
 
       await request(app.getHttpServer())
-        .patch('/v1/orders/123e4567-e89b-12d3-a456-426614174000/ship')
+        .patch('/v1/admin/orders/123e4567-e89b-12d3-a456-426614174000/ship')
         .set('Authorization', `Bearer ${userToken}`)
         .send({})
         .expect(HttpStatus.FORBIDDEN);
@@ -352,7 +352,7 @@ describe('Orders (E2E)', () => {
       process.env.TEST_ENV = originalTestEnv;
     });
 
-    it('PATCH /v1/orders/:id/ship - should ship order and return tracking info', async () => {
+    it('PATCH /v1/admin/orders/:id/ship - should ship order and return tracking info', async () => {
       const originalTestEnv = process.env.TEST_ENV;
       process.env.TEST_ENV = 'false';
 
@@ -372,7 +372,7 @@ describe('Orders (E2E)', () => {
       );
 
       const res = await request(app.getHttpServer())
-        .patch(`/v1/orders/${orderId}/ship`)
+        .patch(`/v1/admin/orders/${orderId}/ship`)
         .set('Authorization', `Bearer ${adminToken}`)
         .send({ trackingNumber: 'BR123456789', carrier: 'Correios' })
         .expect(HttpStatus.OK);
@@ -385,7 +385,7 @@ describe('Orders (E2E)', () => {
       process.env.TEST_ENV = originalTestEnv;
     });
 
-    it('PATCH /v1/orders/:id/ship - should return 400 if order is not PROCESSED', async () => {
+    it('PATCH /v1/admin/orders/:id/ship - should return 400 if order is not PROCESSED', async () => {
       const originalTestEnv = process.env.TEST_ENV;
       process.env.TEST_ENV = 'false';
 
@@ -400,7 +400,7 @@ describe('Orders (E2E)', () => {
 
       // Order is still PENDING — should not be shippable
       await request(app.getHttpServer())
-        .patch(`/v1/orders/${orderId}/ship`)
+        .patch(`/v1/admin/orders/${orderId}/ship`)
         .set('Authorization', `Bearer ${adminToken}`)
         .send({})
         .expect(HttpStatus.BAD_REQUEST);
@@ -408,7 +408,7 @@ describe('Orders (E2E)', () => {
       process.env.TEST_ENV = originalTestEnv;
     });
 
-    it('PATCH /v1/orders/:id/deliver - should deliver order', async () => {
+    it('PATCH /v1/admin/orders/:id/deliver - should deliver order', async () => {
       const originalTestEnv = process.env.TEST_ENV;
       process.env.TEST_ENV = 'false';
 
@@ -427,7 +427,7 @@ describe('Orders (E2E)', () => {
       ]);
 
       const res = await request(app.getHttpServer())
-        .patch(`/v1/orders/${orderId}/deliver`)
+        .patch(`/v1/admin/orders/${orderId}/deliver`)
         .set('Authorization', `Bearer ${adminToken}`)
         .expect(HttpStatus.OK);
 
@@ -437,7 +437,7 @@ describe('Orders (E2E)', () => {
       process.env.TEST_ENV = originalTestEnv;
     });
 
-    it('PATCH /v1/orders/:id/cancel - should cancel a PENDING order', async () => {
+    it('PATCH /v1/admin/orders/:id/cancel - should cancel a PENDING order', async () => {
       const originalTestEnv = process.env.TEST_ENV;
       process.env.TEST_ENV = 'false';
 
@@ -451,7 +451,7 @@ describe('Orders (E2E)', () => {
       const orderId = created.body.data.id;
 
       const res = await request(app.getHttpServer())
-        .patch(`/v1/orders/${orderId}/cancel`)
+        .patch(`/v1/admin/orders/${orderId}/cancel`)
         .set('Authorization', `Bearer ${adminToken}`)
         .expect(HttpStatus.OK);
 
@@ -460,7 +460,7 @@ describe('Orders (E2E)', () => {
       process.env.TEST_ENV = originalTestEnv;
     });
 
-    it('PATCH /v1/orders/:id/cancel - should return 400 if order is SHIPPED', async () => {
+    it('PATCH /v1/admin/orders/:id/cancel - should return 400 if order is SHIPPED', async () => {
       const originalTestEnv = process.env.TEST_ENV;
       process.env.TEST_ENV = 'false';
 
@@ -478,14 +478,14 @@ describe('Orders (E2E)', () => {
       ]);
 
       await request(app.getHttpServer())
-        .patch(`/v1/orders/${orderId}/cancel`)
+        .patch(`/v1/admin/orders/${orderId}/cancel`)
         .set('Authorization', `Bearer ${adminToken}`)
         .expect(HttpStatus.BAD_REQUEST);
 
       process.env.TEST_ENV = originalTestEnv;
     });
 
-    it('PATCH /v1/orders/:id/refund - should enqueue refund for a PAID order', async () => {
+    it('PATCH /v1/admin/orders/:id/refund - should enqueue refund for a PAID order', async () => {
       const originalTestEnv = process.env.TEST_ENV;
       process.env.TEST_ENV = 'false';
 
@@ -504,7 +504,7 @@ describe('Orders (E2E)', () => {
       ]);
 
       const res = await request(app.getHttpServer())
-        .patch(`/v1/orders/${orderId}/refund`)
+        .patch(`/v1/admin/orders/${orderId}/refund`)
         .set('Authorization', `Bearer ${adminToken}`)
         .expect(HttpStatus.OK);
 
@@ -513,7 +513,7 @@ describe('Orders (E2E)', () => {
       process.env.TEST_ENV = originalTestEnv;
     });
 
-    it('PATCH /v1/orders/:id/refund - should return 400 if order is PENDING', async () => {
+    it('PATCH /v1/admin/orders/:id/refund - should return 400 if order is PENDING', async () => {
       const originalTestEnv = process.env.TEST_ENV;
       process.env.TEST_ENV = 'false';
 
@@ -528,7 +528,7 @@ describe('Orders (E2E)', () => {
 
       // Order is still PENDING — not eligible for refund
       await request(app.getHttpServer())
-        .patch(`/v1/orders/${orderId}/refund`)
+        .patch(`/v1/admin/orders/${orderId}/refund`)
         .set('Authorization', `Bearer ${adminToken}`)
         .expect(HttpStatus.BAD_REQUEST);
 

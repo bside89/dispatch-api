@@ -2,8 +2,8 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { ItemRepository } from './repositories/item.repository';
 import { CreateItemDto } from './dto/create-item.dto';
 import { UpdateItemDto } from './dto/update-item.dto';
-import { ItemQueryDto } from './dto/item-query.dto';
-import { ItemResponseDto } from './dto/item-response.dto';
+import { ItemQueryDto, PublicItemQueryDto } from './dto/item-query.dto';
+import { ItemResponseDto, PublicItemResponseDto } from './dto/item-response.dto';
 import { PaginatedResultDto } from '@/shared/dto/paginated-result.dto';
 import { EntityMapper } from '@/shared/utils/entity-mapper';
 import { Item } from './entities/item.entity';
@@ -30,18 +30,86 @@ export class ItemsService extends TransactionalService {
     super(ItemsService.name, dataSource, redlock);
   }
 
+  // #region Public endpoints
+
+  async publicFindAll(
+    query: PublicItemQueryDto,
+  ): Promise<PaginatedResultDto<PublicItemResponseDto>> {
+    const cacheKey = ITEM_KEY.CACHE_FIND_ALL(query);
+    const cachedResult = await runAndIgnoreError(
+      () =>
+        this.cacheService.get<PaginatedResultDto<PublicItemResponseDto>>(cacheKey),
+      `fetching items list from cache with key: ${cacheKey}`,
+      this.logger,
+    );
+    if (cachedResult) {
+      this.logger.debug('Returning cached items list', { cacheKey });
+      return cachedResult;
+    }
+
+    const result = await this.itemRepository.filter(query);
+    const resultMapped = new PaginatedResultDto<PublicItemResponseDto>(
+      result.total,
+      result.page,
+      result.limit,
+      EntityMapper.mapArray(result.data, PublicItemResponseDto),
+    );
+
+    await runAndIgnoreError(
+      () => this.cacheService.set(cacheKey, resultMapped, CACHE_TTL.LIST),
+      `caching items list with key: ${cacheKey}`,
+      this.logger,
+    );
+
+    this.logger.debug(`Retrieved ${result.data.length} items`, { cacheKey });
+
+    return resultMapped;
+  }
+
+  async publicFindOne(id: string): Promise<PublicItemResponseDto> {
+    const cacheKey = ITEM_KEY.CACHE_FIND_ONE(id);
+    const cachedResult = await runAndIgnoreError(
+      () => this.cacheService.get<PublicItemResponseDto>(cacheKey),
+      `fetching item from cache with key: ${cacheKey}`,
+      this.logger,
+    );
+    if (cachedResult) {
+      this.logger.debug('Returning cached item', { id });
+      return cachedResult;
+    }
+
+    const item = await this.itemRepository.findById(id);
+    if (!item || item.deactivated) {
+      throw new NotFoundException(template(I18N_ITEM.ERRORS.NOT_FOUND, { id }));
+    }
+    const itemMapped = EntityMapper.map(item, PublicItemResponseDto);
+
+    await runAndIgnoreError(
+      () => this.cacheService.set(cacheKey, itemMapped, CACHE_TTL.LIST),
+      `caching item with ID: ${id}`,
+      this.logger,
+    );
+
+    return itemMapped;
+  }
+
+  // #endregion
+
+  // #region Admin endpoints
+
   @Transactional()
   @UseLock({
     prefix: LOCK_PREFIX.ITEM.CREATE,
     key: ([, idempotencyKey]) => idempotencyKey,
   })
-  async create(
+  async adminCreate(
     dto: CreateItemDto,
     idempotencyKey: string,
   ): Promise<ItemResponseDto> {
-    // Check if there's an existing item for the same idempotency key
+    /** 1. VALIDATION AND IDEMPOTENCY CHECK */
+
     const idempotencyKeyFormatted = ITEM_KEY.IDEMPOTENCY(
-      this.create.name,
+      this.adminCreate.name,
       idempotencyKey,
     );
     const existingItem = await this.cacheService.get<ItemResponseDto>(
@@ -55,11 +123,13 @@ export class ItemsService extends TransactionalService {
       return existingItem;
     }
 
-    this.logger.debug('Creating item', { name: dto.name });
+    /** 2. CREATE ITEM */
 
     const item = this.itemRepository.createEntity(dto);
     const savedItem = await this.itemRepository.save(item);
     const itemResponse = EntityMapper.map(savedItem, ItemResponseDto);
+
+    /** 3. CACHE ITEM */
 
     await this.cacheService.set(
       idempotencyKeyFormatted,
@@ -67,19 +137,21 @@ export class ItemsService extends TransactionalService {
       CACHE_TTL.IDEMPOTENCY,
     );
 
+    await this.cacheService.deleteBulk({
+      patterns: [ITEM_KEY.CACHE_FIND_ALL_PATTERN()],
+    });
+
     this.logger.debug('Item created and cached', {
       itemId: savedItem.id,
       idempotencyKey: idempotencyKeyFormatted,
     });
 
-    await this.cacheService.deleteBulk({
-      patterns: [ITEM_KEY.CACHE_FIND_ALL_PATTERN()],
-    });
-
     return itemResponse;
   }
 
-  async findAll(query: ItemQueryDto): Promise<PaginatedResultDto<ItemResponseDto>> {
+  async adminFindAll(
+    query: ItemQueryDto,
+  ): Promise<PaginatedResultDto<ItemResponseDto>> {
     const cacheKey = ITEM_KEY.CACHE_FIND_ALL(query);
     const cachedResult = await runAndIgnoreError(
       () => this.cacheService.get<PaginatedResultDto<ItemResponseDto>>(cacheKey),
@@ -90,8 +162,6 @@ export class ItemsService extends TransactionalService {
       this.logger.debug('Returning cached items list', { cacheKey });
       return cachedResult;
     }
-
-    this.logger.debug('Fetching items with filters', { queryDto: query });
 
     const result = await this.itemRepository.filter(query);
     const resultMapped = new PaginatedResultDto<ItemResponseDto>(
@@ -112,7 +182,7 @@ export class ItemsService extends TransactionalService {
     return resultMapped;
   }
 
-  async findOne(id: string): Promise<ItemResponseDto> {
+  async adminFindOne(id: string): Promise<ItemResponseDto> {
     const cacheKey = ITEM_KEY.CACHE_FIND_ONE(id);
     const cachedResult = await runAndIgnoreError(
       () => this.cacheService.get<ItemResponseDto>(cacheKey),
@@ -127,7 +197,7 @@ export class ItemsService extends TransactionalService {
     this.logger.debug('Fetching item', { itemId: id });
 
     const item = await this.itemRepository.findById(id);
-    if (!item) {
+    if (!item || item.deactivated) {
       throw new NotFoundException(template(I18N_ITEM.ERRORS.NOT_FOUND, { id }));
     }
     const itemMapped = EntityMapper.map(item, ItemResponseDto);
@@ -143,18 +213,16 @@ export class ItemsService extends TransactionalService {
 
   @Transactional()
   @UseLock({ prefix: LOCK_PREFIX.ITEM.UPDATE, key: ([id]) => id })
-  async update(id: string, dto: UpdateItemDto): Promise<ItemResponseDto> {
-    this.logger.debug('Updating item', { itemId: id });
-
+  async adminUpdate(id: string, dto: UpdateItemDto): Promise<ItemResponseDto> {
     const item = await this.itemRepository.findById(id);
-    if (!item) {
+    if (!item || item.deactivated) {
       throw new NotFoundException(template(I18N_ITEM.ERRORS.NOT_FOUND, { id }));
     }
 
     Object.assign(item, dto);
     const savedItem = await this.itemRepository.save(item);
 
-    this.logger.debug('Item updated and cached', { itemId: savedItem.id });
+    this.logger.debug('Item updated', { itemId: savedItem.id });
 
     await this.cacheService.deleteBulk({
       keys: [ITEM_KEY.CACHE_FIND_ONE(id)],
@@ -166,23 +234,29 @@ export class ItemsService extends TransactionalService {
 
   @Transactional()
   @UseLock({ prefix: LOCK_PREFIX.ITEM.REMOVE, key: ([id]) => id })
-  async remove(id: string): Promise<void> {
-    this.logger.debug('Deleting item', { itemId: id });
+  async adminRemove(id: string): Promise<void> {
+    this.logger.debug('Deactivating item', { itemId: id });
 
     const item = await this.itemRepository.findById(id);
-    if (!item) {
+    if (!item || item.deactivated) {
       throw new NotFoundException(template(I18N_ITEM.ERRORS.NOT_FOUND, { id }));
     }
 
-    await this.itemRepository.deleteById(item.id);
+    item.deactivated = true;
+    item.deactivatedAt = new Date();
+    await this.itemRepository.save(item);
 
     await this.cacheService.deleteBulk({
       keys: [ITEM_KEY.CACHE_FIND_ONE(id)],
       patterns: [ITEM_KEY.CACHE_FIND_ALL_PATTERN()],
     });
 
-    this.logger.debug('Item deleted', { itemId: id });
+    this.logger.debug('Item deactivated', { itemId: id });
   }
+
+  // #endregion
+
+  // #region Misc methods
 
   async findManyByIds(ids: string[]): Promise<Item[]> {
     return this.itemRepository.findManyByIds(ids);
@@ -199,4 +273,6 @@ export class ItemsService extends TransactionalService {
   async incrementItemStock(item: Item, quantity: number): Promise<void> {
     await this.itemRepository.incrementStock(item, quantity);
   }
+
+  // #endregion
 }

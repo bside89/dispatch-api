@@ -15,7 +15,11 @@ import { OrderItemRepository } from './repositories/order-item.repository';
 import { PaginatedResultDto } from '@/shared/dto/paginated-result.dto';
 import { DataSource } from 'typeorm';
 import { Transactional } from '@/shared/decorators/transactional.decorator';
-import { OrderPaymentIntentDto, OrderResponseDto } from './dto/order-response.dto';
+import {
+  OrderPaymentIntentDto,
+  OrderResponseDto,
+  PublicOrderResponseDto,
+} from './dto/order-response.dto';
 import { EntityMapper } from '@/shared/utils/entity-mapper';
 import { CACHE_TTL } from '@/shared/constants/cache-ttl.constant';
 import { OutboxService } from '@/shared/modules/outbox/outbox.service';
@@ -32,7 +36,6 @@ import { UseLock } from '@/shared/decorators/lock.decorator';
 import Redlock from 'redlock';
 import { ORDER_KEY } from '../../shared/modules/cache/constants/order.key';
 import type { RequestUser } from '../auth/interfaces/request-user.interface';
-import { UserRole } from '../../shared/enums/user-role.enum';
 import { LOCK_PREFIX } from '@/shared/constants/lock-prefix.constant';
 import { ItemsService } from '../items/items.service';
 import { TransactionalService } from '@/shared/services/transactional.service';
@@ -46,8 +49,6 @@ import {
   toCurrencyFormatted,
 } from './helpers/functions';
 import { OrderByUserQueryDto } from './dto/order-by-user-query.dto';
-import { Order } from './entities/order.entity';
-import { USER_ROLE_LEVEL } from '@/shared/constants/user-role-level.constant';
 
 @Injectable()
 export class OrdersService extends TransactionalService {
@@ -65,16 +66,20 @@ export class OrdersService extends TransactionalService {
     super(OrdersService.name, dataSource, redlock);
   }
 
+  //#region Public endpoints
+
   @Transactional()
   @UseLock({
     prefix: LOCK_PREFIX.ORDER.CREATE,
     key: ([, , idempotencyKey]) => idempotencyKey,
   })
-  async create(
+  async publicCreate(
     dto: CreateOrderDto,
     userId: string,
     idempotencyKey: string,
-  ): Promise<OrderResponseDto> {
+  ): Promise<PublicOrderResponseDto> {
+    /** 1. VALIDATION AND IDEMPOTENCY CHECK */
+
     const idempotencyKeyFormatted = ORDER_KEY.IDEMPOTENCY('create', idempotencyKey);
     const existingOrder = await this.cacheService.get<OrderResponseDto>(
       idempotencyKeyFormatted,
@@ -87,10 +92,6 @@ export class OrdersService extends TransactionalService {
       return existingOrder;
     }
 
-    this.logger.debug('Creating new order', {
-      idempotencyKey: idempotencyKeyFormatted,
-    });
-
     const itemIds = dto.items.map((i) => i.itemId);
     const catalogItems = await this.itemsService.findManyByIds(itemIds);
     for (const dtoItem of dto.items) {
@@ -98,6 +99,8 @@ export class OrdersService extends TransactionalService {
         throw new NotFoundException(template(I18N_ORDER.ERRORS.ORDER_NOT_FOUND));
       }
     }
+
+    /** 2. INSERT ITEMS AND CREATE ORDER */
 
     const total = dto.items.reduce((sum, dtoItem) => {
       const ci = catalogItems.find((ci) => ci.id === dtoItem.itemId)!;
@@ -120,7 +123,8 @@ export class OrdersService extends TransactionalService {
     );
     await this.orderItemRepository.saveBulk(orderItems);
 
-    // Reduce stock quantity of the items
+    /** 3. CREATE PAYMENT-INTENT AND REDUCE ITEMS STOCK */
+
     await Promise.all(
       dto.items.map((dtoItem) => {
         const item = catalogItems.find((ci) => ci.id === dtoItem.itemId);
@@ -162,7 +166,8 @@ export class OrdersService extends TransactionalService {
     completeOrder.paymentIntentStatus = paymentIntent.status;
     await this.orderRepository.save(completeOrder);
 
-    // Notify the user
+    /** 4. SIDE EFFECTS */
+
     const user = completeOrder.user;
     const totalPrice = toCurrencyFormatted(
       completeOrder.total,
@@ -178,7 +183,7 @@ export class OrdersService extends TransactionalService {
       new NotifyUserJobPayload(user.id, message),
     );
 
-    const orderMapped = EntityMapper.map(completeOrder, OrderResponseDto);
+    const orderMapped = EntityMapper.map(completeOrder, PublicOrderResponseDto);
     orderMapped.paymentIntent = EntityMapper.map(
       paymentIntent,
       OrderPaymentIntentDto,
@@ -198,7 +203,60 @@ export class OrdersService extends TransactionalService {
     return orderMapped;
   }
 
-  async findAll(
+  async publicFindByUser(
+    queryDto: OrderByUserQueryDto,
+    userId: string,
+  ): Promise<PaginatedResultDto<PublicOrderResponseDto>> {
+    const result = await this.orderRepository.filter({ ...queryDto, userId });
+
+    this.logger.debug(`Found ${result.data.length} orders for user ${userId}`, {
+      page: queryDto.page,
+      totalPages: result.totalPages,
+    });
+
+    return new PaginatedResultDto<PublicOrderResponseDto>(
+      result.total,
+      result.page,
+      result.limit,
+      EntityMapper.mapArray(result.data, PublicOrderResponseDto),
+    );
+  }
+
+  async publicFindOne(
+    id: string,
+    requestUser: RequestUser,
+  ): Promise<PublicOrderResponseDto> {
+    const order = await this.orderRepository.findOne({
+      where: { id },
+      relations: ['user', 'items'],
+    });
+    if (!order || order.deactivated) {
+      throw new NotFoundException(template(I18N_ORDER.ERRORS.ORDER_NOT_FOUND));
+    }
+    if (order.userId !== requestUser.id) {
+      throw new ForbiddenException(template(I18N_ORDER.ERRORS.ACCESS_DENIED));
+    }
+
+    const paymentIntent = await this.paymentsGatewayService.paymentIntentsRetrieve(
+      order.paymentIntentId,
+    );
+
+    const orderMapped = EntityMapper.map(order, PublicOrderResponseDto);
+    orderMapped.paymentIntent = EntityMapper.map(
+      paymentIntent,
+      OrderPaymentIntentDto,
+    );
+
+    this.logger.debug('Found order', { orderId: id });
+
+    return orderMapped;
+  }
+
+  //#endregion
+
+  //#region Admin endpoints
+
+  async adminFindAll(
     queryDto: OrderQueryDto,
   ): Promise<PaginatedResultDto<OrderResponseDto>> {
     const result = await this.orderRepository.filter(queryDto);
@@ -208,43 +266,22 @@ export class OrdersService extends TransactionalService {
       totalPages: result.totalPages,
     });
 
-    const resultMapped = new PaginatedResultDto<OrderResponseDto>(
+    return new PaginatedResultDto<OrderResponseDto>(
       result.total,
       result.page,
       result.limit,
       EntityMapper.mapArray(result.data, OrderResponseDto),
     );
-
-    return resultMapped;
   }
 
-  async findByUser(queryDto: OrderByUserQueryDto, userId: string) {
-    const result = await this.orderRepository.filter({ ...queryDto, userId });
-
-    this.logger.debug(`Found ${result.data.length} orders for user ${userId}`, {
-      page: queryDto.page,
-      totalPages: result.totalPages,
-    });
-
-    const resultMapped = new PaginatedResultDto<OrderResponseDto>(
-      result.total,
-      result.page,
-      result.limit,
-      EntityMapper.mapArray(result.data, OrderResponseDto),
-    );
-
-    return resultMapped;
-  }
-
-  async findOne(id: string, requestUser?: RequestUser): Promise<OrderResponseDto> {
+  async adminFindOne(id: string): Promise<OrderResponseDto> {
     const order = await this.orderRepository.findOne({
       where: { id },
       relations: ['user', 'items'],
     });
-    if (!order) {
+    if (!order || order.deactivated) {
       throw new NotFoundException(template(I18N_ORDER.ERRORS.ORDER_NOT_FOUND));
     }
-    this.assertOrderAccess(order, requestUser);
 
     const paymentIntent = await this.paymentsGatewayService.paymentIntentsRetrieve(
       order.paymentIntentId,
@@ -263,14 +300,14 @@ export class OrdersService extends TransactionalService {
 
   @Transactional()
   @UseLock({ prefix: LOCK_PREFIX.ORDER.UPDATE, key: ([id]) => id })
-  async update(id: string, dto: UpdateOrderDto): Promise<OrderResponseDto> {
+  async adminUpdate(id: string, dto: UpdateOrderDto): Promise<OrderResponseDto> {
     this.logger.debug('Updating order', { orderId: id });
 
     const order = await this.orderRepository.findOne({
       where: { id },
       relations: ['items', 'user'],
     });
-    if (!order) {
+    if (!order || order.deactivated) {
       throw new NotFoundException(template(I18N_ORDER.ERRORS.ORDER_NOT_FOUND));
     }
 
@@ -295,18 +332,25 @@ export class OrdersService extends TransactionalService {
 
   @Transactional()
   @UseLock({ prefix: LOCK_PREFIX.ORDER.REMOVE, key: ([id]) => id })
-  async remove(id: string): Promise<void> {
+  async adminRemove(id: string): Promise<void> {
     this.logger.debug('Deleting order', { orderId: id });
 
     const order = await this.orderRepository.findById(id);
-    if (!order) {
+    if (!order || order.deactivated) {
       throw new NotFoundException(template(I18N_ORDER.ERRORS.ORDER_NOT_FOUND));
     }
 
-    await this.orderRepository.deleteById(order.id);
+    await this.orderRepository.update(id, {
+      deactivated: true,
+      deactivatedAt: new Date(),
+    });
 
-    this.logger.debug('Order deleted', { orderId: id });
+    this.logger.debug('Order deactivated', { orderId: id });
   }
+
+  //#endregion
+
+  //#region Internal / webhook methods
 
   @Transactional()
   @UseLock({ prefix: LOCK_PREFIX.ORDER.UPDATE, key: ([orderId]) => orderId })
@@ -367,16 +411,21 @@ export class OrdersService extends TransactionalService {
     return EntityMapper.map(order, OrderResponseDto);
   }
 
+  //#endregion
+
+  //#region Operational admin methods
+
   @Transactional()
   @UseLock({ prefix: LOCK_PREFIX.ORDER.UPDATE, key: ([id]) => id })
   async ship(id: string, dto: ShipOrderDto): Promise<OrderResponseDto> {
-    this.logger.debug('Shipping order', { orderId: id });
-
     const order = await this.orderRepository.findOne({
       where: { id },
       relations: ['user', 'items'],
     });
-    if (!order) {
+
+    /** 1. VALIDATION */
+
+    if (!order || order.deactivated) {
       throw new NotFoundException(template(I18N_ORDER.ERRORS.ORDER_NOT_FOUND));
     }
 
@@ -390,6 +439,8 @@ export class OrdersService extends TransactionalService {
       );
     }
 
+    /** UPDATE ORDER STATUS -> SHIPPED */
+
     order.status = OrderStatus.SHIPPED;
     order.shippedAt = new Date();
     if (dto.trackingNumber !== undefined) order.trackingNumber = dto.trackingNumber;
@@ -397,7 +448,8 @@ export class OrdersService extends TransactionalService {
 
     await this.orderRepository.save(order);
 
-    // Notify the user
+    /** 3. SIDE EFFECTS */
+
     const user = order.user;
     const message = await this.messages.notifications.orderShipped(user.language);
     await this.outboxService.add(
@@ -406,19 +458,21 @@ export class OrdersService extends TransactionalService {
     );
 
     this.logger.debug('Order shipped', { orderId: id });
+
     return EntityMapper.map(order, OrderResponseDto);
   }
 
   @Transactional()
   @UseLock({ prefix: LOCK_PREFIX.ORDER.UPDATE, key: ([id]) => id })
   async deliver(id: string): Promise<OrderResponseDto> {
-    this.logger.debug('Delivering order', { orderId: id });
-
     const order = await this.orderRepository.findOne({
       where: { id },
       relations: ['user', 'items'],
     });
-    if (!order) {
+
+    /** 1. VALIDATION */
+
+    if (!order || order.deactivated) {
       throw new NotFoundException(template(I18N_ORDER.ERRORS.ORDER_NOT_FOUND));
     }
 
@@ -432,12 +486,15 @@ export class OrdersService extends TransactionalService {
       );
     }
 
+    /** 2. UPDATE ORDER STATUS -> DELIVERED */
+
     order.status = OrderStatus.DELIVERED;
     order.deliveredAt = new Date();
 
     await this.orderRepository.save(order);
 
-    // Notify the user
+    /** 3. SIDE EFFECTS */
+
     const user = order.user;
     const message = await this.messages.notifications.orderDelivered(user.language);
     await this.outboxService.add(
@@ -452,13 +509,14 @@ export class OrdersService extends TransactionalService {
   @Transactional()
   @UseLock({ prefix: LOCK_PREFIX.ORDER.UPDATE, key: ([id]) => id })
   async cancel(id: string): Promise<void> {
-    this.logger.debug('Cancelling order', { orderId: id });
-
     const order = await this.orderRepository.findOne({
       where: { id },
       relations: ['user'],
     });
-    if (!order) {
+
+    /** 1. VALIDATION */
+
+    if (!order || order.deactivated) {
       throw new NotFoundException(template(I18N_ORDER.ERRORS.ORDER_NOT_FOUND));
     }
 
@@ -472,7 +530,8 @@ export class OrdersService extends TransactionalService {
       );
     }
 
-    // Delegates to the job strategy which handles inventory release + status update
+    /** 2. DELEGATE TO JOB STRATEGY */
+
     await this.outboxService.add(
       OutboxType.ORDER_CANCEL,
       new CancelOrderJobPayload(id),
@@ -484,13 +543,14 @@ export class OrdersService extends TransactionalService {
   @Transactional()
   @UseLock({ prefix: LOCK_PREFIX.ORDER.UPDATE, key: ([id]) => id })
   async refund(id: string): Promise<void> {
-    this.logger.debug('Refunding order', { orderId: id });
-
     const order = await this.orderRepository.findOne({
       where: { id },
       relations: ['user'],
     });
-    if (!order) {
+
+    /** 1. VALIDATION */
+
+    if (!order || order.deactivated) {
       throw new NotFoundException(template(I18N_ORDER.ERRORS.ORDER_NOT_FOUND));
     }
 
@@ -504,7 +564,8 @@ export class OrdersService extends TransactionalService {
       );
     }
 
-    // Delegates to the job strategy which triggers the Stripe refund + status update
+    /** 2. DELEGATE TO JOB STRATEGY */
+
     await this.outboxService.add(
       OutboxType.ORDER_REFUND,
       new RefundOrderJobPayload(id),
@@ -513,17 +574,5 @@ export class OrdersService extends TransactionalService {
     this.logger.debug('Order refund enqueued', { orderId: id });
   }
 
-  private assertOrderAccess(order: Order, requestUser: RequestUser): void {
-    const userRole = requestUser.jwtPayload.role;
-    if (
-      [UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.FINANCIAL].includes(userRole)
-    ) {
-      return; // Admins, Superadmins, Financial have access to all orders
-    }
-    const targetUser = order.user;
-    if (USER_ROLE_LEVEL[userRole] >= USER_ROLE_LEVEL[targetUser.role]) {
-      return;
-    }
-    throw new ForbiddenException(template(I18N_ORDER.ERRORS.ACCESS_DENIED));
-  }
+  //#endregion
 }

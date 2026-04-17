@@ -73,8 +73,11 @@ async function bootstrap() {
     .addTag('default', 'App default endpoints')
     .addTag('auth', 'Authentication endpoints')
     .addTag('users', 'User management endpoints')
+    .addTag('users-admin', 'User management endpoints (admins only)')
     .addTag('orders', 'Order management endpoints')
+    .addTag('orders-admin', 'Order management endpoints (admins only)')
     .addTag('items', 'Item management endpoints')
+    .addTag('items-admin', 'Item management endpoints (admins only)')
     .addTag('payments', 'Payment processing endpoints')
     .addBearerAuth()
     .build();

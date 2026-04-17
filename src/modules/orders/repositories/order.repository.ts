@@ -22,7 +22,8 @@ export class OrderRepository extends BaseRepository<Order> {
     const queryBuilder = this.createQueryBuilder(aliasOrder)
       .leftJoinAndSelect(order('items'), 'items')
       .leftJoinAndSelect('items.item', 'orderItemDetail')
-      .innerJoinAndSelect(order('user'), 'user');
+      .innerJoinAndSelect(order('user'), 'user')
+      .where(`${order('deactivated')} = :deactivated`, { deactivated: false });
 
     if (query.userId) {
       queryBuilder.andWhere(`${order('userId')} = :userId`, {

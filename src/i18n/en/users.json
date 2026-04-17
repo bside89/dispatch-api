@@ -15,6 +15,7 @@
     "currentPasswordRequired": "Current password is required to change password.",
     "currentPasswordInvalid": "Current password is incorrect.",
     "authIsRequired": "Authentication is required.",
-    "accessForbidden": "You are not allowed to access this user."
+    "accessDenied": "You are not allowed to access this user.",
+    "roleChangeDenied": "You are not allowed to change to the specified role."
   }
 }

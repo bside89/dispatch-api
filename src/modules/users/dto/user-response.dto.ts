@@ -1,5 +1,5 @@
 import { BaseAddressDto } from '@/shared/dto/base-address.dto';
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, OmitType, PickType } from '@nestjs/swagger';
 import { Exclude, Expose } from 'class-transformer';
 import { UserRole } from '../../../shared/enums/user-role.enum';
 
@@ -64,3 +64,15 @@ export class UserResponseDto {
   })
   address?: UserAddressResponseDto;
 }
+
+export class UserSelfResponseDto extends OmitType(UserResponseDto, [
+  'role',
+  'updatedAt',
+] as const) {}
+
+@Exclude()
+export class PublicUserResponseDto extends PickType(UserResponseDto, [
+  'id',
+  'name',
+  'createdAt',
+] as const) {}

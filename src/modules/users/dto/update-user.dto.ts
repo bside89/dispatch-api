@@ -1,47 +1,32 @@
 import {
   IsString,
   IsOptional,
-  IsEmail,
   MinLength,
   MaxLength,
-  ValidateNested,
+  IsNotEmpty,
+  ValidateIf,
 } from 'class-validator';
-import { ApiProperty, ApiPropertyOptional, PartialType } from '@nestjs/swagger';
-import { CreateUserAddressDto } from './create-user.dto';
-import { Type } from 'class-transformer';
+import { ApiPropertyOptional, OmitType, PartialType } from '@nestjs/swagger';
+import { CreateUserAddressDto, CreateUserDto } from './create-user.dto';
 
 export class UpdateUserAddressDto extends PartialType(CreateUserAddressDto) {}
 
-export class UpdateUserDto {
-  @ApiProperty({
-    description: 'User full name',
-    example: 'João Silva',
-    minLength: 2,
+export class UpdateUserDto extends PartialType(CreateUserDto) {
+  @ApiPropertyOptional({
+    description: 'User current password (required if changing password)',
+    example: 'currentPassword123',
+    minLength: 6,
     maxLength: 100,
-    required: false,
   })
   @IsOptional()
   @IsString()
-  @MinLength(2)
+  @IsNotEmpty()
+  @MinLength(6)
   @MaxLength(100)
-  name?: string;
-
-  @ApiProperty({
-    description: 'User email address',
-    example: 'joao.silva@email.com',
-    format: 'email',
-    required: false,
-  })
-  @IsOptional()
-  @IsEmail()
-  email?: string;
-
-  @ApiPropertyOptional({
-    description: 'User address',
-    type: UpdateUserAddressDto,
-  })
-  @IsOptional()
-  @ValidateNested()
-  @Type(() => UpdateUserAddressDto)
-  address?: UpdateUserAddressDto;
+  @ValidateIf((o) => o.password !== undefined)
+  currentPassword?: string;
 }
+
+export class PublicUpdateUserDto extends OmitType(UpdateUserDto, [
+  'role',
+] as const) {}

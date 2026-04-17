@@ -21,7 +21,7 @@ export default async () => {
   process.env.DB_USERNAME = 'test_user';
   process.env.DB_PASSWORD = 'test_pass';
   process.env.DB_DATABASE = 'test_db';
-  process.env.DB_SYNCHRONIZE = 'false';
+  process.env.DB_SYNCHRONIZE = 'true';
 
   process.env.REDIS_HOST = redis.getHost();
   process.env.REDIS_PORT = redis.getMappedPort(6379).toString();
@@ -38,7 +38,6 @@ export default async () => {
 
   const dataSource = require('../src/config/typeorm.config').default;
   await dataSource.initialize();
-  await dataSource.runMigrations();
   await dataSource.destroy();
 
   console.log('Containers are ready.');

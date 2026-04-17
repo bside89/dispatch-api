@@ -1,5 +1,5 @@
 import { IsOptional, IsString, IsEmail } from 'class-validator';
-import { ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiPropertyOptional, PickType } from '@nestjs/swagger';
 import { BaseQueryDto } from '@/shared/dto/base-query.dto';
 
 export class UserQueryDto extends BaseQueryDto {
@@ -19,3 +19,5 @@ export class UserQueryDto extends BaseQueryDto {
   @IsEmail()
   email?: string;
 }
+
+export class PublicUserQueryDto extends PickType(UserQueryDto, ['name'] as const) {}

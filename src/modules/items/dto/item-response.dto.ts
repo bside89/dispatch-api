@@ -1,5 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Exclude, Expose } from 'class-transformer';
+import { OmitType } from '@nestjs/swagger';
 
 @Exclude()
 export class ItemResponseDto {
@@ -60,3 +61,7 @@ export class ItemResponseDto {
   })
   updatedAt: Date;
 }
+
+export class PublicItemResponseDto extends OmitType(ItemResponseDto, [
+  'pricePaymentId',
+] as const) {}

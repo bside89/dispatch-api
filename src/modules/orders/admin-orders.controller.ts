@@ -1,32 +1,28 @@
 import {
   Controller,
   Get,
-  Post,
   Body,
   Patch,
   Param,
   Delete,
   Query,
-  Headers,
   ParseUUIDPipe,
   HttpCode,
   HttpStatus,
-  BadRequestException,
 } from '@nestjs/common';
 import {
   ApiTags,
   ApiOperation,
   ApiParam,
   ApiBody,
-  ApiHeader,
   ApiBadRequestResponse,
   ApiNotFoundResponse,
-  ApiCreatedResponse,
   ApiOkResponse,
   ApiSecurity,
+  ApiQuery,
+  ApiResponse,
 } from '@nestjs/swagger';
 import { OrdersService } from './orders.service';
-import { CreateOrderDto } from './dto/create-order.dto';
 import { UpdateOrderDto } from './dto/update-order.dto';
 import { ShipOrderDto } from './dto/ship-order.dto';
 import { OrderQueryDto } from './dto/order-query.dto';
@@ -39,65 +35,16 @@ import { BaseController } from '@/shared/controllers/base.controller';
 import { ErrorResponseDto } from '@/shared/dto/error-response.dto';
 import type { RequestUser } from '../auth/interfaces/request-user.interface';
 import { OrderMessageFactory } from './factories/order-message.factory';
-import { template } from '@/shared/helpers/functions';
-import { I18N_COMMON } from '@/shared/constants/i18n';
-import { OrderByUserQueryDto } from './dto/order-by-user-query.dto';
 
-@Controller({ path: 'v1/orders', version: '1' })
-@ApiTags('orders')
+@Controller({ path: 'v1/admin/orders', version: '1' })
+@ApiTags('orders-admin')
 @ApiSecurity('bearer')
-export class OrdersController extends BaseController {
+export class AdminOrdersController extends BaseController {
   constructor(
     private readonly ordersService: OrdersService,
     private readonly messages: OrderMessageFactory,
   ) {
-    super(OrdersController.name);
-  }
-
-  @Post()
-  @HttpCode(HttpStatus.CREATED)
-  @ApiOperation({
-    summary: 'Create a new order',
-    description:
-      'Creates a new order with items and adds it to the processing queue. Requires idempotency-key header to prevent duplicate orders.',
-  })
-  @ApiHeader({
-    name: 'idempotency-key',
-    description:
-      'Unique key to ensure idempotent requests. Use UUID or any unique string.',
-    required: true,
-    example: '550e8400-e29b-41d4-a716-446655440000',
-  })
-  @ApiCreatedResponse({
-    description: 'Order successfully created',
-    type: OrderResponseDto,
-  })
-  @ApiBadRequestResponse({
-    description: 'Invalid input data or missing idempotency-key header',
-  })
-  @ApiBody({
-    type: CreateOrderDto,
-    description: 'Order creation data',
-  })
-  async create(
-    @Body() createOrderDto: CreateOrderDto,
-    @Headers('idempotency-key') idempotencyKey: string,
-    @GetUser() user: RequestUser,
-  ) {
-    if (!idempotencyKey) {
-      throw new BadRequestException(
-        template(I18N_COMMON.ERRORS.IDEMPOTENCY_KEY_REQUIRED),
-      );
-    }
-
-    const result = await this.ordersService.create(
-      createOrderDto,
-      user.id,
-      idempotencyKey,
-    );
-
-    const message = await this.messages.responses.create(user.jwtPayload.language);
-    return this.success(result, message);
+    super(AdminOrdersController.name);
   }
 
   @Get()
@@ -110,32 +57,15 @@ export class OrdersController extends BaseController {
     description: 'Orders successfully retrieved',
     type: PaginatedResultDto<OrderResponseDto>,
   })
+  @ApiQuery({ type: () => OrderQueryDto })
   async findAll(@Query() queryDto: OrderQueryDto) {
-    const result = await this.ordersService.findAll(queryDto);
-
-    return this.paginate(result.data, result.total, result.page, result.limit);
-  }
-
-  @Get('me')
-  @ApiOperation({
-    summary: 'Get orders for the authenticated user',
-    description:
-      'Retrieve a paginated list of orders belonging to the authenticated user',
-  })
-  @ApiOkResponse({
-    description: 'Orders successfully retrieved',
-    type: PaginatedResultDto<OrderResponseDto>,
-  })
-  async findByUser(
-    @Query() queryDto: OrderByUserQueryDto,
-    @GetUser() user: RequestUser,
-  ) {
-    const result = await this.ordersService.findByUser(queryDto, user.id);
+    const result = await this.ordersService.adminFindAll(queryDto);
 
     return this.paginate(result.data, result.total, result.page, result.limit);
   }
 
   @Get(':id')
+  @Roles(UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.FINANCIAL)
   @ApiOperation({
     summary: 'Get order by ID',
     description: 'Retrieve a specific order by its unique identifier',
@@ -155,7 +85,7 @@ export class OrdersController extends BaseController {
     @Param('id', ParseUUIDPipe) id: string,
     @GetUser() user: RequestUser,
   ) {
-    const result = await this.ordersService.findOne(id, user);
+    const result = await this.ordersService.adminFindOne(id);
 
     const message = await this.messages.responses.findOne(user.jwtPayload.language);
     return this.success(result, message);
@@ -165,7 +95,7 @@ export class OrdersController extends BaseController {
   @Roles(UserRole.SUPERADMIN, UserRole.ADMIN)
   @ApiOperation({
     summary: 'Update an order',
-    description: 'Update order details including status and items',
+    description: 'Update order details including status',
   })
   @ApiParam({
     name: 'id',
@@ -190,7 +120,7 @@ export class OrdersController extends BaseController {
     @Body() updateOrderDto: UpdateOrderDto,
     @GetUser() user: RequestUser,
   ) {
-    const result = await this.ordersService.update(id, updateOrderDto);
+    const result = await this.ordersService.adminUpdate(id, updateOrderDto);
 
     const message = await this.messages.responses.update(
       user.jwtPayload.language,
@@ -201,18 +131,18 @@ export class OrdersController extends BaseController {
 
   @Delete(':id')
   @Roles(UserRole.SUPERADMIN, UserRole.ADMIN)
-  @HttpCode(HttpStatus.OK)
+  @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({
     summary: 'Delete an order',
-    description: 'Delete an order and all its items',
+    description: 'Soft-deletes an order by deactivating it',
   })
   @ApiParam({
     name: 'id',
     description: 'Order unique identifier (UUID)',
   })
-  @ApiOkResponse({
+  @ApiResponse({
+    status: 204,
     description: 'Order successfully deleted',
-    type: OrderResponseDto,
   })
   @ApiNotFoundResponse({
     description: 'Order not found',
@@ -226,10 +156,10 @@ export class OrdersController extends BaseController {
     @Param('id', ParseUUIDPipe) id: string,
     @GetUser() user: RequestUser,
   ) {
-    await this.ordersService.remove(id);
+    await this.ordersService.adminRemove(id);
 
     const message = await this.messages.responses.remove(user.jwtPayload.language);
-    return this.success(null, message);
+    return this.success({}, message);
   }
 
   @Patch(':id/ship')
@@ -310,7 +240,7 @@ export class OrdersController extends BaseController {
     await this.ordersService.cancel(id);
 
     const message = await this.messages.responses.cancel(user.jwtPayload.language);
-    return this.success(null, message);
+    return this.success({}, message);
   }
 
   @Patch(':id/refund')
@@ -335,6 +265,6 @@ export class OrdersController extends BaseController {
     await this.ordersService.refund(id);
 
     const message = await this.messages.responses.refund(user.jwtPayload.language);
-    return this.success(null, message);
+    return this.success({}, message);
   }
 }

@@ -1,4 +1,9 @@
-import { ApiProperty, ApiPropertyOptional, PickType } from '@nestjs/swagger';
+import {
+  ApiProperty,
+  ApiPropertyOptional,
+  OmitType,
+  PickType,
+} from '@nestjs/swagger';
 import { Exclude, Expose, Type } from 'class-transformer';
 import { OrderStatus } from '../enums/order-status.enum';
 import { UserResponseDto } from '@/modules/users/dto/user-response.dto';
@@ -108,3 +113,7 @@ export class OrderResponseDto {
   })
   deliveredAt?: Date;
 }
+
+export class PublicOrderResponseDto extends OmitType(OrderResponseDto, [
+  'user',
+] as const) {}

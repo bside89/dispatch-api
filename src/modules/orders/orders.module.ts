@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { OrdersController } from './orders.controller';
+import { PublicOrdersController } from './public-orders.controller';
+import { AdminOrdersController } from './admin-orders.controller';
 import { OrdersService } from './orders.service';
 import { Order } from './entities/order.entity';
 import { OrderItem } from './entities/order-item.entity';
@@ -20,7 +21,7 @@ import { OrderMessageFactory } from './factories/order-message.factory';
     PaymentsGatewayModule,
     ItemsModule,
   ],
-  controllers: [OrdersController],
+  controllers: [PublicOrdersController, AdminOrdersController],
   providers: [
     OrdersService,
     OrderRepository,

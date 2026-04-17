@@ -1,7 +1,6 @@
 import {
   Controller,
   Get,
-  Post,
   Body,
   Patch,
   Param,
@@ -11,6 +10,7 @@ import {
   ParseUUIDPipe,
   HttpCode,
   HttpStatus,
+  Post,
   BadRequestException,
 } from '@nestjs/common';
 import {
@@ -20,45 +20,42 @@ import {
   ApiParam,
   ApiQuery,
   ApiBody,
-  ApiHeader,
   ApiBadRequestResponse,
   ApiNotFoundResponse,
-  ApiCreatedResponse,
   ApiOkResponse,
   ApiConflictResponse,
   ApiSecurity,
+  ApiHeader,
+  ApiCreatedResponse,
 } from '@nestjs/swagger';
 import { UsersService } from './users.service';
-import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
-import { UpdateLoginDto } from './dto/update-login.dto';
 import { UserQueryDto } from './dto/user-query.dto';
-import { Public } from '../auth/decorators/public.decorator';
 import { UserResponseDto } from './dto/user-response.dto';
 import { BaseController } from '@/shared/controllers/base.controller';
 import { PaginatedResponseDto } from '@/shared/dto/paginated-response.dto';
 import { GetUser } from '@/shared/decorators/get-user.decorator';
 import type { RequestUser } from '../auth/interfaces/request-user.interface';
 import { UserMessageFactory } from './factories/user-message.factory';
-import { I18N_COMMON } from '@/shared/constants/i18n';
-import { template } from '@/shared/helpers/functions';
-import { UpdateUserRoleDto } from './dto/update-user-role.dto';
 import { UserRole } from '@/shared/enums/user-role.enum';
 import { Roles } from '../auth/decorators/roles.decorator';
+import { CreateUserDto } from './dto/create-user.dto';
+import { I18N_COMMON } from '@/shared/constants/i18n/common.tokens';
+import { template } from '@/shared/helpers/functions';
 
-@Controller({ path: 'v1/users', version: '1' })
-@ApiTags('users')
+@Controller({ path: 'v1/admin/users', version: '1' })
+@ApiTags('users-admin')
 @ApiSecurity('bearer')
-export class UsersController extends BaseController {
+export class AdminUsersController extends BaseController {
   constructor(
     private readonly usersService: UsersService,
     private readonly messages: UserMessageFactory,
   ) {
-    super(UsersController.name);
+    super(AdminUsersController.name);
   }
 
   @Post()
-  @Public()
+  @Roles(UserRole.SUPERADMIN, UserRole.ADMIN)
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({
     summary: 'Create a new user',
@@ -88,8 +85,9 @@ export class UsersController extends BaseController {
     description: 'User data to create a new user',
   })
   async create(
-    @Body() createUserDto: CreateUserDto,
-    @Headers('idempotency-key') idempotencyKey?: string,
+    @Body() dto: CreateUserDto,
+    @Headers('idempotency-key') idempotencyKey: string,
+    @GetUser() requestUser: RequestUser,
   ) {
     if (!idempotencyKey) {
       throw new BadRequestException(
@@ -97,13 +95,18 @@ export class UsersController extends BaseController {
       );
     }
 
-    const result = await this.usersService.create(createUserDto, idempotencyKey);
+    const result = await this.usersService.adminCreate(
+      dto,
+      idempotencyKey,
+      requestUser,
+    );
 
     const message = await this.messages.responses.create(result.language);
     return this.success(result, message);
   }
 
   @Get()
+  @Roles(UserRole.SUPERADMIN, UserRole.ADMIN)
   @ApiOperation({
     summary: 'Get all users',
     description:
@@ -113,37 +116,15 @@ export class UsersController extends BaseController {
     description: 'List of users retrieved successfully',
     type: PaginatedResponseDto<UserResponseDto>,
   })
-  @ApiQuery({
-    name: 'name',
-    required: false,
-    description: 'Filter users by name (partial match)',
-    type: String,
-  })
-  @ApiQuery({
-    name: 'email',
-    required: false,
-    description: 'Filter users by email (partial match)',
-    type: String,
-  })
-  @ApiQuery({
-    name: 'limit',
-    required: false,
-    description: 'Maximum number of users to return',
-    type: Number,
-  })
-  @ApiQuery({
-    name: 'offset',
-    required: false,
-    description: 'Number of users to skip',
-    type: Number,
-  })
-  async findAll(@Query() queryDto: UserQueryDto, @GetUser() user: RequestUser) {
-    const result = await this.usersService.findAll(queryDto, user);
+  @ApiQuery({ type: () => UserQueryDto })
+  async findAll(@Query() queryDto: UserQueryDto) {
+    const result = await this.usersService.adminFindAll(queryDto);
 
     return this.paginate(result.data, result.total, result.page, result.limit);
   }
 
   @Get(':id')
+  @Roles(UserRole.SUPERADMIN, UserRole.ADMIN)
   @ApiOperation({
     summary: 'Get user by ID',
     description: 'Retrieves a specific user by their unique identifier.',
@@ -168,13 +149,14 @@ export class UsersController extends BaseController {
     @Param('id', ParseUUIDPipe) id: string,
     @GetUser() user: RequestUser,
   ) {
-    const result = await this.usersService.findOne(id, user);
+    const result = await this.usersService.adminFindOne(id);
 
-    const message = await this.messages.responses.findOne(result.language);
+    const message = await this.messages.responses.findOne(user.jwtPayload.language);
     return this.success(result, message);
   }
 
   @Patch(':id')
+  @Roles(UserRole.SUPERADMIN, UserRole.ADMIN)
   @ApiOperation({
     summary: 'Update user information',
     description:
@@ -209,51 +191,9 @@ export class UsersController extends BaseController {
     @Body() updateUserDto: UpdateUserDto,
     @GetUser() user: RequestUser,
   ) {
-    const result = await this.usersService.update(id, updateUserDto, user);
+    const result = await this.usersService.adminUpdate(id, updateUserDto, user);
 
-    const message = await this.messages.responses.update(result.language);
-    return this.success(result, message);
-  }
-
-  @Patch(':id/login')
-  @ApiOperation({
-    summary: 'Update user login credentials',
-    description:
-      'Updates user email and/or password. ' +
-      'Current password is required when changing password.',
-  })
-  @ApiParam({
-    name: 'id',
-    description: 'User unique identifier (UUID)',
-    type: String,
-    example: '550e8400-e29b-41d4-a716-446655440000',
-  })
-  @ApiOkResponse({
-    description: 'Login credentials updated successfully',
-    type: UserResponseDto,
-  })
-  @ApiNotFoundResponse({
-    description: 'User not found',
-  })
-  @ApiConflictResponse({
-    description: 'Email already exists',
-  })
-  @ApiBadRequestResponse({
-    description:
-      'Invalid data, missing current password, or incorrect current password',
-  })
-  @ApiBody({
-    type: UpdateLoginDto,
-    description: 'Login credentials to update',
-  })
-  async updateLogin(
-    @Param('id', ParseUUIDPipe) id: string,
-    @Body() updateLoginDto: UpdateLoginDto,
-    @GetUser() user: RequestUser,
-  ) {
-    const result = await this.usersService.updateLogin(id, updateLoginDto, user);
-
-    const message = await this.messages.responses.updateLogin(result.language);
+    const message = await this.messages.responses.update(user.jwtPayload.language);
     return this.success(result, message);
   }
 
@@ -284,46 +224,9 @@ export class UsersController extends BaseController {
     @Param('id', ParseUUIDPipe) id: string,
     @GetUser() user: RequestUser,
   ) {
-    await this.usersService.remove(id, user);
+    await this.usersService.adminRemove(id, user);
 
     const message = await this.messages.responses.remove(user.jwtPayload.language);
     return this.success(null, message);
-  }
-
-  @Patch(':id/role')
-  @Roles(UserRole.SUPERADMIN, UserRole.ADMIN)
-  @ApiOperation({
-    summary: 'Update user role',
-    description: 'Updates the role of a user by their unique identifier.',
-  })
-  @ApiParam({
-    name: 'id',
-    description: 'User unique identifier (UUID)',
-    type: String,
-    example: '550e8400-e29b-41d4-a716-446655440000',
-  })
-  @ApiOkResponse({
-    description: 'User role updated successfully',
-    type: UserResponseDto,
-  })
-  @ApiNotFoundResponse({
-    description: 'User not found',
-  })
-  @ApiBadRequestResponse({
-    description: 'Invalid UUID format or role',
-  })
-  @ApiBody({
-    type: UpdateUserRoleDto,
-    description: 'New role to assign to the user',
-  })
-  async updateRole(
-    @Param('id', ParseUUIDPipe) id: string,
-    @Body() updateRoleDto: UpdateUserRoleDto,
-    @GetUser() user: RequestUser,
-  ) {
-    const result = await this.usersService.updateRole(id, updateRoleDto, user);
-
-    const message = await this.messages.responses.updateRole(result.language);
-    return this.success(result, message);
   }
 }
