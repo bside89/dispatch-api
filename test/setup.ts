@@ -32,6 +32,7 @@ export default async () => {
   process.env.JWT_REFRESH_SECRET = 'test-jwt-refresh-secret';
   process.env.STRIPE_EXEC_MODE = 'local';
   process.env.STRIPE_SECRET_KEY = 'sk_test_your_secret_key_here';
+  process.env.STRIPE_WEBHOOK_SECRET = 'whsec_your_webhook_secret_here';
   process.env.QUEUE_ORDER_CONCURRENCY = '1';
   process.env.QUEUE_EVENT_CONCURRENCY = '1';
   process.env.QUEUE_PAYMENT_CONCURRENCY = '1';
