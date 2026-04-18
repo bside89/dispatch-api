@@ -1,13 +1,16 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Inject } from '@nestjs/common';
 import { Job } from 'bullmq';
 import { OrderStatus } from '../enums/order-status.enum';
 import { RefundOrderJobPayload } from '../../../shared/payloads/order-job.payload';
 import { NotifyUserJobPayload } from '@/shared/payloads/event-job.payload';
 import { Transactional } from '@/shared/decorators/transactional.decorator';
 import { OutboxType } from '@/shared/modules/outbox/enums/outbox-type.enum';
-import { CacheService } from '../../../shared/modules/cache/cache.service';
-import { OutboxService } from '@/shared/modules/outbox/outbox.service';
-import { OrderRepository } from '../repositories/order.repository';
+import { CACHE_SERVICE } from '../../../shared/modules/cache/constants/cache.tokens';
+import type { ICacheService } from '../../../shared/modules/cache/interfaces/cache-service.interface';
+import { OUTBOX_SERVICE } from '@/shared/modules/outbox/constants/outbox.tokens';
+import type { IOutboxService } from '@/shared/modules/outbox/interfaces/outbox-service.interface';
+import { ORDER_REPOSITORY } from '../constants/orders.tokens';
+import type { IOrderRepository } from '../interfaces/order-repository.interface';
 import { DataSource } from 'typeorm';
 import { BaseOrderJobStrategy } from './base-order-job.strategy';
 import Redlock from 'redlock';
@@ -18,10 +21,10 @@ import { Order } from '../entities/order.entity';
 @Injectable()
 export class RefundOrderJobStrategy extends BaseOrderJobStrategy<RefundOrderJobPayload> {
   constructor(
-    private readonly outboxService: OutboxService,
+    @Inject(OUTBOX_SERVICE) private readonly outboxService: IOutboxService,
     private readonly messages: OrderMessageFactory,
-    cacheService: CacheService,
-    orderRepository: OrderRepository,
+    @Inject(CACHE_SERVICE) cacheService: ICacheService,
+    @Inject(ORDER_REPOSITORY) orderRepository: IOrderRepository,
     dataSource: DataSource,
     redlock: Redlock,
   ) {

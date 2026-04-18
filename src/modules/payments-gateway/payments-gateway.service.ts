@@ -3,6 +3,7 @@ import { Injectable } from '@nestjs/common';
 import { StripeCustomersGateway } from './gateways/stripe-customers.gateway';
 import { StripePaymentIntentsGateway } from './gateways/stripe-payment-intents.gateway';
 import { CreateCustomerDto } from './dto/create-customer.dto';
+import { IPaymentsGatewayService } from './interfaces/payments-gateway-service.interface';
 import { CustomerResponseDto } from './dto/customer-response.dto';
 import { EntityMapper } from '@/shared/utils/entity-mapper';
 import { UpdateCustomerDto } from './dto/update-customer.dto';
@@ -13,7 +14,10 @@ import {
 } from './types/payment-intent.types';
 
 @Injectable()
-export class PaymentsGatewayService extends BaseService {
+export class PaymentsGatewayService
+  extends BaseService
+  implements IPaymentsGatewayService
+{
   constructor(
     private readonly stripeCustomersGateway: StripeCustomersGateway,
     private readonly stripePaymentIntentsGateway: StripePaymentIntentsGateway,

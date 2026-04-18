@@ -6,11 +6,17 @@ import { AuthController } from './auth.controller';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { UsersModule } from '../users/users.module';
 import { AuthMessageFactory } from './factories/auth-message.factory';
+import { AUTH_SERVICE } from './constants/auth.tokens';
 
 @Module({
   imports: [JwtModule.register({}), UsersModule],
-  exports: [AuthService],
+  exports: [AUTH_SERVICE],
   controllers: [AuthController],
-  providers: [AuthService, AuthMessageFactory, JwtStrategy, JwtRefreshStrategy],
+  providers: [
+    { provide: AUTH_SERVICE, useClass: AuthService },
+    AuthMessageFactory,
+    JwtStrategy,
+    JwtRefreshStrategy,
+  ],
 })
 export class AuthModule {}

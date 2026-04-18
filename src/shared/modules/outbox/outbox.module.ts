@@ -9,6 +9,7 @@ import {
   ORDER_QUEUE_TOKEN,
   PAYMENT_QUEUE_TOKEN,
 } from '@/shared/constants/queue-tokens.constant';
+import { OUTBOX_SERVICE, OUTBOX_REPOSITORY } from './constants/outbox.tokens';
 
 @Global()
 @Module({
@@ -25,7 +26,10 @@ import {
       forceDisconnectOnShutdown: true,
     }),
   ],
-  providers: [OutboxService, OutboxRepository],
-  exports: [OutboxService, OutboxRepository],
+  providers: [
+    { provide: OUTBOX_SERVICE, useClass: OutboxService },
+    { provide: OUTBOX_REPOSITORY, useClass: OutboxRepository },
+  ],
+  exports: [OUTBOX_SERVICE, OUTBOX_REPOSITORY],
 })
 export class OutboxModule {}

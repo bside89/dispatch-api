@@ -10,12 +10,7 @@ import {
 } from 'typeorm';
 import { TransactionContext } from '../utils/transaction-context';
 import { BaseEntity } from '../entities/base.entity';
-
-interface QueryOptions<T> {
-  where: Partial<T>;
-  select?: (keyof T)[];
-  relations?: string[];
-}
+import { QueryOptions } from './base-repository.interface';
 
 export abstract class BaseRepository<T extends BaseEntity> {
   protected constructor(protected readonly repository: Repository<T>) {}

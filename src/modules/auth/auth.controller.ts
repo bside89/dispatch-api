@@ -1,5 +1,6 @@
-import { Body, Controller, Post, UseGuards } from '@nestjs/common';
-import { AuthService } from './auth.service';
+import { Body, Controller, Inject, Post, UseGuards } from '@nestjs/common';
+import type { IAuthService } from './interfaces/auth-service.interface';
+import { AUTH_SERVICE } from './constants/auth.tokens';
 import { LoginDto } from './dto/login.dto';
 import {
   ApiBadRequestResponse,
@@ -22,7 +23,7 @@ import { AuthMessageFactory } from './factories/auth-message.factory';
 @ApiSecurity('bearer')
 export class AuthController extends BaseController {
   constructor(
-    private readonly authService: AuthService,
+    @Inject(AUTH_SERVICE) private readonly authService: IAuthService,
     private readonly messages: AuthMessageFactory,
   ) {
     super(AuthController.name);

@@ -1,4 +1,4 @@
-export const I18N_ITEM = {
+export const I18N_ITEMS = {
   RESPONSES: {
     CREATE: 'items.responses.create',
     FIND_ONE: 'items.responses.findOne',

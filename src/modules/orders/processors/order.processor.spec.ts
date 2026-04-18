@@ -3,6 +3,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { OrderProcessor } from './order.processor';
 import { OrderJobHandlerFactory } from '../factories/order-job-handler.factory';
 import { CacheService } from '../../../shared/modules/cache/cache.service';
+import { CACHE_SERVICE } from '../../../shared/modules/cache/constants/cache.tokens';
 import { ConfigService } from '@nestjs/config';
 import Redlock from 'redlock';
 
@@ -29,7 +30,7 @@ describe('OrderProcessor', () => {
       providers: [
         OrderProcessor,
         { provide: OrderJobHandlerFactory, useValue: factory },
-        { provide: CacheService, useValue: cacheService },
+        { provide: CACHE_SERVICE, useValue: cacheService },
         { provide: ConfigService, useValue: configService },
         { provide: Redlock, useValue: { acquire: jest.fn(), release: jest.fn() } },
       ],

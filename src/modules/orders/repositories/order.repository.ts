@@ -7,6 +7,7 @@ import { OrderQueryDto } from '../dto/order-query.dto';
 import { PaginatedResultDto } from '@/shared/dto/paginated-result.dto';
 import { col } from '@/shared/helpers/functions';
 import { OrderItem } from '../entities/order-item.entity';
+import { IOrderRepository } from '../interfaces/order-repository.interface';
 
 const ALIAS_ORDER = 'order';
 const ALIAS_ORDER_ITEM = 'orderItem';
@@ -14,7 +15,10 @@ const order = col<Order>(ALIAS_ORDER);
 const orderItem = col<OrderItem>(ALIAS_ORDER_ITEM);
 
 @Injectable()
-export class OrderRepository extends BaseRepository<Order> {
+export class OrderRepository
+  extends BaseRepository<Order>
+  implements IOrderRepository
+{
   constructor(
     @InjectRepository(Order) protected readonly repository: Repository<Order>,
   ) {

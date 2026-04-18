@@ -2,16 +2,20 @@ import {
   BadRequestException,
   ForbiddenException,
   Injectable,
+  Inject,
   NotFoundException,
 } from '@nestjs/common';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { UpdateOrderDto } from './dto/update-order.dto';
 import { OrderQueryDto } from './dto/order-query.dto';
 import { OrderStatus } from './enums/order-status.enum';
-import { CacheService } from '../../shared/modules/cache/cache.service';
+import type { ICacheService } from '../../shared/modules/cache/interfaces/cache-service.interface';
+import { CACHE_SERVICE } from '../../shared/modules/cache/constants/cache.tokens';
 import { NotifyUserJobPayload } from '@/shared/payloads/event-job.payload';
-import { OrderRepository } from './repositories/order.repository';
-import { OrderItemRepository } from './repositories/order-item.repository';
+import type { IOrderRepository } from './interfaces/order-repository.interface';
+import { ORDER_REPOSITORY } from './constants/orders.tokens';
+import type { IOrderItemRepository } from './interfaces/order-item-repository.interface';
+import { ORDER_ITEM_REPOSITORY } from './constants/orders.tokens';
 import { PaginatedResultDto } from '@/shared/dto/paginated-result.dto';
 import { DataSource } from 'typeorm';
 import { Transactional } from '@/shared/decorators/transactional.decorator';
@@ -22,7 +26,8 @@ import {
 } from './dto/order-response.dto';
 import { EntityMapper } from '@/shared/utils/entity-mapper';
 import { CACHE_TTL } from '@/shared/constants/cache-ttl.constant';
-import { OutboxService } from '@/shared/modules/outbox/outbox.service';
+import type { IOutboxService } from '@/shared/modules/outbox/interfaces/outbox-service.interface';
+import { OUTBOX_SERVICE } from '@/shared/modules/outbox/constants/outbox.tokens';
 import { OutboxType } from '@/shared/modules/outbox/enums/outbox-type.enum';
 import {
   ProcessOrderJobPayload,
@@ -37,28 +42,33 @@ import Redlock from 'redlock';
 import { ORDER_KEY } from '../../shared/modules/cache/constants/order.key';
 import type { RequestUser } from '../auth/interfaces/request-user.interface';
 import { LOCK_PREFIX } from '@/shared/constants/lock-prefix.constant';
-import { ItemsService } from '../items/items.service';
+import type { IItemsService } from '../items/interfaces/items-service.interface';
+import { ITEMS_SERVICE } from '../items/constants/items.tokens';
 import { TransactionalService } from '@/shared/services/transactional.service';
-import { PaymentsGatewayService } from '../payments-gateway/payments-gateway.service';
+import type { IPaymentsGatewayService } from '../payments-gateway/interfaces/payments-gateway-service.interface';
+import { PAYMENTS_GATEWAY_SERVICE } from '../payments-gateway/constants/payments-gateway.tokens';
 import { StripePaymentIntentCreateParams } from '../payments-gateway/types/payment-intent.types';
 import { OrderMessageFactory } from './factories/order-message.factory';
-import { I18N_ORDER } from '@/shared/constants/i18n';
+import { I18N_ORDERS } from '@/shared/constants/i18n';
 import {
   languageToCurrency,
   languageToLocale,
   toCurrencyFormatted,
 } from './helpers/functions';
 import { OrderByUserQueryDto } from './dto/order-by-user-query.dto';
+import { IOrdersService } from './interfaces/orders-service.interface';
 
 @Injectable()
-export class OrdersService extends TransactionalService {
+export class OrdersService extends TransactionalService implements IOrdersService {
   constructor(
-    private readonly orderRepository: OrderRepository,
-    private readonly orderItemRepository: OrderItemRepository,
-    private readonly itemsService: ItemsService,
-    private readonly outboxService: OutboxService,
-    private readonly paymentsGatewayService: PaymentsGatewayService,
-    private readonly cacheService: CacheService,
+    @Inject(ORDER_REPOSITORY) private readonly orderRepository: IOrderRepository,
+    @Inject(ORDER_ITEM_REPOSITORY)
+    private readonly orderItemRepository: IOrderItemRepository,
+    @Inject(ITEMS_SERVICE) private readonly itemsService: IItemsService,
+    @Inject(OUTBOX_SERVICE) private readonly outboxService: IOutboxService,
+    @Inject(PAYMENTS_GATEWAY_SERVICE)
+    private readonly paymentsGatewayService: IPaymentsGatewayService,
+    @Inject(CACHE_SERVICE) private readonly cacheService: ICacheService,
     private readonly messages: OrderMessageFactory,
     dataSource: DataSource,
     redlock: Redlock,
@@ -96,7 +106,7 @@ export class OrdersService extends TransactionalService {
     const catalogItems = await this.itemsService.findManyByIds(itemIds);
     for (const dtoItem of dto.items) {
       if (!catalogItems.find((ci) => ci.id === dtoItem.itemId)) {
-        throw new NotFoundException(template(I18N_ORDER.ERRORS.ORDER_NOT_FOUND));
+        throw new NotFoundException(template(I18N_ORDERS.ERRORS.ORDER_NOT_FOUND));
       }
     }
 
@@ -130,7 +140,7 @@ export class OrdersService extends TransactionalService {
         const item = catalogItems.find((ci) => ci.id === dtoItem.itemId);
         if (item.stock < dtoItem.quantity) {
           throw new ForbiddenException(
-            template(I18N_ORDER.ERRORS.INSUFFICIENT_STOCK),
+            template(I18N_ORDERS.ERRORS.INSUFFICIENT_STOCK),
           );
         }
         return this.itemsService.decrementItemStock(item, dtoItem.quantity);
@@ -231,10 +241,10 @@ export class OrdersService extends TransactionalService {
       relations: ['user', 'items'],
     });
     if (!order) {
-      throw new NotFoundException(template(I18N_ORDER.ERRORS.ORDER_NOT_FOUND));
+      throw new NotFoundException(template(I18N_ORDERS.ERRORS.ORDER_NOT_FOUND));
     }
     if (order.userId !== requestUser.id) {
-      throw new ForbiddenException(template(I18N_ORDER.ERRORS.ACCESS_DENIED));
+      throw new ForbiddenException(template(I18N_ORDERS.ERRORS.ACCESS_DENIED));
     }
 
     const paymentIntent = await this.paymentsGatewayService.paymentIntentsRetrieve(
@@ -280,7 +290,7 @@ export class OrdersService extends TransactionalService {
       relations: ['user', 'items'],
     });
     if (!order) {
-      throw new NotFoundException(template(I18N_ORDER.ERRORS.ORDER_NOT_FOUND));
+      throw new NotFoundException(template(I18N_ORDERS.ERRORS.ORDER_NOT_FOUND));
     }
 
     const paymentIntent = await this.paymentsGatewayService.paymentIntentsRetrieve(
@@ -308,7 +318,7 @@ export class OrdersService extends TransactionalService {
       relations: ['items', 'user'],
     });
     if (!order) {
-      throw new NotFoundException(template(I18N_ORDER.ERRORS.ORDER_NOT_FOUND));
+      throw new NotFoundException(template(I18N_ORDERS.ERRORS.ORDER_NOT_FOUND));
     }
 
     Object.assign(order, dto);
@@ -337,7 +347,7 @@ export class OrdersService extends TransactionalService {
 
     const order = await this.orderRepository.findById(id);
     if (!order) {
-      throw new NotFoundException(template(I18N_ORDER.ERRORS.ORDER_NOT_FOUND));
+      throw new NotFoundException(template(I18N_ORDERS.ERRORS.ORDER_NOT_FOUND));
     }
 
     await this.orderRepository.softDelete(order);
@@ -361,7 +371,7 @@ export class OrdersService extends TransactionalService {
       relations: ['user', 'items'],
     });
     if (!order) {
-      throw new NotFoundException(template(I18N_ORDER.ERRORS.ORDER_NOT_FOUND));
+      throw new NotFoundException(template(I18N_ORDERS.ERRORS.ORDER_NOT_FOUND));
     }
 
     order.paymentIntentId = paymentIntentId;
@@ -391,7 +401,7 @@ export class OrdersService extends TransactionalService {
       relations: ['user', 'items'],
     });
     if (!order) {
-      throw new NotFoundException(template(I18N_ORDER.ERRORS.ORDER_NOT_FOUND));
+      throw new NotFoundException(template(I18N_ORDERS.ERRORS.ORDER_NOT_FOUND));
     }
 
     order.paymentIntentId = paymentIntentId;
@@ -423,13 +433,13 @@ export class OrdersService extends TransactionalService {
     /** 1. VALIDATION */
 
     if (!order) {
-      throw new NotFoundException(template(I18N_ORDER.ERRORS.ORDER_NOT_FOUND));
+      throw new NotFoundException(template(I18N_ORDERS.ERRORS.ORDER_NOT_FOUND));
     }
 
     const preconditions = ORDER_STATUS_PRECONDITIONS[OrderStatus.SHIPPED];
     if (!preconditions.includes(order.status)) {
       throw new BadRequestException(
-        template(I18N_ORDER.ERRORS.BAD_PRECONDITIONS, {
+        template(I18N_ORDERS.ERRORS.BAD_PRECONDITIONS, {
           status: OrderStatus.SHIPPED,
           currentStatus: order.status,
         }),
@@ -470,13 +480,13 @@ export class OrdersService extends TransactionalService {
     /** 1. VALIDATION */
 
     if (!order) {
-      throw new NotFoundException(template(I18N_ORDER.ERRORS.ORDER_NOT_FOUND));
+      throw new NotFoundException(template(I18N_ORDERS.ERRORS.ORDER_NOT_FOUND));
     }
 
     const preconditions = ORDER_STATUS_PRECONDITIONS[OrderStatus.DELIVERED];
     if (!preconditions.includes(order.status)) {
       throw new BadRequestException(
-        template(I18N_ORDER.ERRORS.BAD_PRECONDITIONS, {
+        template(I18N_ORDERS.ERRORS.BAD_PRECONDITIONS, {
           status: OrderStatus.DELIVERED,
           currentStatus: order.status,
         }),
@@ -514,13 +524,13 @@ export class OrdersService extends TransactionalService {
     /** 1. VALIDATION */
 
     if (!order) {
-      throw new NotFoundException(template(I18N_ORDER.ERRORS.ORDER_NOT_FOUND));
+      throw new NotFoundException(template(I18N_ORDERS.ERRORS.ORDER_NOT_FOUND));
     }
 
     const preconditions = ORDER_STATUS_PRECONDITIONS[OrderStatus.CANCELED];
     if (!preconditions.includes(order.status)) {
       throw new BadRequestException(
-        template(I18N_ORDER.ERRORS.BAD_PRECONDITIONS, {
+        template(I18N_ORDERS.ERRORS.BAD_PRECONDITIONS, {
           status: OrderStatus.CANCELED,
           currentStatus: order.status,
         }),
@@ -548,13 +558,13 @@ export class OrdersService extends TransactionalService {
     /** 1. VALIDATION */
 
     if (!order) {
-      throw new NotFoundException(template(I18N_ORDER.ERRORS.ORDER_NOT_FOUND));
+      throw new NotFoundException(template(I18N_ORDERS.ERRORS.ORDER_NOT_FOUND));
     }
 
     const preconditions = ORDER_STATUS_PRECONDITIONS[OrderStatus.REFUNDED];
     if (!preconditions.includes(order.status)) {
       throw new BadRequestException(
-        template(I18N_ORDER.ERRORS.BAD_PRECONDITIONS, {
+        template(I18N_ORDERS.ERRORS.BAD_PRECONDITIONS, {
           status: OrderStatus.REFUNDED,
           currentStatus: order.status,
         }),

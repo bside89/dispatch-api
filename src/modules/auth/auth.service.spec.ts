@@ -4,9 +4,10 @@ import { ConfigService } from '@nestjs/config';
 import { DataSource } from 'typeorm';
 import { AuthService } from './auth.service';
 import { AuthMessageFactory } from './factories/auth-message.factory';
-import { CacheService } from '../../shared/modules/cache/cache.service';
-import { UserRepository } from '../users/repositories/user.repository';
-import { OutboxService } from '../../shared/modules/outbox/outbox.service';
+import { AUTH_SERVICE } from './constants/auth.tokens';
+import { CACHE_SERVICE } from '../../shared/modules/cache/constants/cache.tokens';
+import { USER_REPOSITORY } from '../users/constants/users.tokens';
+import { OUTBOX_SERVICE } from '../../shared/modules/outbox/constants/outbox.tokens';
 import Redlock from 'redlock';
 
 describe('AuthService', () => {
@@ -15,13 +16,13 @@ describe('AuthService', () => {
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
-        AuthService,
+        { provide: AUTH_SERVICE, useClass: AuthService },
         {
           provide: JwtService,
           useValue: { sign: jest.fn() },
         },
         {
-          provide: CacheService,
+          provide: CACHE_SERVICE,
           useValue: { set: jest.fn() },
         },
         {
@@ -29,7 +30,7 @@ describe('AuthService', () => {
           useValue: { get: jest.fn() },
         },
         {
-          provide: UserRepository,
+          provide: USER_REPOSITORY,
           useValue: { findOne: jest.fn(), update: jest.fn() },
         },
         {
@@ -37,7 +38,7 @@ describe('AuthService', () => {
           useValue: {},
         },
         {
-          provide: OutboxService,
+          provide: OUTBOX_SERVICE,
           useValue: { add: jest.fn() },
         },
         {
@@ -58,7 +59,7 @@ describe('AuthService', () => {
       ],
     }).compile();
 
-    service = module.get<AuthService>(AuthService);
+    service = module.get<AuthService>(AUTH_SERVICE);
   });
 
   it('should be defined', () => {

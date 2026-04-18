@@ -3,11 +3,12 @@ import { PaymentsGatewayService } from './payments-gateway.service';
 import { stripeClientProvider } from './providers/stripe-client.provider';
 import { StripeCustomersGateway } from './gateways/stripe-customers.gateway';
 import { StripePaymentIntentsGateway } from './gateways/stripe-payment-intents.gateway';
+import { PAYMENTS_GATEWAY_SERVICE } from './constants/payments-gateway.tokens';
 
 @Module({
-  exports: [PaymentsGatewayService],
+  exports: [PAYMENTS_GATEWAY_SERVICE],
   providers: [
-    PaymentsGatewayService,
+    { provide: PAYMENTS_GATEWAY_SERVICE, useClass: PaymentsGatewayService },
     stripeClientProvider,
     StripeCustomersGateway,
     StripePaymentIntentsGateway,

@@ -1,6 +1,6 @@
 import { Global, Module } from '@nestjs/common';
 import { EventProcessor } from './processors/event.processor';
-import { BullEventBus } from './implementations/bull-event-bus';
+import { EventBus } from './providers/event-bus';
 import { EVENT_BUS } from './constants/event-bus.token';
 import { BullModule } from '@nestjs/bullmq';
 import { bullmqDefaultJobOptions } from '../../../config/bullmq.config';
@@ -22,9 +22,9 @@ import { EVENT_QUEUE_TOKEN } from '@/shared/constants/queue-tokens.constant';
   providers: [
     {
       provide: EVENT_BUS,
-      useClass: BullEventBus,
+      useClass: EventBus,
     },
-    BullEventBus,
+    EventBus,
     EventProcessor,
     NotifyUserJobStrategy,
     EventJobHandlerFactory,

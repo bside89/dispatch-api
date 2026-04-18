@@ -8,7 +8,7 @@ import { DataSource } from 'typeorm';
 import Redis from 'ioredis';
 import { REDIS_CLIENT } from '@/shared/modules/cache/constants/redis-client.constant';
 import { paymentsGatewayServiceMock } from './utils/mock-payments-gateway-service';
-import { PaymentsGatewayService } from '@/modules/payments-gateway/payments-gateway.service';
+import { PAYMENTS_GATEWAY_SERVICE } from '@/modules/payments-gateway/constants/payments-gateway.tokens';
 import { JwtService } from '@nestjs/jwt';
 import {
   createAccessToken,
@@ -27,7 +27,7 @@ describe('Auth (E2E)', () => {
     const module: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
     })
-      .overrideProvider(PaymentsGatewayService)
+      .overrideProvider(PAYMENTS_GATEWAY_SERVICE)
       .useValue(paymentsGatewayServiceMock)
       .compile();
 

@@ -12,6 +12,7 @@ import {
   HttpCode,
   HttpStatus,
   BadRequestException,
+  Inject,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -27,7 +28,8 @@ import {
   ApiHeader,
   ApiQuery,
 } from '@nestjs/swagger';
-import { ItemsService } from './items.service';
+import type { IItemsService } from './interfaces/items-service.interface';
+import { ITEMS_SERVICE } from './constants/items.tokens';
 import { CreateItemDto } from './dto/create-item.dto';
 import { UpdateItemDto } from './dto/update-item.dto';
 import { ItemQueryDto } from './dto/item-query.dto';
@@ -47,7 +49,7 @@ import { template } from '@/shared/helpers/functions';
 @ApiSecurity('bearer')
 export class AdminItemsController extends BaseController {
   constructor(
-    private readonly itemsService: ItemsService,
+    @Inject(ITEMS_SERVICE) private readonly itemsService: IItemsService,
     private readonly messages: ItemMessageFactory,
   ) {
     super(AdminItemsController.name);

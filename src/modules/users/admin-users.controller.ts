@@ -12,6 +12,7 @@ import {
   HttpStatus,
   Post,
   BadRequestException,
+  Inject,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -27,7 +28,8 @@ import {
   ApiHeader,
   ApiCreatedResponse,
 } from '@nestjs/swagger';
-import { UsersService } from './users.service';
+import type { IUsersService } from './interfaces/users-service.interface';
+import { USERS_SERVICE } from './constants/users.tokens';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { UserQueryDto } from './dto/user-query.dto';
 import { UserResponseDto } from './dto/user-response.dto';
@@ -38,7 +40,7 @@ import { UserMessageFactory } from './factories/user-message.factory';
 import { UserRole } from '@/shared/enums/user-role.enum';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { CreateUserDto } from './dto/create-user.dto';
-import { I18N_COMMON } from '@/shared/constants/i18n/common.tokens';
+import { I18N_COMMON } from '@/shared/constants/i18n/i18n-common.constant';
 import { template } from '@/shared/helpers/functions';
 import { PaginatedResultDto } from '@/shared/dto/paginated-result.dto';
 
@@ -47,7 +49,7 @@ import { PaginatedResultDto } from '@/shared/dto/paginated-result.dto';
 @ApiSecurity('bearer')
 export class AdminUsersController extends BaseController {
   constructor(
-    private readonly usersService: UsersService,
+    @Inject(USERS_SERVICE) private readonly usersService: IUsersService,
     private readonly messages: UserMessageFactory,
   ) {
     super(AdminUsersController.name);

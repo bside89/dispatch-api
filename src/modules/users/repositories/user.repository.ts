@@ -6,12 +6,13 @@ import { BaseRepository } from '@/shared/repositories/base.repository';
 import { Injectable } from '@nestjs/common';
 import { PaginatedResultDto } from '@/shared/dto/paginated-result.dto';
 import { col } from '@/shared/helpers/functions';
+import { IUserRepository } from '../interfaces/user-repository.interface';
 
 const ALIAS_USER = 'user';
 const user = col<User>(ALIAS_USER);
 
 @Injectable()
-export class UserRepository extends BaseRepository<User> {
+export class UserRepository extends BaseRepository<User> implements IUserRepository {
   constructor(@InjectRepository(User) repository: Repository<User>) {
     super(repository);
   }

@@ -1,11 +1,11 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { CancelOrderJobStrategy as CancelOrderJobStrategy } from './cancel-order-job.strategy';
-import { CacheService } from '../../../shared/modules/cache/cache.service';
-import { OutboxService } from '../../../shared/modules/outbox/outbox.service';
-import { OrderRepository } from '../repositories/order.repository';
+import { CancelOrderJobStrategy } from './cancel-order-job.strategy';
+import { CACHE_SERVICE } from '../../../shared/modules/cache/constants/cache.tokens';
+import { OUTBOX_SERVICE } from '../../../shared/modules/outbox/constants/outbox.tokens';
+import { ITEMS_SERVICE } from '../../items/constants/items.tokens';
+import { ORDER_REPOSITORY } from '../constants/orders.tokens';
 import { DataSource } from 'typeorm';
 import Redlock from 'redlock';
-import { ItemsService } from '../../items/items.service';
 import {
   createCacheServiceMock,
   createDataSourceMock,
@@ -22,15 +22,15 @@ describe('CancelOrderJobStrategy', () => {
       providers: [
         CancelOrderJobStrategy,
         {
-          provide: CacheService,
+          provide: CACHE_SERVICE,
           useValue: createCacheServiceMock(),
         },
         {
-          provide: OutboxService,
+          provide: OUTBOX_SERVICE,
           useValue: createOutboxServiceMock(),
         },
         {
-          provide: ItemsService,
+          provide: ITEMS_SERVICE,
           useValue: {
             findManyByIds: jest.fn(),
             incrementItemStock: jest.fn(),
@@ -41,7 +41,7 @@ describe('CancelOrderJobStrategy', () => {
           useValue: {},
         },
         {
-          provide: OrderRepository,
+          provide: ORDER_REPOSITORY,
           useValue: {
             update: jest.fn(),
           },

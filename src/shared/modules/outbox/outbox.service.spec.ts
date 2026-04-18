@@ -1,7 +1,8 @@
 /*eslint-disable @typescript-eslint/no-explicit-any */
 import { Test, TestingModule } from '@nestjs/testing';
 import { OutboxService } from './outbox.service';
-import { OutboxRepository } from './repositories/outbox.repository';
+import { OUTBOX_SERVICE, OUTBOX_REPOSITORY } from './constants/outbox.tokens';
+import type { OutboxRepository } from './repositories/outbox.repository';
 import { getQueueToken } from '@nestjs/bullmq';
 import {
   ORDER_QUEUE_TOKEN,
@@ -51,9 +52,9 @@ describe('OutboxService', () => {
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
-        OutboxService,
+        { provide: OUTBOX_SERVICE, useClass: OutboxService },
         {
-          provide: OutboxRepository,
+          provide: OUTBOX_REPOSITORY,
           useValue: {
             createEntity: jest.fn(),
             save: jest.fn(),
@@ -95,8 +96,8 @@ describe('OutboxService', () => {
       ],
     }).compile();
 
-    service = module.get<OutboxService>(OutboxService);
-    repository = module.get(OutboxRepository);
+    service = module.get<OutboxService>(OUTBOX_SERVICE);
+    repository = module.get(OUTBOX_REPOSITORY);
     orderQueue = module.get(getQueueToken(ORDER_QUEUE_TOKEN));
     paymentQueue = module.get(getQueueToken(PAYMENT_QUEUE_TOKEN));
     eventBus = module.get(EVENT_BUS);

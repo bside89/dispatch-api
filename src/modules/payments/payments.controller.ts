@@ -4,11 +4,13 @@ import {
   Headers,
   HttpCode,
   HttpStatus,
+  Inject,
   Post,
   Req,
 } from '@nestjs/common';
 import { BaseController } from '../../shared/controllers/base.controller';
-import { PaymentsService } from './payments.service';
+import type { IPaymentsService } from './interfaces/payments-service.interface';
+import { PAYMENTS_SERVICE } from './constants/payments.tokens';
 import { Public } from '../auth/decorators/public.decorator';
 import {
   ApiBadRequestResponse,
@@ -30,7 +32,7 @@ import { template } from '@/shared/helpers/functions';
 @ApiSecurity('bearer')
 export class PaymentsController extends BaseController {
   constructor(
-    private readonly paymentsService: PaymentsService,
+    @Inject(PAYMENTS_SERVICE) private readonly paymentsService: IPaymentsService,
     private readonly configService: ConfigService,
   ) {
     super(PaymentsController.name);

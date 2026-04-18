@@ -7,6 +7,7 @@ import Redlock from 'redlock';
 import { cacheConfig, redisClient } from '../../../config/redis.config';
 import { CacheService } from './cache.service';
 import { REDIS_CLIENT } from '@/shared/modules/cache/constants/redis-client.constant';
+import { CACHE_SERVICE } from './constants/cache.tokens';
 
 @Global()
 @Module({
@@ -18,7 +19,7 @@ import { REDIS_CLIENT } from '@/shared/modules/cache/constants/redis-client.cons
     }),
   ],
   providers: [
-    CacheService,
+    { provide: CACHE_SERVICE, useClass: CacheService },
     {
       provide: REDIS_CLIENT,
       useFactory: redisClient,
@@ -30,6 +31,6 @@ import { REDIS_CLIENT } from '@/shared/modules/cache/constants/redis-client.cons
       inject: [REDIS_CLIENT],
     },
   ],
-  exports: [CacheService, REDIS_CLIENT, Redlock],
+  exports: [CACHE_SERVICE, REDIS_CLIENT, Redlock],
 })
 export class CacheModule {}

@@ -1,13 +1,16 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { OrdersService } from './orders.service';
-import { OrderRepository } from './repositories/order.repository';
-import { OrderItemRepository } from './repositories/order-item.repository';
-import { ItemsService } from '../items/items.service';
-import { CacheService } from '../../shared/modules/cache/cache.service';
-import { OutboxService } from '../../shared/modules/outbox/outbox.service';
+import {
+  ORDERS_SERVICE,
+  ORDER_REPOSITORY,
+  ORDER_ITEM_REPOSITORY,
+} from './constants/orders.tokens';
+import { ITEMS_SERVICE } from '../items/constants/items.tokens';
+import { CACHE_SERVICE } from '../../shared/modules/cache/constants/cache.tokens';
+import { OUTBOX_SERVICE } from '../../shared/modules/outbox/constants/outbox.tokens';
+import { PAYMENTS_GATEWAY_SERVICE } from '../payments-gateway/constants/payments-gateway.tokens';
 import { DataSource } from 'typeorm';
 import Redlock from 'redlock';
-import { PaymentsGatewayService } from '../payments-gateway/payments-gateway.service';
 import {
   createCacheServiceMock,
   createDataSourceMock,
@@ -64,17 +67,17 @@ describe('OrdersService', () => {
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
-        OrdersService,
+        { provide: ORDERS_SERVICE, useClass: OrdersService },
         {
-          provide: OrderRepository,
+          provide: ORDER_REPOSITORY,
           useValue: orderRepository,
         },
         {
-          provide: OrderItemRepository,
+          provide: ORDER_ITEM_REPOSITORY,
           useValue: orderItemRepository,
         },
         {
-          provide: CacheService,
+          provide: CACHE_SERVICE,
           useValue: cacheService,
         },
         {
@@ -82,15 +85,15 @@ describe('OrdersService', () => {
           useValue: messages,
         },
         {
-          provide: OutboxService,
+          provide: OUTBOX_SERVICE,
           useValue: createOutboxServiceMock(),
         },
         {
-          provide: PaymentsGatewayService,
+          provide: PAYMENTS_GATEWAY_SERVICE,
           useValue: paymentsGatewayService,
         },
         {
-          provide: ItemsService,
+          provide: ITEMS_SERVICE,
           useValue: itemsService,
         },
         {
@@ -104,7 +107,7 @@ describe('OrdersService', () => {
       ],
     }).compile();
 
-    service = module.get<OrdersService>(OrdersService);
+    service = module.get<OrdersService>(ORDERS_SERVICE);
   });
 
   it('should be defined', () => {

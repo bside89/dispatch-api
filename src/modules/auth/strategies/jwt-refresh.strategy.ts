@@ -2,12 +2,13 @@ import { PassportStrategy } from '@nestjs/passport';
 import { JwtStrategyName } from '../enums/jwt-strategy-name.enum';
 import { ConfigService } from '@nestjs/config';
 import { ExtractJwt, Strategy } from 'passport-jwt';
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable, Inject, UnauthorizedException } from '@nestjs/common';
 import { JwtPayload } from '../interfaces/jwt-payload.interface';
 import { Request } from 'express';
 import { RequestUser } from '../interfaces/request-user.interface';
 import { AUTH_KEY } from '@/shared/modules/cache/constants/auth.key';
-import { CacheService } from '@/shared/modules/cache/cache.service';
+import { CACHE_SERVICE } from '@/shared/modules/cache/constants/cache.tokens';
+import type { ICacheService } from '@/shared/modules/cache/interfaces/cache-service.interface';
 import { I18N_AUTH } from '@/shared/constants/i18n';
 import { template } from '@/shared/helpers/functions';
 
@@ -18,7 +19,7 @@ export class JwtRefreshStrategy extends PassportStrategy(
 ) {
   constructor(
     configService: ConfigService,
-    private readonly cacheService: CacheService,
+    @Inject(CACHE_SERVICE) private readonly cacheService: ICacheService,
   ) {
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),

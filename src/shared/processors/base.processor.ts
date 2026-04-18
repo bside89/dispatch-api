@@ -2,7 +2,7 @@ import { WorkerHost } from '@nestjs/bullmq';
 import * as os from 'os';
 import { AppLogger } from '../utils/app-logger';
 import Redlock from 'redlock';
-import { CacheService } from '../modules/cache/cache.service';
+import type { ICacheService } from '../modules/cache/interfaces/cache-service.interface';
 import { UseLock } from '../decorators/lock.decorator';
 import { Job } from 'bullmq';
 import { randomUUID } from 'crypto';
@@ -22,7 +22,7 @@ export abstract class BaseProcessor
 
   constructor(
     processorName: string,
-    protected readonly cacheService: CacheService,
+    protected readonly cacheService: ICacheService,
     protected readonly configService: ConfigService,
     protected readonly redlock: Redlock, // Used in @UseLock()
   ) {

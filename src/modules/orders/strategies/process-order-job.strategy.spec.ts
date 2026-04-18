@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { CacheService } from '../../../shared/modules/cache/cache.service';
-import { OutboxService } from '../../../shared/modules/outbox/outbox.service';
-import { OrderRepository } from '../repositories/order.repository';
+import { CACHE_SERVICE } from '../../../shared/modules/cache/constants/cache.tokens';
+import { OUTBOX_SERVICE } from '../../../shared/modules/outbox/constants/outbox.tokens';
+import { ORDER_REPOSITORY } from '../constants/orders.tokens';
 import { DataSource } from 'typeorm';
 import Redlock from 'redlock';
 import { ProcessOrderJobStrategy } from './process-order-job.strategy';
@@ -15,7 +15,7 @@ describe('ProcessOrderJobStrategy', () => {
       providers: [
         ProcessOrderJobStrategy,
         {
-          provide: CacheService,
+          provide: CACHE_SERVICE,
           useValue: {
             hasKey: jest.fn(),
             setKey: jest.fn(),
@@ -23,7 +23,7 @@ describe('ProcessOrderJobStrategy', () => {
           },
         },
         {
-          provide: OutboxService,
+          provide: OUTBOX_SERVICE,
           useValue: {
             add: jest.fn(),
           },
@@ -33,7 +33,7 @@ describe('ProcessOrderJobStrategy', () => {
           useValue: {},
         },
         {
-          provide: OrderRepository,
+          provide: ORDER_REPOSITORY,
           useValue: {
             update: jest.fn(),
           },

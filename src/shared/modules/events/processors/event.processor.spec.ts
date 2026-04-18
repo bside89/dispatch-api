@@ -4,6 +4,7 @@ import { EventProcessor } from './event.processor';
 import { NotifyUserJobStrategy } from '../strategies/notify-user-job.strategy';
 import { ConfigService } from '@nestjs/config';
 import { CacheService } from '../../cache/cache.service';
+import { CACHE_SERVICE } from '../../cache/constants/cache.tokens';
 import Redlock from 'redlock';
 import { EventJobHandlerFactory } from '../factories/event-job-handler.factory';
 import {
@@ -40,7 +41,7 @@ describe('EventProcessor', () => {
           useValue: { get: jest.fn() },
         },
         {
-          provide: CacheService,
+          provide: CACHE_SERVICE,
           useValue: cacheService,
         },
         {

@@ -1,14 +1,17 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable, Inject, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { User } from '../users/entities/user.entity';
 import { LoginResponseDto } from './dto/login-response.dto';
 import { ConfigService } from '@nestjs/config';
 import type { JwtPayload } from './interfaces/jwt-payload.interface';
-import { CacheService } from '../../shared/modules/cache/cache.service';
-import { UserRepository } from '../users/repositories/user.repository';
+import type { ICacheService } from '../../shared/modules/cache/interfaces/cache-service.interface';
+import { CACHE_SERVICE } from '../../shared/modules/cache/constants/cache.tokens';
+import type { IUserRepository } from '../users/interfaces/user-repository.interface';
+import { USER_REPOSITORY } from '../users/constants/users.tokens';
 import { HashUtils } from '@/shared/utils/hash.utils';
 import { CACHE_TTL } from '@/shared/constants/cache-ttl.constant';
-import { OutboxService } from '@/shared/modules/outbox/outbox.service';
+import type { IOutboxService } from '@/shared/modules/outbox/interfaces/outbox-service.interface';
+import { OUTBOX_SERVICE } from '@/shared/modules/outbox/constants/outbox.tokens';
 import { NotifyUserJobPayload } from '@/shared/payloads/event-job.payload';
 import { OutboxType } from '@/shared/modules/outbox/enums/outbox-type.enum';
 import { UseLock } from '@/shared/decorators/lock.decorator';
@@ -23,15 +26,16 @@ import { TransactionalService } from '@/shared/services/transactional.service';
 import { AuthMessageFactory } from './factories/auth-message.factory';
 import { template } from '@/shared/helpers/functions';
 import { I18N_AUTH, I18N_COMMON } from '@/shared/constants/i18n';
+import { IAuthService } from './interfaces/auth-service.interface';
 
 @Injectable()
-export class AuthService extends TransactionalService {
+export class AuthService extends TransactionalService implements IAuthService {
   constructor(
     private readonly jwtService: JwtService,
-    private readonly cacheService: CacheService,
+    @Inject(CACHE_SERVICE) private readonly cacheService: ICacheService,
     private readonly configService: ConfigService,
-    private readonly userRepository: UserRepository,
-    private readonly outboxService: OutboxService,
+    @Inject(USER_REPOSITORY) private readonly userRepository: IUserRepository,
+    @Inject(OUTBOX_SERVICE) private readonly outboxService: IOutboxService,
     private readonly messages: AuthMessageFactory,
     dataSource: DataSource,
     redlock: Redlock,

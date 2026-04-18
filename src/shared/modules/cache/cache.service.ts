@@ -3,9 +3,10 @@ import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { Inject, Injectable, OnModuleDestroy } from '@nestjs/common';
 import type { Cache } from 'cache-manager';
 import Redis from 'ioredis';
+import { ICacheService } from './interfaces/cache-service.interface';
 
 @Injectable()
-export class CacheService implements OnModuleDestroy {
+export class CacheService implements OnModuleDestroy, ICacheService {
   constructor(
     @Inject(CACHE_MANAGER)
     private readonly cacheManager: Cache,

@@ -1,5 +1,5 @@
-import { OrderRepository } from '../repositories/order.repository';
-import { CacheService } from '@/shared/modules/cache/cache.service';
+import type { ICacheService } from '@/shared/modules/cache/interfaces/cache-service.interface';
+import type { IOrderRepository } from '../interfaces/order-repository.interface';
 import { OrderStatus } from '../enums/order-status.enum';
 import { DataSource } from 'typeorm';
 import { UseLock } from '@/shared/decorators/lock.decorator';
@@ -17,8 +17,8 @@ export abstract class BaseOrderJobStrategy<
 
   constructor(
     jobName: string,
-    protected readonly cacheService: CacheService,
-    protected readonly orderRepository: OrderRepository,
+    protected readonly cacheService: ICacheService,
+    protected readonly orderRepository: IOrderRepository,
     protected readonly dataSource: DataSource,
     protected readonly redlock: Redlock,
   ) {

@@ -1,22 +1,27 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Inject } from '@nestjs/common';
 import { DeleteCustomerJobPayload } from '@/shared/payloads/payment-job.payload';
 import { BasePaymentJobStrategy } from './base-payment-job.strategy';
 import { Job } from 'bullmq';
 import Redlock from 'redlock';
 import { DataSource } from 'typeorm';
-import { UserRepository } from '@/modules/users/repositories/user.repository';
-import { OrderRepository } from '@/modules/orders/repositories/order.repository';
-import { CacheService } from '@/shared/modules/cache/cache.service';
-import { PaymentsGatewayService } from '@/modules/payments-gateway/payments-gateway.service';
+import { PAYMENTS_GATEWAY_SERVICE } from '@/modules/payments-gateway/constants/payments-gateway.tokens';
+import type { IPaymentsGatewayService } from '@/modules/payments-gateway/interfaces/payments-gateway-service.interface';
+import { ORDER_REPOSITORY } from '@/modules/orders/constants/orders.tokens';
+import type { IOrderRepository } from '@/modules/orders/interfaces/order-repository.interface';
+import { USER_REPOSITORY } from '@/modules/users/constants/users.tokens';
+import type { IUserRepository } from '@/modules/users/interfaces/user-repository.interface';
+import { CACHE_SERVICE } from '@/shared/modules/cache/constants/cache.tokens';
+import type { ICacheService } from '@/shared/modules/cache/interfaces/cache-service.interface';
 import { PAYMENT_KEY } from '@/shared/modules/cache/constants/payment.key';
 
 @Injectable()
 export class DeleteCustomerJobStrategy extends BasePaymentJobStrategy<DeleteCustomerJobPayload> {
   constructor(
-    paymentsGatewayService: PaymentsGatewayService,
-    cacheService: CacheService,
-    orderRepository: OrderRepository,
-    userRepository: UserRepository,
+    @Inject(PAYMENTS_GATEWAY_SERVICE)
+    paymentsGatewayService: IPaymentsGatewayService,
+    @Inject(CACHE_SERVICE) cacheService: ICacheService,
+    @Inject(ORDER_REPOSITORY) orderRepository: IOrderRepository,
+    @Inject(USER_REPOSITORY) userRepository: IUserRepository,
     dataSource: DataSource,
     redlock: Redlock,
   ) {

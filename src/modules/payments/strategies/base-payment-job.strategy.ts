@@ -1,6 +1,4 @@
-import { OrderRepository } from '@/modules/orders/repositories/order.repository';
-import { UserRepository } from '@/modules/users/repositories/user.repository';
-import { CacheService } from '@/shared/modules/cache/cache.service';
+import type { ICacheService } from '@/shared/modules/cache/interfaces/cache-service.interface';
 import { BaseJobStrategy } from '@/shared/strategies/base-job.strategy';
 import Redlock from 'redlock';
 import { DataSource } from 'typeorm';
@@ -9,19 +7,21 @@ import { Order } from '@/modules/orders/entities/order.entity';
 import { UseLock } from '@/shared/decorators/lock.decorator';
 import { User } from '@/modules/users/entities/user.entity';
 import { USER_KEY } from '@/shared/modules/cache/constants/user.key';
-import { PaymentsGatewayService } from '@/modules/payments-gateway/payments-gateway.service';
 import { LOCK_PREFIX } from '@/shared/constants/lock-prefix.constant';
 import { PaymentJobPayload } from '@/shared/payloads/payment-job.payload';
+import type { IOrderRepository } from '@/modules/orders/interfaces/order-repository.interface';
+import type { IUserRepository } from '@/modules/users/interfaces/user-repository.interface';
+import type { IPaymentsGatewayService } from '@/modules/payments-gateway/interfaces/payments-gateway-service.interface';
 
 export abstract class BasePaymentJobStrategy<
   T extends PaymentJobPayload,
 > extends BaseJobStrategy<T> {
   constructor(
     jobName: string,
-    protected readonly paymentsGatewayService: PaymentsGatewayService,
-    protected readonly cacheService: CacheService,
-    protected readonly orderRepository: OrderRepository,
-    protected readonly userRepository: UserRepository,
+    protected readonly paymentsGatewayService: IPaymentsGatewayService,
+    protected readonly cacheService: ICacheService,
+    protected readonly orderRepository: IOrderRepository,
+    protected readonly userRepository: IUserRepository,
     protected readonly dataSource: DataSource,
     protected readonly redlock: Redlock,
   ) {

@@ -1,4 +1,4 @@
-export const I18N_ORDER = {
+export const I18N_ORDERS = {
   RESPONSES: {
     CREATE: 'orders.responses.create',
     FIND_ONE: 'orders.responses.findOne',

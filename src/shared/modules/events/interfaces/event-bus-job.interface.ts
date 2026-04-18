@@ -1,5 +1,5 @@
 /*eslint-disable @typescript-eslint/no-explicit-any */
-export interface EventBusJob {
+export interface IEventBusJob {
   name: string;
 
   data: any;

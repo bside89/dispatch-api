@@ -1,14 +1,17 @@
 import {
   ForbiddenException,
   Injectable,
+  Inject,
   NotFoundException,
   ConflictException,
 } from '@nestjs/common';
-import { CacheService } from '../../shared/modules/cache/cache.service';
+import type { ICacheService } from '../../shared/modules/cache/interfaces/cache-service.interface';
+import { CACHE_SERVICE } from '../../shared/modules/cache/constants/cache.tokens';
 import { CreateUserDto, PublicCreateUserDto } from './dto/create-user.dto';
 import { PublicUpdateUserDto, UpdateUserDto } from './dto/update-user.dto';
 import { PublicUserQueryDto, UserQueryDto } from './dto/user-query.dto';
-import { UserRepository } from './repositories/user.repository';
+import type { IUserRepository } from './interfaces/user-repository.interface';
+import { USER_REPOSITORY } from './constants/users.tokens';
 import { PaginatedResultDto } from '@/shared/dto/paginated-result.dto';
 import {
   PublicUserResponseDto,
@@ -25,7 +28,8 @@ import { ensureError, template } from '@/shared/helpers/functions';
 import { UseLock } from '@/shared/decorators/lock.decorator';
 import Redlock from 'redlock';
 import { USER_KEY } from '../../shared/modules/cache/constants/user.key';
-import { OutboxService } from '@/shared/modules/outbox/outbox.service';
+import type { IOutboxService } from '@/shared/modules/outbox/interfaces/outbox-service.interface';
+import { OUTBOX_SERVICE } from '@/shared/modules/outbox/constants/outbox.tokens';
 import { OutboxType } from '@/shared/modules/outbox/enums/outbox-type.enum';
 import {
   CreateCustomerJobPayload,
@@ -34,7 +38,8 @@ import {
 } from '@/shared/payloads/payment-job.payload';
 import type { RequestUser } from '../auth/interfaces/request-user.interface';
 import { UserRole } from '../../shared/enums/user-role.enum';
-import { PaymentsGatewayService } from '../payments-gateway/payments-gateway.service';
+import type { IPaymentsGatewayService } from '../payments-gateway/interfaces/payments-gateway-service.interface';
+import { PAYMENTS_GATEWAY_SERVICE } from '../payments-gateway/constants/payments-gateway.tokens';
 import { CustomerResponseDto } from '../payments-gateway/dto/customer-response.dto';
 import { LOCK_PREFIX } from '@/shared/constants/lock-prefix.constant';
 import { TransactionalService } from '@/shared/services/transactional.service';
@@ -45,14 +50,16 @@ import {
 } from '@/shared/dto/user-snapshot.dto';
 import { User } from './entities/user.entity';
 import { USER_ROLE_LEVEL } from '@/shared/constants/user-role-level.constant';
+import { IUsersService } from './interfaces/users-service.interface';
 
 @Injectable()
-export class UsersService extends TransactionalService {
+export class UsersService extends TransactionalService implements IUsersService {
   constructor(
-    private readonly userRepository: UserRepository,
-    private readonly paymentsGatewayService: PaymentsGatewayService,
-    private readonly cacheService: CacheService,
-    private readonly outboxService: OutboxService,
+    @Inject(USER_REPOSITORY) private readonly userRepository: IUserRepository,
+    @Inject(PAYMENTS_GATEWAY_SERVICE)
+    private readonly paymentsGatewayService: IPaymentsGatewayService,
+    @Inject(CACHE_SERVICE) private readonly cacheService: ICacheService,
+    @Inject(OUTBOX_SERVICE) private readonly outboxService: IOutboxService,
     dataSource: DataSource,
     redlock: Redlock,
   ) {

@@ -4,6 +4,7 @@ import { PaymentsProcessor } from './payments.processor';
 import { PaymentJobHandlerFactory } from '../factories/payment-job-handler.factory';
 import { ConfigService } from '@nestjs/config';
 import { CacheService } from '@/shared/modules/cache/cache.service';
+import { CACHE_SERVICE } from '@/shared/modules/cache/constants/cache.tokens';
 import Redlock from 'redlock';
 
 describe('PaymentsProcessor', () => {
@@ -34,7 +35,7 @@ describe('PaymentsProcessor', () => {
         PaymentsProcessor,
         { provide: PaymentJobHandlerFactory, useValue: factory },
         { provide: ConfigService, useValue: configService },
-        { provide: CacheService, useValue: cacheService },
+        { provide: CACHE_SERVICE, useValue: cacheService },
         { provide: Redlock, useValue: redlock },
       ],
     }).compile();

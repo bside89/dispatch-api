@@ -14,6 +14,11 @@ import { RefundOrderJobStrategy } from './strategies/refund-order-job.strategy';
 import { PaymentsGatewayModule } from '../payments-gateway/payments-gateway.module';
 import { ItemsModule } from '../items/items.module';
 import { OrderMessageFactory } from './factories/order-message.factory';
+import {
+  ORDERS_SERVICE,
+  ORDER_REPOSITORY,
+  ORDER_ITEM_REPOSITORY,
+} from './constants/orders.tokens';
 
 @Module({
   imports: [
@@ -23,9 +28,9 @@ import { OrderMessageFactory } from './factories/order-message.factory';
   ],
   controllers: [PublicOrdersController, AdminOrdersController],
   providers: [
-    OrdersService,
-    OrderRepository,
-    OrderItemRepository,
+    { provide: ORDERS_SERVICE, useClass: OrdersService },
+    { provide: ORDER_REPOSITORY, useClass: OrderRepository },
+    { provide: ORDER_ITEM_REPOSITORY, useClass: OrderItemRepository },
     OrderProcessor,
     OrderJobHandlerFactory,
     ProcessOrderJobStrategy,
@@ -33,6 +38,6 @@ import { OrderMessageFactory } from './factories/order-message.factory';
     RefundOrderJobStrategy,
     OrderMessageFactory,
   ],
-  exports: [OrdersService, OrderRepository, OrderItemRepository],
+  exports: [ORDERS_SERVICE, ORDER_REPOSITORY, ORDER_ITEM_REPOSITORY],
 })
 export class OrdersModule {}

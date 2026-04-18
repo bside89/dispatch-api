@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Inject } from '@nestjs/common';
 import { OnWorkerEvent, Processor } from '@nestjs/bullmq';
 import { Job } from 'bullmq';
 import { BaseProcessor } from '@/shared/processors/base.processor';
@@ -6,7 +6,8 @@ import { PAYMENT_QUEUE_TOKEN } from '@/shared/constants/queue-tokens.constant';
 import { PAYMENT_KEY } from '../../../shared/modules/cache/constants/payment.key';
 import Redlock from 'redlock';
 import { ConfigService } from '@nestjs/config';
-import { CacheService } from '@/shared/modules/cache/cache.service';
+import { CACHE_SERVICE } from '@/shared/modules/cache/constants/cache.tokens';
+import type { ICacheService } from '@/shared/modules/cache/interfaces/cache-service.interface';
 import { PaymentJobHandlerFactory } from '../factories/payment-job-handler.factory';
 
 @Injectable()
@@ -14,7 +15,7 @@ import { PaymentJobHandlerFactory } from '../factories/payment-job-handler.facto
 export class PaymentsProcessor extends BaseProcessor {
   constructor(
     private readonly factory: PaymentJobHandlerFactory,
-    cacheService: CacheService,
+    @Inject(CACHE_SERVICE) cacheService: ICacheService,
     configService: ConfigService,
     redlock: Redlock,
   ) {

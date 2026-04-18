@@ -12,6 +12,7 @@ import {
   HttpCode,
   HttpStatus,
   BadRequestException,
+  Inject,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -27,7 +28,8 @@ import {
   ApiConflictResponse,
   ApiSecurity,
 } from '@nestjs/swagger';
-import { UsersService } from './users.service';
+import type { IUsersService } from './interfaces/users-service.interface';
+import { USERS_SERVICE } from './constants/users.tokens';
 import { PublicCreateUserDto } from './dto/create-user.dto';
 import { PublicUpdateUserDto } from './dto/update-user.dto';
 import { UserQueryDto } from './dto/user-query.dto';
@@ -46,7 +48,7 @@ import { PaginatedResultDto } from '@/shared/dto/paginated-result.dto';
 @ApiSecurity('bearer')
 export class PublicUsersController extends BaseController {
   constructor(
-    private readonly usersService: UsersService,
+    @Inject(USERS_SERVICE) private readonly usersService: IUsersService,
     private readonly messages: UserMessageFactory,
   ) {
     super(PublicUsersController.name);

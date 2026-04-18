@@ -1,13 +1,17 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Inject } from '@nestjs/common';
 import { BaseService } from '../../shared/services/base.service';
-import { PaymentsGatewayService } from '../payments-gateway/payments-gateway.service';
-import { OrdersService } from '../orders/orders.service';
+import type { IPaymentsGatewayService } from '../payments-gateway/interfaces/payments-gateway-service.interface';
+import { PAYMENTS_GATEWAY_SERVICE } from '../payments-gateway/constants/payments-gateway.tokens';
+import type { IOrdersService } from '../orders/interfaces/orders-service.interface';
+import { ORDERS_SERVICE } from '../orders/constants/orders.tokens';
+import { IPaymentsService } from './interfaces/payments-service.interface';
 
 @Injectable()
-export class PaymentsService extends BaseService {
+export class PaymentsService extends BaseService implements IPaymentsService {
   constructor(
-    private readonly ordersService: OrdersService,
-    private readonly paymentsGatewayService: PaymentsGatewayService,
+    @Inject(ORDERS_SERVICE) private readonly ordersService: IOrdersService,
+    @Inject(PAYMENTS_GATEWAY_SERVICE)
+    private readonly paymentsGatewayService: IPaymentsGatewayService,
   ) {
     super(PaymentsService.name);
   }

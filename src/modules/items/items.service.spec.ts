@@ -1,15 +1,15 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { Test, TestingModule } from '@nestjs/testing';
 import { ItemsService } from './items.service';
-import { ItemRepository } from './repositories/item.repository';
-import { CacheService } from '@/shared/modules/cache/cache.service';
+import { ITEMS_SERVICE, ITEM_REPOSITORY } from './constants/items.tokens';
+import { CACHE_SERVICE } from '@/shared/modules/cache/constants/cache.tokens';
 import { DataSource } from 'typeorm';
 import Redlock from 'redlock';
 
 describe('ItemsService', () => {
   let service: ItemsService;
-  let itemRepository: jest.Mocked<ItemRepository>;
-  let cacheService: jest.Mocked<CacheService>;
+  let itemRepository: jest.Mocked<any>;
+  let cacheService: jest.Mocked<any>;
   let dataSource: jest.Mocked<DataSource>;
   let redlock: jest.Mocked<Redlock>;
 
@@ -36,15 +36,15 @@ describe('ItemsService', () => {
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
-        ItemsService,
-        { provide: ItemRepository, useValue: itemRepository },
-        { provide: CacheService, useValue: cacheService },
+        { provide: ITEMS_SERVICE, useClass: ItemsService },
+        { provide: ITEM_REPOSITORY, useValue: itemRepository },
+        { provide: CACHE_SERVICE, useValue: cacheService },
         { provide: DataSource, useValue: dataSource },
         { provide: Redlock, useValue: redlock },
       ],
     }).compile();
 
-    service = module.get<ItemsService>(ItemsService);
+    service = module.get<ItemsService>(ITEMS_SERVICE);
   });
 
   it('should be defined', () => {

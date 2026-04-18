@@ -1,5 +1,6 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
-import { ItemRepository } from './repositories/item.repository';
+import { Injectable, Inject, NotFoundException } from '@nestjs/common';
+import type { IItemRepository } from './interfaces/item-repository.interface';
+import { ITEM_REPOSITORY } from './constants/items.tokens';
 import { CreateItemDto } from './dto/create-item.dto';
 import { UpdateItemDto } from './dto/update-item.dto';
 import { ItemQueryDto, PublicItemQueryDto } from './dto/item-query.dto';
@@ -11,19 +12,21 @@ import Redlock from 'redlock';
 import { DataSource } from 'typeorm';
 import { UseLock } from '@/shared/decorators/lock.decorator';
 import { Transactional } from '@/shared/decorators/transactional.decorator';
-import { CacheService } from '@/shared/modules/cache/cache.service';
+import type { ICacheService } from '@/shared/modules/cache/interfaces/cache-service.interface';
+import { CACHE_SERVICE } from '@/shared/modules/cache/constants/cache.tokens';
 import { ITEM_KEY } from '@/shared/modules/cache/constants/item.key';
 import { CACHE_TTL } from '@/shared/constants/cache-ttl.constant';
 import { runAndIgnoreError, template } from '@/shared/helpers/functions';
 import { LOCK_PREFIX } from '@/shared/constants/lock-prefix.constant';
 import { TransactionalService } from '@/shared/services/transactional.service';
-import { I18N_ITEM } from '@/shared/constants/i18n';
+import { I18N_ITEMS } from '@/shared/constants/i18n';
+import { IItemsService } from './interfaces/items-service.interface';
 
 @Injectable()
-export class ItemsService extends TransactionalService {
+export class ItemsService extends TransactionalService implements IItemsService {
   constructor(
-    private readonly itemRepository: ItemRepository,
-    private readonly cacheService: CacheService,
+    @Inject(ITEM_REPOSITORY) private readonly itemRepository: IItemRepository,
+    @Inject(CACHE_SERVICE) private readonly cacheService: ICacheService,
     dataSource: DataSource,
     redlock: Redlock,
   ) {
@@ -80,7 +83,7 @@ export class ItemsService extends TransactionalService {
 
     const item = await this.itemRepository.findById(id);
     if (!item) {
-      throw new NotFoundException(template(I18N_ITEM.ERRORS.NOT_FOUND));
+      throw new NotFoundException(template(I18N_ITEMS.ERRORS.NOT_FOUND));
     }
     const itemMapped = EntityMapper.map(item, PublicItemResponseDto);
 
@@ -198,7 +201,7 @@ export class ItemsService extends TransactionalService {
 
     const item = await this.itemRepository.findById(id);
     if (!item) {
-      throw new NotFoundException(template(I18N_ITEM.ERRORS.NOT_FOUND));
+      throw new NotFoundException(template(I18N_ITEMS.ERRORS.NOT_FOUND));
     }
     const itemMapped = EntityMapper.map(item, ItemResponseDto);
 
@@ -216,7 +219,7 @@ export class ItemsService extends TransactionalService {
   async adminUpdate(id: string, dto: UpdateItemDto): Promise<ItemResponseDto> {
     const item = await this.itemRepository.findById(id);
     if (!item) {
-      throw new NotFoundException(template(I18N_ITEM.ERRORS.NOT_FOUND));
+      throw new NotFoundException(template(I18N_ITEMS.ERRORS.NOT_FOUND));
     }
 
     Object.assign(item, dto);
@@ -239,7 +242,7 @@ export class ItemsService extends TransactionalService {
 
     const item = await this.itemRepository.findById(id);
     if (!item) {
-      throw new NotFoundException(template(I18N_ITEM.ERRORS.NOT_FOUND));
+      throw new NotFoundException(template(I18N_ITEMS.ERRORS.NOT_FOUND));
     }
 
     await this.itemRepository.softDelete(item);

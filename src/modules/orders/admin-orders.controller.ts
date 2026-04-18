@@ -9,6 +9,7 @@ import {
   ParseUUIDPipe,
   HttpCode,
   HttpStatus,
+  Inject,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -21,7 +22,8 @@ import {
   ApiSecurity,
   ApiResponse,
 } from '@nestjs/swagger';
-import { OrdersService } from './orders.service';
+import type { IOrdersService } from './interfaces/orders-service.interface';
+import { ORDERS_SERVICE } from './constants/orders.tokens';
 import { UpdateOrderDto } from './dto/update-order.dto';
 import { ShipOrderDto } from './dto/ship-order.dto';
 import { OrderQueryDto } from './dto/order-query.dto';
@@ -40,7 +42,7 @@ import { OrderMessageFactory } from './factories/order-message.factory';
 @ApiSecurity('bearer')
 export class AdminOrdersController extends BaseController {
   constructor(
-    private readonly ordersService: OrdersService,
+    @Inject(ORDERS_SERVICE) private readonly ordersService: IOrdersService,
     private readonly messages: OrderMessageFactory,
   ) {
     super(AdminOrdersController.name);

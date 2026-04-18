@@ -7,12 +7,13 @@ import { Injectable } from '@nestjs/common';
 import { PaginatedResultDto } from '@/shared/dto/paginated-result.dto';
 import { col } from '@/shared/helpers/functions';
 import { ItemQueryDto } from '../dto/item-query.dto';
+import { IItemRepository } from '../interfaces/item-repository.interface';
 
 const ALIAS_ITEM = 'item';
 const item = col<Item>(ALIAS_ITEM);
 
 @Injectable()
-export class ItemRepository extends BaseRepository<Item> {
+export class ItemRepository extends BaseRepository<Item> implements IItemRepository {
   constructor(
     @InjectRepository(Item)
     protected readonly repository: Repository<Item>,

@@ -1,11 +1,11 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { UsersService } from './users.service';
-import { UserRepository } from './repositories/user.repository';
-import { CacheService } from '../../shared/modules/cache/cache.service';
-import { OutboxService } from '../../shared/modules/outbox/outbox.service';
+import { USERS_SERVICE, USER_REPOSITORY } from './constants/users.tokens';
+import { CACHE_SERVICE } from '../../shared/modules/cache/constants/cache.tokens';
+import { OUTBOX_SERVICE } from '../../shared/modules/outbox/constants/outbox.tokens';
+import { PAYMENTS_GATEWAY_SERVICE } from '../payments-gateway/constants/payments-gateway.tokens';
 import { DataSource } from 'typeorm';
 import Redlock from 'redlock';
-import { PaymentsGatewayService } from '../payments-gateway/payments-gateway.service';
 import {
   createCacheServiceMock,
   createDataSourceMock,
@@ -51,21 +51,21 @@ describe('UsersService', () => {
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
-        UsersService,
+        { provide: USERS_SERVICE, useClass: UsersService },
         {
-          provide: UserRepository,
+          provide: USER_REPOSITORY,
           useValue: userRepository,
         },
         {
-          provide: PaymentsGatewayService,
+          provide: PAYMENTS_GATEWAY_SERVICE,
           useValue: paymentsGatewayService,
         },
         {
-          provide: CacheService,
+          provide: CACHE_SERVICE,
           useValue: cacheService,
         },
         {
-          provide: OutboxService,
+          provide: OUTBOX_SERVICE,
           useValue: outboxService,
         },
         {
@@ -79,7 +79,7 @@ describe('UsersService', () => {
       ],
     }).compile();
 
-    service = module.get<UsersService>(UsersService);
+    service = module.get<UsersService>(USERS_SERVICE);
   });
 
   it('should be defined', () => {

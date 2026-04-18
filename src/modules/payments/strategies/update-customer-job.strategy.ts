@@ -1,14 +1,18 @@
-import { Injectable, InternalServerErrorException } from '@nestjs/common';
+import { Injectable, InternalServerErrorException, Inject } from '@nestjs/common';
 import { UpdateCustomerJobPayload } from '@/shared/payloads/payment-job.payload';
 import { BasePaymentJobStrategy } from './base-payment-job.strategy';
 import { Job } from 'bullmq';
 import Redlock from 'redlock';
 import { DataSource } from 'typeorm';
-import { UserRepository } from '@/modules/users/repositories/user.repository';
-import { OrderRepository } from '@/modules/orders/repositories/order.repository';
-import { CacheService } from '@/shared/modules/cache/cache.service';
+import { PAYMENTS_GATEWAY_SERVICE } from '@/modules/payments-gateway/constants/payments-gateway.tokens';
+import type { IPaymentsGatewayService } from '@/modules/payments-gateway/interfaces/payments-gateway-service.interface';
+import { ORDER_REPOSITORY } from '@/modules/orders/constants/orders.tokens';
+import type { IOrderRepository } from '@/modules/orders/interfaces/order-repository.interface';
+import { USER_REPOSITORY } from '@/modules/users/constants/users.tokens';
+import type { IUserRepository } from '@/modules/users/interfaces/user-repository.interface';
+import { CACHE_SERVICE } from '@/shared/modules/cache/constants/cache.tokens';
+import type { ICacheService } from '@/shared/modules/cache/interfaces/cache-service.interface';
 import { plainToInstance } from 'class-transformer';
-import { PaymentsGatewayService } from '@/modules/payments-gateway/payments-gateway.service';
 import { CustomerResponseDto } from '@/modules/payments-gateway/dto/customer-response.dto';
 import {
   UpdateCustomerAddressDto,
@@ -21,10 +25,11 @@ import { I18N_PAYMENTS } from '@/shared/constants/i18n';
 @Injectable()
 export class UpdateCustomerJobStrategy extends BasePaymentJobStrategy<UpdateCustomerJobPayload> {
   constructor(
-    paymentsGatewayService: PaymentsGatewayService,
-    cacheService: CacheService,
-    orderRepository: OrderRepository,
-    userRepository: UserRepository,
+    @Inject(PAYMENTS_GATEWAY_SERVICE)
+    paymentsGatewayService: IPaymentsGatewayService,
+    @Inject(CACHE_SERVICE) cacheService: ICacheService,
+    @Inject(ORDER_REPOSITORY) orderRepository: IOrderRepository,
+    @Inject(USER_REPOSITORY) userRepository: IUserRepository,
     dataSource: DataSource,
     redlock: Redlock,
   ) {

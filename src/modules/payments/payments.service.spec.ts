@@ -1,7 +1,8 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { PaymentsService } from './payments.service';
-import { PaymentsGatewayService } from '../payments-gateway/payments-gateway.service';
-import { OrdersService } from '../orders/orders.service';
+import { PAYMENTS_SERVICE } from './constants/payments.tokens';
+import { PAYMENTS_GATEWAY_SERVICE } from '../payments-gateway/constants/payments-gateway.tokens';
+import { ORDERS_SERVICE } from '../orders/constants/orders.tokens';
 
 const makeWebhookEvent = (
   type: string,
@@ -46,19 +47,19 @@ describe('PaymentsService', () => {
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
-        PaymentsService,
+        { provide: PAYMENTS_SERVICE, useClass: PaymentsService },
         {
-          provide: OrdersService,
+          provide: ORDERS_SERVICE,
           useValue: ordersService,
         },
         {
-          provide: PaymentsGatewayService,
+          provide: PAYMENTS_GATEWAY_SERVICE,
           useValue: paymentsGatewayService,
         },
       ],
     }).compile();
 
-    service = module.get<PaymentsService>(PaymentsService);
+    service = module.get<PaymentsService>(PAYMENTS_SERVICE);
   });
 
   it('should be defined', () => {

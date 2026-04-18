@@ -1,4 +1,11 @@
-import { Controller, Get, Param, Query, ParseUUIDPipe } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Inject,
+  Param,
+  Query,
+  ParseUUIDPipe,
+} from '@nestjs/common';
 import {
   ApiTags,
   ApiOperation,
@@ -8,7 +15,8 @@ import {
   ApiSecurity,
   ApiQuery,
 } from '@nestjs/swagger';
-import { ItemsService } from './items.service';
+import type { IItemsService } from './interfaces/items-service.interface';
+import { ITEMS_SERVICE } from './constants/items.tokens';
 import { PublicItemQueryDto } from './dto/item-query.dto';
 import { PublicItemResponseDto } from './dto/item-response.dto';
 import { PaginatedResultDto } from '@/shared/dto/paginated-result.dto';
@@ -22,7 +30,7 @@ import type { RequestUser } from '../auth/interfaces/request-user.interface';
 @ApiSecurity('bearer')
 export class PublicItemsController extends BaseController {
   constructor(
-    private readonly itemsService: ItemsService,
+    @Inject(ITEMS_SERVICE) private readonly itemsService: IItemsService,
     private readonly messages: ItemMessageFactory,
   ) {
     super(PublicItemsController.name);

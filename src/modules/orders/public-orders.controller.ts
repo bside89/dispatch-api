@@ -10,6 +10,7 @@ import {
   HttpCode,
   HttpStatus,
   BadRequestException,
+  Inject,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -24,7 +25,8 @@ import {
   ApiSecurity,
   ApiForbiddenResponse,
 } from '@nestjs/swagger';
-import { OrdersService } from './orders.service';
+import type { IOrdersService } from './interfaces/orders-service.interface';
+import { ORDERS_SERVICE } from './constants/orders.tokens';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { OrderByUserQueryDto } from './dto/order-by-user-query.dto';
 import { PaginatedResultDto } from '@/shared/dto/paginated-result.dto';
@@ -41,7 +43,7 @@ import { I18N_COMMON } from '@/shared/constants/i18n';
 @ApiSecurity('bearer')
 export class PublicOrdersController extends BaseController {
   constructor(
-    private readonly ordersService: OrdersService,
+    @Inject(ORDERS_SERVICE) private readonly ordersService: IOrdersService,
     private readonly messages: OrderMessageFactory,
   ) {
     super(PublicOrdersController.name);

@@ -1,11 +1,11 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { CreateCustomerJobStrategy } from './create-customer-job.strategy';
-import { CacheService } from '@/shared/modules/cache/cache.service';
-import { OrderRepository } from '@/modules/orders/repositories/order.repository';
-import { UserRepository } from '@/modules/users/repositories/user.repository';
+import { CACHE_SERVICE } from '@/shared/modules/cache/constants/cache.tokens';
+import { PAYMENTS_GATEWAY_SERVICE } from '@/modules/payments-gateway/constants/payments-gateway.tokens';
+import { ORDER_REPOSITORY } from '@/modules/orders/constants/orders.tokens';
+import { USER_REPOSITORY } from '@/modules/users/constants/users.tokens';
 import { DataSource } from 'typeorm';
 import Redlock from 'redlock';
-import { PaymentsGatewayService } from '@/modules/payments-gateway/payments-gateway.service';
 
 describe('CreateCustomerJobStrategy', () => {
   let strategy: CreateCustomerJobStrategy;
@@ -15,19 +15,19 @@ describe('CreateCustomerJobStrategy', () => {
       providers: [
         CreateCustomerJobStrategy,
         {
-          provide: PaymentsGatewayService,
+          provide: PAYMENTS_GATEWAY_SERVICE,
           useValue: { customersCreate: jest.fn() },
         },
         {
-          provide: CacheService,
+          provide: CACHE_SERVICE,
           useValue: { get: jest.fn(), set: jest.fn() },
         },
         {
-          provide: OrderRepository,
+          provide: ORDER_REPOSITORY,
           useValue: { findOne: jest.fn() },
         },
         {
-          provide: UserRepository,
+          provide: USER_REPOSITORY,
           useValue: { findOne: jest.fn(), save: jest.fn() },
         },
         {

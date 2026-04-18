@@ -1,9 +1,9 @@
 /*eslint-disable @typescript-eslint/no-explicit-any */
 import { Test, TestingModule } from '@nestjs/testing';
 import { RefundOrderJobStrategy } from './refund-order-job.strategy';
-import { CacheService } from '../../../shared/modules/cache/cache.service';
-import { OutboxService } from '@/shared/modules/outbox/outbox.service';
-import { OrderRepository } from '../repositories/order.repository';
+import { CACHE_SERVICE } from '../../../shared/modules/cache/constants/cache.tokens';
+import { OUTBOX_SERVICE } from '@/shared/modules/outbox/constants/outbox.tokens';
+import { ORDER_REPOSITORY } from '../constants/orders.tokens';
 import { DataSource } from 'typeorm';
 import Redlock from 'redlock';
 import {
@@ -16,9 +16,9 @@ import { OrderMessageFactory } from '../factories/order-message.factory';
 
 describe('RefundOrderJobStrategy', () => {
   let strategy: RefundOrderJobStrategy;
-  let cacheService: jest.Mocked<CacheService>;
-  let outboxService: jest.Mocked<OutboxService>;
-  let orderRepository: jest.Mocked<OrderRepository>;
+  let cacheService: jest.Mocked<any>;
+  let outboxService: jest.Mocked<any>;
+  let orderRepository: jest.Mocked<any>;
   let messages: jest.Mocked<OrderMessageFactory>;
   let dataSource: jest.Mocked<DataSource>;
   let redlock: jest.Mocked<Redlock>;
@@ -44,9 +44,9 @@ describe('RefundOrderJobStrategy', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         RefundOrderJobStrategy,
-        { provide: CacheService, useValue: cacheService },
-        { provide: OutboxService, useValue: outboxService },
-        { provide: OrderRepository, useValue: orderRepository },
+        { provide: CACHE_SERVICE, useValue: cacheService },
+        { provide: OUTBOX_SERVICE, useValue: outboxService },
+        { provide: ORDER_REPOSITORY, useValue: orderRepository },
         { provide: DataSource, useValue: dataSource },
         { provide: Redlock, useValue: redlock },
         { provide: OrderMessageFactory, useValue: messages },

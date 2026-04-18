@@ -4,10 +4,14 @@ import { AppModule } from '@/app.module';
 import { DataSource } from 'typeorm';
 import Redis from 'ioredis';
 import { REDIS_CLIENT } from '@/shared/modules/cache/constants/redis-client.constant';
-import { UsersService } from '@/modules/users/users.service';
-import { OrdersService } from '@/modules/orders/orders.service';
-import { ItemsService } from '@/modules/items/items.service';
-import { OutboxRepository } from '@/shared/modules/outbox/repositories/outbox.repository';
+import { IUsersService } from '@/modules/users/interfaces/users-service.interface';
+import { USERS_SERVICE } from '@/modules/users/constants/users.tokens';
+import { IOrdersService } from '@/modules/orders/interfaces/orders-service.interface';
+import { ORDERS_SERVICE } from '@/modules/orders/constants/orders.tokens';
+import { IItemsService } from '@/modules/items/interfaces/items-service.interface';
+import { ITEMS_SERVICE } from '@/modules/items/constants/items.tokens';
+import { IOutboxRepository } from '@/shared/modules/outbox/interfaces/outbox-repository.interface';
+import { OUTBOX_REPOSITORY } from '@/shared/modules/outbox/constants/outbox.tokens';
 import { cleanDatabase, cleanRedis } from './utils/database-cleaner';
 import { paymentsGatewayServiceMock } from './utils/mock-payments-gateway-service';
 import { INestApplication } from '@nestjs/common';
@@ -15,7 +19,7 @@ import { Job } from 'bullmq';
 import { waitFor } from './utils/wait-for';
 import { ProcessOrderJobStrategy } from '@/modules/orders/strategies/process-order-job.strategy';
 import { OrderProcessor } from '@/modules/orders/processors/order.processor';
-import { PaymentsGatewayService } from '@/modules/payments-gateway/payments-gateway.service';
+import { PAYMENTS_GATEWAY_SERVICE } from '@/modules/payments-gateway/constants/payments-gateway.tokens';
 
 // Mock the delay function to resolve almost instantly.
 // This eliminates the simulated processing delays (1s-3s) used by
@@ -38,10 +42,10 @@ jest.mock('@/config/bullmq.config', () => ({
 
 describe('Orders (Integration)', () => {
   let app: INestApplication;
-  let usersService: UsersService;
-  let ordersService: OrdersService;
-  let itemsService: ItemsService;
-  let outboxRepository: OutboxRepository;
+  let usersService: IUsersService;
+  let ordersService: IOrdersService;
+  let itemsService: IItemsService;
+  let outboxRepository: IOutboxRepository;
   let dataSource: DataSource;
   let redisClient: Redis;
 
@@ -49,17 +53,17 @@ describe('Orders (Integration)', () => {
     const module: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
     })
-      .overrideProvider(PaymentsGatewayService)
+      .overrideProvider(PAYMENTS_GATEWAY_SERVICE)
       .useValue(paymentsGatewayServiceMock)
       .compile();
 
     app = module.createNestApplication();
     await app.init();
 
-    usersService = module.get<UsersService>(UsersService);
-    ordersService = module.get<OrdersService>(OrdersService);
-    itemsService = module.get<ItemsService>(ItemsService);
-    outboxRepository = module.get<OutboxRepository>(OutboxRepository);
+    usersService = module.get<IUsersService>(USERS_SERVICE);
+    ordersService = module.get<IOrdersService>(ORDERS_SERVICE);
+    itemsService = module.get<IItemsService>(ITEMS_SERVICE);
+    outboxRepository = module.get<IOutboxRepository>(OUTBOX_REPOSITORY);
     dataSource = module.get<DataSource>(DataSource);
     redisClient = module.get<Redis>(REDIS_CLIENT);
   });

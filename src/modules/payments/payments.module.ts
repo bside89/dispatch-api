@@ -11,12 +11,13 @@ import {
 } from './strategies';
 import { PaymentJobHandlerFactory } from './factories/payment-job-handler.factory';
 import { PaymentsGatewayModule } from '../payments-gateway/payments-gateway.module';
+import { PAYMENTS_SERVICE } from './constants/payments.tokens';
 
 @Module({
   imports: [UsersModule, OrdersModule, PaymentsGatewayModule],
   controllers: [PaymentsController],
   providers: [
-    PaymentsService,
+    { provide: PAYMENTS_SERVICE, useClass: PaymentsService },
     PaymentsProcessor,
     PaymentJobHandlerFactory,
     CreateCustomerJobStrategy,

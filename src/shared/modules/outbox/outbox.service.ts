@@ -1,11 +1,12 @@
 import { Outbox } from './entities/outbox.entity';
 import { Inject, Injectable, OnModuleDestroy } from '@nestjs/common';
 import { OutboxType } from './enums/outbox-type.enum';
-import { OutboxRepository } from './repositories/outbox.repository';
+import type { IOutboxRepository } from './interfaces/outbox-repository.interface';
+import { OUTBOX_REPOSITORY } from './constants/outbox.tokens';
 import { RequestContext } from '@/shared/utils/request-context';
 import { randomUUID } from 'crypto';
 import { DataSource } from 'typeorm';
-import type { EventBus } from '../events/interfaces/event-bus.interface';
+import type { IEventBus } from '../events/interfaces/event-bus.interface';
 import { Queue } from 'bullmq';
 import { EVENT_BUS } from '../events/constants/event-bus.token';
 import { InjectQueue } from '@nestjs/bullmq';
@@ -17,14 +18,18 @@ import {
 } from '@/shared/constants/queue-tokens.constant';
 import { OutboxPayloadMap } from './types/outbox-payload.map';
 import { ensureError } from '@/shared/helpers/functions';
-import { EventBusJob } from '../events/interfaces/event-bus-job.interface';
+import { IEventBusJob } from '../events/interfaces/event-bus-job.interface';
 import Redlock from 'redlock';
 import { TransactionalService } from '@/shared/services/transactional.service';
 import { QueueJob } from '@/shared/interfaces/queue-job.interface';
 import { OutboxPayload } from './types/outbox.payload';
+import { IOutboxService } from './interfaces/outbox-service.interface';
 
 @Injectable()
-export class OutboxService extends TransactionalService implements OnModuleDestroy {
+export class OutboxService
+  extends TransactionalService
+  implements OnModuleDestroy, IOutboxService
+{
   private isProcessing = false;
 
   private isShuttingDown = false;
@@ -35,9 +40,9 @@ export class OutboxService extends TransactionalService implements OnModuleDestr
     @InjectQueue(PAYMENT_QUEUE_TOKEN)
     protected readonly paymentQueue: Queue,
     @Inject(EVENT_BUS)
-    protected readonly eventBus: EventBus,
+    protected readonly eventBus: IEventBus,
 
-    private readonly outboxRepository: OutboxRepository,
+    @Inject(OUTBOX_REPOSITORY) private readonly outboxRepository: IOutboxRepository,
     dataSource: DataSource,
     redlock: Redlock,
   ) {
@@ -139,7 +144,7 @@ export class OutboxService extends TransactionalService implements OnModuleDestr
             name: msg.type,
             data: msg.payload,
             jobId: msg.id,
-          }) as EventBusJob,
+          }) as IEventBusJob,
       );
 
     if (orderQueueMsg.length > 0) {

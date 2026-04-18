@@ -2,19 +2,20 @@ import { OnWorkerEvent, Processor } from '@nestjs/bullmq';
 import { Job } from 'bullmq';
 import { BaseProcessor } from '@/shared/processors/base.processor';
 import { ConfigService } from '@nestjs/config';
-import { CacheService } from '@/shared/modules/cache/cache.service';
+import { CACHE_SERVICE } from '@/shared/modules/cache/constants/cache.tokens';
+import type { ICacheService } from '@/shared/modules/cache/interfaces/cache-service.interface';
 import Redlock from 'redlock';
 import { EventJobHandlerFactory } from '../factories/event-job-handler.factory';
 import { EVENT_KEY } from '../constants/event.key';
 import { EVENT_QUEUE_TOKEN } from '@/shared/constants/queue-tokens.constant';
-import { Injectable } from '@nestjs/common';
+import { Injectable, Inject } from '@nestjs/common';
 
 @Injectable()
 @Processor(EVENT_QUEUE_TOKEN, { maxStalledCount: 1 })
 export class EventProcessor extends BaseProcessor {
   constructor(
     protected readonly factory: EventJobHandlerFactory,
-    cacheService: CacheService,
+    @Inject(CACHE_SERVICE) cacheService: ICacheService,
     configService: ConfigService,
     redlock: Redlock,
   ) {
