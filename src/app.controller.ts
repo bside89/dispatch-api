@@ -10,7 +10,7 @@ import {
   HealthIndicatorResult,
 } from '@nestjs/terminus';
 import Redis from 'ioredis';
-import { REDIS_CLIENT } from './shared/modules/cache/constants/redis-client.constant';
+import { REDIS_CLIENT } from './shared/modules/cache/constants/redis-client.token';
 
 @Controller({ version: VERSION_NEUTRAL })
 @ApiTags('default')

@@ -1,6 +1,6 @@
 import { Injectable, Inject, NotFoundException } from '@nestjs/common';
 import type { IItemRepository } from './interfaces/item-repository.interface';
-import { ITEM_REPOSITORY } from './constants/items.tokens';
+import { ITEM_REPOSITORY } from './constants/items.token';
 import { CreateItemDto } from './dto/create-item.dto';
 import { UpdateItemDto } from './dto/update-item.dto';
 import { ItemQueryDto, PublicItemQueryDto } from './dto/item-query.dto';
@@ -10,10 +10,10 @@ import { EntityMapper } from '@/shared/utils/entity-mapper';
 import { Item } from './entities/item.entity';
 import Redlock from 'redlock';
 import { DataSource } from 'typeorm';
-import { UseLock } from '@/shared/decorators/lock.decorator';
+import { Lock } from '@/shared/decorators/lock.decorator';
 import { Transactional } from '@/shared/decorators/transactional.decorator';
 import type { ICacheService } from '@/shared/modules/cache/interfaces/cache-service.interface';
-import { CACHE_SERVICE } from '@/shared/modules/cache/constants/cache.tokens';
+import { CACHE_SERVICE } from '@/shared/modules/cache/constants/cache.token';
 import { ITEM_KEY } from '@/shared/modules/cache/constants/item.key';
 import { CACHE_TTL } from '@/shared/constants/cache-ttl.constant';
 import { runAndIgnoreError, template } from '@/shared/helpers/functions';
@@ -101,7 +101,7 @@ export class ItemsService extends TransactionalService implements IItemsService 
   // #region Admin endpoints
 
   @Transactional()
-  @UseLock({
+  @Lock({
     prefix: LOCK_PREFIX.ITEM.CREATE,
     key: ([, idempotencyKey]) => idempotencyKey,
   })
@@ -215,7 +215,7 @@ export class ItemsService extends TransactionalService implements IItemsService 
   }
 
   @Transactional()
-  @UseLock({ prefix: LOCK_PREFIX.ITEM.UPDATE, key: ([id]) => id })
+  @Lock({ prefix: LOCK_PREFIX.ITEM.UPDATE, key: ([id]) => id })
   async adminUpdate(id: string, dto: UpdateItemDto): Promise<ItemResponseDto> {
     const item = await this.itemRepository.findById(id);
     if (!item) {
@@ -236,7 +236,7 @@ export class ItemsService extends TransactionalService implements IItemsService 
   }
 
   @Transactional()
-  @UseLock({ prefix: LOCK_PREFIX.ITEM.REMOVE, key: ([id]) => id })
+  @Lock({ prefix: LOCK_PREFIX.ITEM.REMOVE, key: ([id]) => id })
   async adminRemove(id: string): Promise<void> {
     this.logger.debug('Deactivating item', { itemId: id });
 
@@ -264,13 +264,13 @@ export class ItemsService extends TransactionalService implements IItemsService 
   }
 
   @Transactional()
-  @UseLock({ prefix: LOCK_PREFIX.ITEM.UPDATE, key: ([item]) => item.id })
+  @Lock({ prefix: LOCK_PREFIX.ITEM.UPDATE, key: ([item]) => item.id })
   async decrementItemStock(item: Item, quantity: number): Promise<void> {
     await this.itemRepository.decrementStock(item, quantity);
   }
 
   @Transactional()
-  @UseLock({ prefix: LOCK_PREFIX.ITEM.UPDATE, key: ([item]) => item.id })
+  @Lock({ prefix: LOCK_PREFIX.ITEM.UPDATE, key: ([item]) => item.id })
   async incrementItemStock(item: Item, quantity: number): Promise<void> {
     await this.itemRepository.incrementStock(item, quantity);
   }

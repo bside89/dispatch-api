@@ -29,7 +29,7 @@ import {
   ApiCreatedResponse,
 } from '@nestjs/swagger';
 import type { IUsersService } from './interfaces/users-service.interface';
-import { USERS_SERVICE } from './constants/users.tokens';
+import { USERS_SERVICE } from './constants/users.token';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { UserQueryDto } from './dto/user-query.dto';
 import { UserResponseDto } from './dto/user-response.dto';

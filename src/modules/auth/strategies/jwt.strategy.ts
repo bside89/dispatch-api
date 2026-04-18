@@ -4,7 +4,7 @@ import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { JwtStrategyName } from '../enums/jwt-strategy-name.enum';
 import { JwtPayload } from '../interfaces/jwt-payload.interface';
-import { CACHE_SERVICE } from '../../../shared/modules/cache/constants/cache.tokens';
+import { CACHE_SERVICE } from '../../../shared/modules/cache/constants/cache.token';
 import type { ICacheService } from '../../../shared/modules/cache/interfaces/cache-service.interface';
 import { Request } from 'express';
 import { RequestUser } from '../interfaces/request-user.interface';

@@ -5,16 +5,16 @@ import { LoginResponseDto } from './dto/login-response.dto';
 import { ConfigService } from '@nestjs/config';
 import type { JwtPayload } from './interfaces/jwt-payload.interface';
 import type { ICacheService } from '../../shared/modules/cache/interfaces/cache-service.interface';
-import { CACHE_SERVICE } from '../../shared/modules/cache/constants/cache.tokens';
+import { CACHE_SERVICE } from '../../shared/modules/cache/constants/cache.token';
 import type { IUserRepository } from '../users/interfaces/user-repository.interface';
-import { USER_REPOSITORY } from '../users/constants/users.tokens';
+import { USER_REPOSITORY } from '../users/constants/users.token';
 import { HashUtils } from '@/shared/utils/hash.utils';
 import { CACHE_TTL } from '@/shared/constants/cache-ttl.constant';
 import type { IOutboxService } from '@/shared/modules/outbox/interfaces/outbox-service.interface';
-import { OUTBOX_SERVICE } from '@/shared/modules/outbox/constants/outbox.tokens';
+import { OUTBOX_SERVICE } from '@/shared/modules/outbox/constants/outbox.token';
 import { NotifyUserJobPayload } from '@/shared/payloads/event-job.payload';
 import { OutboxType } from '@/shared/modules/outbox/enums/outbox-type.enum';
-import { UseLock } from '@/shared/decorators/lock.decorator';
+import { Lock } from '@/shared/decorators/lock.decorator';
 import Redlock from 'redlock';
 import type { RequestUser } from './interfaces/request-user.interface';
 import { AUTH_KEY } from '../../shared/modules/cache/constants/auth.key';
@@ -44,7 +44,7 @@ export class AuthService extends TransactionalService implements IAuthService {
   }
 
   @Transactional()
-  @UseLock({ prefix: LOCK_PREFIX.AUTH.LOGIN, key: ([email]) => email })
+  @Lock({ prefix: LOCK_PREFIX.AUTH.LOGIN, key: ([email]) => email })
   async login(email: string, password: string): Promise<LoginResponseDto> {
     const user = await this.userRepository.findOne({ where: { email } });
     if (!user)
@@ -73,7 +73,7 @@ export class AuthService extends TransactionalService implements IAuthService {
   }
 
   @Transactional()
-  @UseLock({
+  @Lock({
     prefix: LOCK_PREFIX.AUTH.REFRESH,
     key: ([reqUser]) => reqUser.jwtPayload.jti,
   })
@@ -107,7 +107,7 @@ export class AuthService extends TransactionalService implements IAuthService {
   }
 
   @Transactional()
-  @UseLock({
+  @Lock({
     prefix: LOCK_PREFIX.AUTH.LOGOUT,
     key: ([reqUser]) => reqUser.jwtPayload.jti,
   })
@@ -154,7 +154,7 @@ export class AuthService extends TransactionalService implements IAuthService {
     return result;
   }
 
-  @UseLock({ prefix: LOCK_PREFIX.USER.UPDATE, key: ([userId]) => userId })
+  @Lock({ prefix: LOCK_PREFIX.USER.UPDATE, key: ([userId]) => userId })
   private async updateRefreshToken(
     userId: string,
     refreshToken?: string,

@@ -4,11 +4,11 @@ import {
   ORDERS_SERVICE,
   ORDER_REPOSITORY,
   ORDER_ITEM_REPOSITORY,
-} from './constants/orders.tokens';
-import { ITEMS_SERVICE } from '../items/constants/items.tokens';
-import { CACHE_SERVICE } from '../../shared/modules/cache/constants/cache.tokens';
-import { OUTBOX_SERVICE } from '../../shared/modules/outbox/constants/outbox.tokens';
-import { PAYMENTS_GATEWAY_SERVICE } from '../payments-gateway/constants/payments-gateway.tokens';
+} from './constants/orders.token';
+import { ITEMS_SERVICE } from '../items/constants/items.token';
+import { CACHE_SERVICE } from '../../shared/modules/cache/constants/cache.token';
+import { OUTBOX_SERVICE } from '../../shared/modules/outbox/constants/outbox.token';
+import { PAYMENTS_GATEWAY_SERVICE } from '../payments-gateway/constants/payments-gateway.token';
 import { DataSource } from 'typeorm';
 import Redlock from 'redlock';
 import {

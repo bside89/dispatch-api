@@ -26,7 +26,7 @@ import {
   ApiForbiddenResponse,
 } from '@nestjs/swagger';
 import type { IOrdersService } from './interfaces/orders-service.interface';
-import { ORDERS_SERVICE } from './constants/orders.tokens';
+import { ORDERS_SERVICE } from './constants/orders.token';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { OrderByUserQueryDto } from './dto/order-by-user-query.dto';
 import { PaginatedResultDto } from '@/shared/dto/paginated-result.dto';

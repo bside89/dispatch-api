@@ -4,10 +4,10 @@ import { ConfigService } from '@nestjs/config';
 import { DataSource } from 'typeorm';
 import { AuthService } from './auth.service';
 import { AuthMessageFactory } from './factories/auth-message.factory';
-import { AUTH_SERVICE } from './constants/auth.tokens';
-import { CACHE_SERVICE } from '../../shared/modules/cache/constants/cache.tokens';
-import { USER_REPOSITORY } from '../users/constants/users.tokens';
-import { OUTBOX_SERVICE } from '../../shared/modules/outbox/constants/outbox.tokens';
+import { AUTH_SERVICE } from './constants/auth.token';
+import { CACHE_SERVICE } from '../../shared/modules/cache/constants/cache.token';
+import { USER_REPOSITORY } from '../users/constants/users.token';
+import { OUTBOX_SERVICE } from '../../shared/modules/outbox/constants/outbox.token';
 import Redlock from 'redlock';
 
 describe('AuthService', () => {

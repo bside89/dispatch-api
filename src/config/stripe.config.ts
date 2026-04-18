@@ -1,3 +1,6 @@
+import { ConfigService } from '@nestjs/config';
+import Stripe from 'stripe';
+
 const stripeHost = (testMode: string) => {
   if (testMode === 'docker') {
     return 'stripe-mock';
@@ -28,3 +31,9 @@ export const stripeConfig = (testMode: string) => ({
   port: stripePort(testMode),
   protocol: stripeProtocol(testMode),
 });
+
+export const stripeClient = (configService: ConfigService): Stripe.Stripe =>
+  Stripe(
+    configService.getOrThrow<string>('STRIPE_SECRET_KEY'),
+    stripeConfig(configService.get<string>('STRIPE_TEST_MODE')),
+  );

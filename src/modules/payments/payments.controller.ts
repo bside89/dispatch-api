@@ -10,7 +10,7 @@ import {
 } from '@nestjs/common';
 import { BaseController } from '../../shared/controllers/base.controller';
 import type { IPaymentsService } from './interfaces/payments-service.interface';
-import { PAYMENTS_SERVICE } from './constants/payments.tokens';
+import { PAYMENTS_SERVICE } from './constants/payments.token';
 import { Public } from '../auth/decorators/public.decorator';
 import {
   ApiBadRequestResponse,
@@ -23,7 +23,6 @@ import {
 } from '@nestjs/swagger';
 import { PaymentWebhookDto } from './dto/payment-webhook.dto';
 import { PaymentWebhookResponseDto } from './dto/payment-webhook-response.dto';
-import { ConfigService } from '@nestjs/config';
 import { I18N_PAYMENTS } from '@/shared/constants/i18n';
 import { template } from '@/shared/helpers/functions';
 
@@ -33,7 +32,6 @@ import { template } from '@/shared/helpers/functions';
 export class PaymentsController extends BaseController {
   constructor(
     @Inject(PAYMENTS_SERVICE) private readonly paymentsService: IPaymentsService,
-    private readonly configService: ConfigService,
   ) {
     super(PaymentsController.name);
   }
@@ -72,18 +70,7 @@ export class PaymentsController extends BaseController {
       );
     }
 
-    const webhookSecret = this.configService.get<string>('STRIPE_WEBHOOK_SECRET');
-    if (!webhookSecret) {
-      throw new BadRequestException(
-        template(I18N_PAYMENTS.ERRORS.WEBHOOK_SECRET_REQUIRED),
-      );
-    }
-
-    await this.paymentsService.processWebhookEvent(
-      request.rawBody,
-      stripeSignature,
-      webhookSecret,
-    );
+    await this.paymentsService.processWebhookEvent(request.rawBody, stripeSignature);
 
     return { received: true };
   }

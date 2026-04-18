@@ -10,12 +10,12 @@ import { UpdateOrderDto } from './dto/update-order.dto';
 import { OrderQueryDto } from './dto/order-query.dto';
 import { OrderStatus } from './enums/order-status.enum';
 import type { ICacheService } from '../../shared/modules/cache/interfaces/cache-service.interface';
-import { CACHE_SERVICE } from '../../shared/modules/cache/constants/cache.tokens';
+import { CACHE_SERVICE } from '../../shared/modules/cache/constants/cache.token';
 import { NotifyUserJobPayload } from '@/shared/payloads/event-job.payload';
 import type { IOrderRepository } from './interfaces/order-repository.interface';
-import { ORDER_REPOSITORY } from './constants/orders.tokens';
+import { ORDER_REPOSITORY } from './constants/orders.token';
 import type { IOrderItemRepository } from './interfaces/order-item-repository.interface';
-import { ORDER_ITEM_REPOSITORY } from './constants/orders.tokens';
+import { ORDER_ITEM_REPOSITORY } from './constants/orders.token';
 import { PaginatedResultDto } from '@/shared/dto/paginated-result.dto';
 import { DataSource } from 'typeorm';
 import { Transactional } from '@/shared/decorators/transactional.decorator';
@@ -27,7 +27,7 @@ import {
 import { EntityMapper } from '@/shared/utils/entity-mapper';
 import { CACHE_TTL } from '@/shared/constants/cache-ttl.constant';
 import type { IOutboxService } from '@/shared/modules/outbox/interfaces/outbox-service.interface';
-import { OUTBOX_SERVICE } from '@/shared/modules/outbox/constants/outbox.tokens';
+import { OUTBOX_SERVICE } from '@/shared/modules/outbox/constants/outbox.token';
 import { OutboxType } from '@/shared/modules/outbox/enums/outbox-type.enum';
 import {
   ProcessOrderJobPayload,
@@ -37,16 +37,16 @@ import {
 import { ShipOrderDto } from './dto/ship-order.dto';
 import { ORDER_STATUS_PRECONDITIONS } from './constants/order-status-preconditions.constant';
 import { template } from '@/shared/helpers/functions';
-import { UseLock } from '@/shared/decorators/lock.decorator';
+import { Lock } from '@/shared/decorators/lock.decorator';
 import Redlock from 'redlock';
 import { ORDER_KEY } from '../../shared/modules/cache/constants/order.key';
 import type { RequestUser } from '../auth/interfaces/request-user.interface';
 import { LOCK_PREFIX } from '@/shared/constants/lock-prefix.constant';
 import type { IItemsService } from '../items/interfaces/items-service.interface';
-import { ITEMS_SERVICE } from '../items/constants/items.tokens';
+import { ITEMS_SERVICE } from '../items/constants/items.token';
 import { TransactionalService } from '@/shared/services/transactional.service';
 import type { IPaymentsGatewayService } from '../payments-gateway/interfaces/payments-gateway-service.interface';
-import { PAYMENTS_GATEWAY_SERVICE } from '../payments-gateway/constants/payments-gateway.tokens';
+import { PAYMENTS_GATEWAY_SERVICE } from '../payments-gateway/constants/payments-gateway.token';
 import { StripePaymentIntentCreateParams } from '../payments-gateway/types/payment-intent.types';
 import { OrderMessageFactory } from './factories/order-message.factory';
 import { I18N_ORDERS } from '@/shared/constants/i18n';
@@ -79,7 +79,7 @@ export class OrdersService extends TransactionalService implements IOrdersServic
   //#region Public endpoints
 
   @Transactional()
-  @UseLock({
+  @Lock({
     prefix: LOCK_PREFIX.ORDER.CREATE,
     key: ([, , idempotencyKey]) => idempotencyKey,
   })
@@ -309,7 +309,7 @@ export class OrdersService extends TransactionalService implements IOrdersServic
   }
 
   @Transactional()
-  @UseLock({ prefix: LOCK_PREFIX.ORDER.UPDATE, key: ([id]) => id })
+  @Lock({ prefix: LOCK_PREFIX.ORDER.UPDATE, key: ([id]) => id })
   async adminUpdate(id: string, dto: UpdateOrderDto): Promise<OrderResponseDto> {
     this.logger.debug('Updating order', { orderId: id });
 
@@ -341,7 +341,7 @@ export class OrdersService extends TransactionalService implements IOrdersServic
   }
 
   @Transactional()
-  @UseLock({ prefix: LOCK_PREFIX.ORDER.REMOVE, key: ([id]) => id })
+  @Lock({ prefix: LOCK_PREFIX.ORDER.REMOVE, key: ([id]) => id })
   async adminRemove(id: string): Promise<void> {
     this.logger.debug('Deleting order', { orderId: id });
 
@@ -360,7 +360,7 @@ export class OrdersService extends TransactionalService implements IOrdersServic
   //#region Internal / webhook methods
 
   @Transactional()
-  @UseLock({ prefix: LOCK_PREFIX.ORDER.UPDATE, key: ([orderId]) => orderId })
+  @Lock({ prefix: LOCK_PREFIX.ORDER.UPDATE, key: ([orderId]) => orderId })
   async markPaymentAsSucceeded(
     orderId: string,
     paymentIntentId: string,
@@ -390,7 +390,7 @@ export class OrdersService extends TransactionalService implements IOrdersServic
   }
 
   @Transactional()
-  @UseLock({ prefix: LOCK_PREFIX.ORDER.UPDATE, key: ([orderId]) => orderId })
+  @Lock({ prefix: LOCK_PREFIX.ORDER.UPDATE, key: ([orderId]) => orderId })
   async markPaymentAsFailed(
     orderId: string,
     paymentIntentId: string,
@@ -423,7 +423,7 @@ export class OrdersService extends TransactionalService implements IOrdersServic
   //#region Operational admin methods
 
   @Transactional()
-  @UseLock({ prefix: LOCK_PREFIX.ORDER.UPDATE, key: ([id]) => id })
+  @Lock({ prefix: LOCK_PREFIX.ORDER.UPDATE, key: ([id]) => id })
   async ship(id: string, dto: ShipOrderDto): Promise<OrderResponseDto> {
     const order = await this.orderRepository.findOne({
       where: { id },
@@ -470,7 +470,7 @@ export class OrdersService extends TransactionalService implements IOrdersServic
   }
 
   @Transactional()
-  @UseLock({ prefix: LOCK_PREFIX.ORDER.UPDATE, key: ([id]) => id })
+  @Lock({ prefix: LOCK_PREFIX.ORDER.UPDATE, key: ([id]) => id })
   async deliver(id: string): Promise<OrderResponseDto> {
     const order = await this.orderRepository.findOne({
       where: { id },
@@ -514,7 +514,7 @@ export class OrdersService extends TransactionalService implements IOrdersServic
   }
 
   @Transactional()
-  @UseLock({ prefix: LOCK_PREFIX.ORDER.UPDATE, key: ([id]) => id })
+  @Lock({ prefix: LOCK_PREFIX.ORDER.UPDATE, key: ([id]) => id })
   async cancel(id: string): Promise<void> {
     const order = await this.orderRepository.findOne({
       where: { id },
@@ -548,7 +548,7 @@ export class OrdersService extends TransactionalService implements IOrdersServic
   }
 
   @Transactional()
-  @UseLock({ prefix: LOCK_PREFIX.ORDER.UPDATE, key: ([id]) => id })
+  @Lock({ prefix: LOCK_PREFIX.ORDER.UPDATE, key: ([id]) => id })
   async refund(id: string): Promise<void> {
     const order = await this.orderRepository.findOne({
       where: { id },

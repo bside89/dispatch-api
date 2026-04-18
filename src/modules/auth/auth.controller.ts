@@ -1,6 +1,6 @@
 import { Body, Controller, Inject, Post, UseGuards } from '@nestjs/common';
 import type { IAuthService } from './interfaces/auth-service.interface';
-import { AUTH_SERVICE } from './constants/auth.tokens';
+import { AUTH_SERVICE } from './constants/auth.token';
 import { LoginDto } from './dto/login.dto';
 import {
   ApiBadRequestResponse,

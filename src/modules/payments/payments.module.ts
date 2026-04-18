@@ -11,7 +11,7 @@ import {
 } from './strategies';
 import { PaymentJobHandlerFactory } from './factories/payment-job-handler.factory';
 import { PaymentsGatewayModule } from '../payments-gateway/payments-gateway.module';
-import { PAYMENTS_SERVICE } from './constants/payments.tokens';
+import { PAYMENTS_SERVICE } from './constants/payments.token';
 
 @Module({
   imports: [UsersModule, OrdersModule, PaymentsGatewayModule],

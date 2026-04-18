@@ -10,9 +10,11 @@ import {
 } from 'typeorm';
 import { TransactionContext } from '../utils/transaction-context';
 import { BaseEntity } from '../entities/base.entity';
-import { QueryOptions } from './base-repository.interface';
+import { IBaseRepository, QueryOptions } from './base-repository.interface';
 
-export abstract class BaseRepository<T extends BaseEntity> {
+export abstract class BaseRepository<
+  T extends BaseEntity,
+> implements IBaseRepository<T> {
   protected constructor(protected readonly repository: Repository<T>) {}
 
   createEntity(entityData: Partial<T>): T {

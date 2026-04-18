@@ -4,7 +4,7 @@ import { EventProcessor } from './event.processor';
 import { NotifyUserJobStrategy } from '../strategies/notify-user-job.strategy';
 import { ConfigService } from '@nestjs/config';
 import { CacheService } from '../../cache/cache.service';
-import { CACHE_SERVICE } from '../../cache/constants/cache.tokens';
+import { CACHE_SERVICE } from '../../cache/constants/cache.token';
 import Redlock from 'redlock';
 import { EventJobHandlerFactory } from '../factories/event-job-handler.factory';
 import {

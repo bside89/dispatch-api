@@ -2,7 +2,7 @@ import { Outbox } from './entities/outbox.entity';
 import { Inject, Injectable, OnModuleDestroy } from '@nestjs/common';
 import { OutboxType } from './enums/outbox-type.enum';
 import type { IOutboxRepository } from './interfaces/outbox-repository.interface';
-import { OUTBOX_REPOSITORY } from './constants/outbox.tokens';
+import { OUTBOX_REPOSITORY } from './constants/outbox.token';
 import { RequestContext } from '@/shared/utils/request-context';
 import { randomUUID } from 'crypto';
 import { DataSource } from 'typeorm';
@@ -12,10 +12,7 @@ import { EVENT_BUS } from '../events/constants/event-bus.token';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { Transactional } from '@/shared/decorators/transactional.decorator';
-import {
-  ORDER_QUEUE_TOKEN,
-  PAYMENT_QUEUE_TOKEN,
-} from '@/shared/constants/queue-tokens.constant';
+import { ORDER_QUEUE, PAYMENT_QUEUE } from '@/shared/constants/queue-names.constant';
 import { OutboxPayloadMap } from './types/outbox-payload.map';
 import { ensureError } from '@/shared/helpers/functions';
 import { IEventBusJob } from '../events/interfaces/event-bus-job.interface';
@@ -35,9 +32,9 @@ export class OutboxService
   private isShuttingDown = false;
 
   constructor(
-    @InjectQueue(ORDER_QUEUE_TOKEN)
+    @InjectQueue(ORDER_QUEUE)
     protected readonly orderQueue: Queue,
-    @InjectQueue(PAYMENT_QUEUE_TOKEN)
+    @InjectQueue(PAYMENT_QUEUE)
     protected readonly paymentQueue: Queue,
     @Inject(EVENT_BUS)
     protected readonly eventBus: IEventBus,

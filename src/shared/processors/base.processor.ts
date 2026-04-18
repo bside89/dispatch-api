@@ -3,7 +3,7 @@ import * as os from 'os';
 import { AppLogger } from '../utils/app-logger';
 import Redlock from 'redlock';
 import type { ICacheService } from '../modules/cache/interfaces/cache-service.interface';
-import { UseLock } from '../decorators/lock.decorator';
+import { Lock } from '../decorators/lock.decorator';
 import { Job } from 'bullmq';
 import { randomUUID } from 'crypto';
 import { RequestContext } from '../utils/request-context';
@@ -38,7 +38,7 @@ export abstract class BaseProcessor
     await this.worker.close();
   }
 
-  @UseLock({ prefix: LOCK_PREFIX.JOB.EXECUTE, key: ([job]) => job.id })
+  @Lock({ prefix: LOCK_PREFIX.JOB.EXECUTE, key: ([job]) => job.id })
   async executeJob<T extends BaseJobHandlerFactory>(
     job: Job,
     event: 'process' | 'failed',

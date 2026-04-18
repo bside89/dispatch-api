@@ -6,8 +6,8 @@ import Redis from 'ioredis';
 import Redlock from 'redlock';
 import { cacheConfig, redisClient } from '../../../config/redis.config';
 import { CacheService } from './cache.service';
-import { REDIS_CLIENT } from '@/shared/modules/cache/constants/redis-client.constant';
-import { CACHE_SERVICE } from './constants/cache.tokens';
+import { REDIS_CLIENT } from '@/shared/modules/cache/constants/redis-client.token';
+import { CACHE_SERVICE } from './constants/cache.token';
 
 @Global()
 @Module({

@@ -29,7 +29,7 @@ import {
   ApiSecurity,
 } from '@nestjs/swagger';
 import type { IUsersService } from './interfaces/users-service.interface';
-import { USERS_SERVICE } from './constants/users.tokens';
+import { USERS_SERVICE } from './constants/users.token';
 import { PublicCreateUserDto } from './dto/create-user.dto';
 import { PublicUpdateUserDto } from './dto/update-user.dto';
 import { UserQueryDto } from './dto/user-query.dto';

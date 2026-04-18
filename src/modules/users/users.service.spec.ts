@@ -1,9 +1,9 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { UsersService } from './users.service';
-import { USERS_SERVICE, USER_REPOSITORY } from './constants/users.tokens';
-import { CACHE_SERVICE } from '../../shared/modules/cache/constants/cache.tokens';
-import { OUTBOX_SERVICE } from '../../shared/modules/outbox/constants/outbox.tokens';
-import { PAYMENTS_GATEWAY_SERVICE } from '../payments-gateway/constants/payments-gateway.tokens';
+import { USERS_SERVICE, USER_REPOSITORY } from './constants/users.token';
+import { CACHE_SERVICE } from '../../shared/modules/cache/constants/cache.token';
+import { OUTBOX_SERVICE } from '../../shared/modules/outbox/constants/outbox.token';
+import { PAYMENTS_GATEWAY_SERVICE } from '../payments-gateway/constants/payments-gateway.token';
 import { DataSource } from 'typeorm';
 import Redlock from 'redlock';
 import {

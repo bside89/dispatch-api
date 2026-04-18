@@ -7,7 +7,7 @@ import { UserRepository } from './repositories/user.repository';
 import { PaymentsGatewayModule } from '../payments-gateway/payments-gateway.module';
 import { UserMessageFactory } from './factories/user-message.factory';
 import { AdminUsersController } from './admin-users.controller';
-import { USERS_SERVICE, USER_REPOSITORY } from './constants/users.tokens';
+import { USERS_SERVICE, USER_REPOSITORY } from './constants/users.token';
 
 @Module({
   imports: [TypeOrmModule.forFeature([User]), PaymentsGatewayModule],

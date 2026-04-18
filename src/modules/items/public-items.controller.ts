@@ -16,7 +16,7 @@ import {
   ApiQuery,
 } from '@nestjs/swagger';
 import type { IItemsService } from './interfaces/items-service.interface';
-import { ITEMS_SERVICE } from './constants/items.tokens';
+import { ITEMS_SERVICE } from './constants/items.token';
 import { PublicItemQueryDto } from './dto/item-query.dto';
 import { PublicItemResponseDto } from './dto/item-response.dto';
 import { PaginatedResultDto } from '@/shared/dto/paginated-result.dto';

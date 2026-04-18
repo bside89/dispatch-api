@@ -5,12 +5,12 @@ import { CACHE_TTL } from '../constants/cache-ttl.constant';
 import { I18N_COMMON } from '../constants/i18n';
 import { template } from '../helpers/functions';
 
-export type UseLockKeySelector<T = any> = (args: T) => string | number;
+export type LockKeySelector<T = any> = (args: T) => string | number;
 
-export interface UseLockOptions {
+export interface LockOptions {
   prefix: string;
 
-  key: UseLockKeySelector;
+  key: LockKeySelector;
 
   ttl?: number;
 }
@@ -21,7 +21,7 @@ export interface UseLockOptions {
  * @param param0 The options for the lock, including prefix, key selector, and TTL.
  * @returns A method decorator.
  */
-export function UseLock({ ttl = CACHE_TTL.LOCK, prefix, key }: UseLockOptions) {
+export function Lock({ ttl = CACHE_TTL.LOCK, prefix, key }: LockOptions) {
   return function (
     _target: any,
     _propertyKey: string,

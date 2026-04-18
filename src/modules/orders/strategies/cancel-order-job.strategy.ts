@@ -5,13 +5,13 @@ import { CancelOrderJobPayload } from '../../../shared/payloads/order-job.payloa
 import { NotifyUserJobPayload } from '../../../shared/payloads/event-job.payload';
 import { Transactional } from '@/shared/decorators/transactional.decorator';
 import { OutboxType } from '@/shared/modules/outbox/enums/outbox-type.enum';
-import { CACHE_SERVICE } from '../../../shared/modules/cache/constants/cache.tokens';
+import { CACHE_SERVICE } from '../../../shared/modules/cache/constants/cache.token';
 import type { ICacheService } from '../../../shared/modules/cache/interfaces/cache-service.interface';
-import { OUTBOX_SERVICE } from '@/shared/modules/outbox/constants/outbox.tokens';
+import { OUTBOX_SERVICE } from '@/shared/modules/outbox/constants/outbox.token';
 import type { IOutboxService } from '@/shared/modules/outbox/interfaces/outbox-service.interface';
-import { ITEMS_SERVICE } from '../../items/constants/items.tokens';
+import { ITEMS_SERVICE } from '../../items/constants/items.token';
 import type { IItemsService } from '../../items/interfaces/items-service.interface';
-import { ORDER_REPOSITORY } from '../constants/orders.tokens';
+import { ORDER_REPOSITORY } from '../constants/orders.token';
 import type { IOrderRepository } from '../interfaces/order-repository.interface';
 import { DataSource } from 'typeorm';
 import { BaseOrderJobStrategy } from './base-order-job.strategy';

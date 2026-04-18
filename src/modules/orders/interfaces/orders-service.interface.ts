@@ -6,8 +6,9 @@ import { ShipOrderDto } from '../dto/ship-order.dto';
 import { OrderByUserQueryDto } from '../dto/order-by-user-query.dto';
 import { OrderResponseDto, PublicOrderResponseDto } from '../dto/order-response.dto';
 import type { RequestUser } from '@/modules/auth/interfaces/request-user.interface';
+import { IBaseService } from '@/shared/services/base-service.interface';
 
-export interface IOrdersService {
+export interface IOrdersService extends IBaseService {
   publicCreate(
     dto: CreateOrderDto,
     userId: string,

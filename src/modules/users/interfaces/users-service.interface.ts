@@ -8,8 +8,9 @@ import {
   UserSelfResponseDto,
 } from '../dto/user-response.dto';
 import type { RequestUser } from '@/modules/auth/interfaces/request-user.interface';
+import { IBaseService } from '@/shared/services/base-service.interface';
 
-export interface IUsersService {
+export interface IUsersService extends IBaseService {
   publicCreate(
     dto: PublicCreateUserDto,
     idempotencyKey: string,

@@ -4,7 +4,7 @@ import Redlock from 'redlock';
 import { DataSource } from 'typeorm';
 import { ORDER_KEY } from '@/shared/modules/cache/constants/order.key';
 import { Order } from '@/modules/orders/entities/order.entity';
-import { UseLock } from '@/shared/decorators/lock.decorator';
+import { Lock } from '@/shared/decorators/lock.decorator';
 import { User } from '@/modules/users/entities/user.entity';
 import { USER_KEY } from '@/shared/modules/cache/constants/user.key';
 import { LOCK_PREFIX } from '@/shared/constants/lock-prefix.constant';
@@ -33,7 +33,7 @@ export abstract class BasePaymentJobStrategy<
    * @param orderId The ID of the order to update.
    * @param updateData The data to update the order with.
    */
-  @UseLock({ prefix: LOCK_PREFIX.ORDER.UPDATE, key: ([orderId]) => orderId })
+  @Lock({ prefix: LOCK_PREFIX.ORDER.UPDATE, key: ([orderId]) => orderId })
   async updateOrderWithLock(
     orderId: string,
     updateData: Partial<Order>,
@@ -51,7 +51,7 @@ export abstract class BasePaymentJobStrategy<
    * @param userId The ID of the user to update.
    * @param updateData The data to update the user with.
    */
-  @UseLock({ prefix: LOCK_PREFIX.USER.UPDATE, key: ([userId]) => userId })
+  @Lock({ prefix: LOCK_PREFIX.USER.UPDATE, key: ([userId]) => userId })
   async updateUserWithLock(
     userId: string,
     updateData: Partial<User>,

@@ -23,7 +23,7 @@ import {
   ApiResponse,
 } from '@nestjs/swagger';
 import type { IOrdersService } from './interfaces/orders-service.interface';
-import { ORDERS_SERVICE } from './constants/orders.tokens';
+import { ORDERS_SERVICE } from './constants/orders.token';
 import { UpdateOrderDto } from './dto/update-order.dto';
 import { ShipOrderDto } from './dto/ship-order.dto';
 import { OrderQueryDto } from './dto/order-query.dto';

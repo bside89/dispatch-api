@@ -5,23 +5,20 @@ import { bullmqDefaultJobOptions } from '@/config/bullmq.config';
 import { BullModule } from '@nestjs/bullmq';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Outbox } from './entities/outbox.entity';
-import {
-  ORDER_QUEUE_TOKEN,
-  PAYMENT_QUEUE_TOKEN,
-} from '@/shared/constants/queue-tokens.constant';
-import { OUTBOX_SERVICE, OUTBOX_REPOSITORY } from './constants/outbox.tokens';
+import { ORDER_QUEUE, PAYMENT_QUEUE } from '@/shared/constants/queue-names.constant';
+import { OUTBOX_SERVICE, OUTBOX_REPOSITORY } from './constants/outbox.token';
 
 @Global()
 @Module({
   imports: [
     TypeOrmModule.forFeature([Outbox]),
     BullModule.registerQueue({
-      name: ORDER_QUEUE_TOKEN,
+      name: ORDER_QUEUE,
       defaultJobOptions: bullmqDefaultJobOptions,
       forceDisconnectOnShutdown: true,
     }),
     BullModule.registerQueue({
-      name: PAYMENT_QUEUE_TOKEN,
+      name: PAYMENT_QUEUE,
       defaultJobOptions: bullmqDefaultJobOptions,
       forceDisconnectOnShutdown: true,
     }),

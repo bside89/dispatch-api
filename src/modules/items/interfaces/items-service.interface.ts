@@ -4,8 +4,9 @@ import { UpdateItemDto } from '../dto/update-item.dto';
 import { ItemQueryDto, PublicItemQueryDto } from '../dto/item-query.dto';
 import { ItemResponseDto, PublicItemResponseDto } from '../dto/item-response.dto';
 import { Item } from '../entities/item.entity';
+import { IBaseService } from '@/shared/services/base-service.interface';
 
-export interface IItemsService {
+export interface IItemsService extends IBaseService {
   publicFindAll(
     query: PublicItemQueryDto,
   ): Promise<PaginatedResultDto<PublicItemResponseDto>>;

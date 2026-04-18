@@ -29,7 +29,7 @@ import {
   ApiQuery,
 } from '@nestjs/swagger';
 import type { IItemsService } from './interfaces/items-service.interface';
-import { ITEMS_SERVICE } from './constants/items.tokens';
+import { ITEMS_SERVICE } from './constants/items.token';
 import { CreateItemDto } from './dto/create-item.dto';
 import { UpdateItemDto } from './dto/update-item.dto';
 import { ItemQueryDto } from './dto/item-query.dto';

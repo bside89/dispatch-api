@@ -6,12 +6,12 @@ import {
   ConflictException,
 } from '@nestjs/common';
 import type { ICacheService } from '../../shared/modules/cache/interfaces/cache-service.interface';
-import { CACHE_SERVICE } from '../../shared/modules/cache/constants/cache.tokens';
+import { CACHE_SERVICE } from '../../shared/modules/cache/constants/cache.token';
 import { CreateUserDto, PublicCreateUserDto } from './dto/create-user.dto';
 import { PublicUpdateUserDto, UpdateUserDto } from './dto/update-user.dto';
 import { PublicUserQueryDto, UserQueryDto } from './dto/user-query.dto';
 import type { IUserRepository } from './interfaces/user-repository.interface';
-import { USER_REPOSITORY } from './constants/users.tokens';
+import { USER_REPOSITORY } from './constants/users.token';
 import { PaginatedResultDto } from '@/shared/dto/paginated-result.dto';
 import {
   PublicUserResponseDto,
@@ -25,11 +25,11 @@ import { DataSource } from 'typeorm';
 import { Transactional } from '@/shared/decorators/transactional.decorator';
 import { CACHE_TTL } from '@/shared/constants/cache-ttl.constant';
 import { ensureError, template } from '@/shared/helpers/functions';
-import { UseLock } from '@/shared/decorators/lock.decorator';
+import { Lock } from '@/shared/decorators/lock.decorator';
 import Redlock from 'redlock';
 import { USER_KEY } from '../../shared/modules/cache/constants/user.key';
 import type { IOutboxService } from '@/shared/modules/outbox/interfaces/outbox-service.interface';
-import { OUTBOX_SERVICE } from '@/shared/modules/outbox/constants/outbox.tokens';
+import { OUTBOX_SERVICE } from '@/shared/modules/outbox/constants/outbox.token';
 import { OutboxType } from '@/shared/modules/outbox/enums/outbox-type.enum';
 import {
   CreateCustomerJobPayload,
@@ -39,7 +39,7 @@ import {
 import type { RequestUser } from '../auth/interfaces/request-user.interface';
 import { UserRole } from '../../shared/enums/user-role.enum';
 import type { IPaymentsGatewayService } from '../payments-gateway/interfaces/payments-gateway-service.interface';
-import { PAYMENTS_GATEWAY_SERVICE } from '../payments-gateway/constants/payments-gateway.tokens';
+import { PAYMENTS_GATEWAY_SERVICE } from '../payments-gateway/constants/payments-gateway.token';
 import { CustomerResponseDto } from '../payments-gateway/dto/customer-response.dto';
 import { LOCK_PREFIX } from '@/shared/constants/lock-prefix.constant';
 import { TransactionalService } from '@/shared/services/transactional.service';
@@ -69,7 +69,7 @@ export class UsersService extends TransactionalService implements IUsersService 
   //#region Public endpoints
 
   @Transactional()
-  @UseLock({
+  @Lock({
     prefix: LOCK_PREFIX.USER.CREATE,
     key: ([, idempotencyKey]) => idempotencyKey,
   })
@@ -195,7 +195,7 @@ export class UsersService extends TransactionalService implements IUsersService 
   }
 
   @Transactional()
-  @UseLock({ prefix: LOCK_PREFIX.USER.UPDATE, key: ([id]) => id })
+  @Lock({ prefix: LOCK_PREFIX.USER.UPDATE, key: ([id]) => id })
   async publicUpdate(
     dto: PublicUpdateUserDto,
     requestUser: RequestUser,
@@ -241,7 +241,7 @@ export class UsersService extends TransactionalService implements IUsersService 
   }
 
   @Transactional()
-  @UseLock({
+  @Lock({
     prefix: LOCK_PREFIX.USER.REMOVE,
     key: ([requestUser]) => requestUser.id,
   })
@@ -273,7 +273,7 @@ export class UsersService extends TransactionalService implements IUsersService 
   //#region Admin endpoints
 
   @Transactional()
-  @UseLock({
+  @Lock({
     prefix: LOCK_PREFIX.USER.CREATE,
     key: ([, idempotencyKey]) => idempotencyKey,
   })
@@ -383,7 +383,7 @@ export class UsersService extends TransactionalService implements IUsersService 
   }
 
   @Transactional()
-  @UseLock({ prefix: LOCK_PREFIX.USER.UPDATE, key: ([id]) => id })
+  @Lock({ prefix: LOCK_PREFIX.USER.UPDATE, key: ([id]) => id })
   async adminUpdate(
     id: string,
     dto: UpdateUserDto,
@@ -431,7 +431,7 @@ export class UsersService extends TransactionalService implements IUsersService 
   }
 
   @Transactional()
-  @UseLock({ prefix: LOCK_PREFIX.USER.REMOVE, key: ([id]) => id })
+  @Lock({ prefix: LOCK_PREFIX.USER.REMOVE, key: ([id]) => id })
   async adminRemove(id: string, requestUser: RequestUser): Promise<void> {
     const user = await this.userRepository.findById(id);
 

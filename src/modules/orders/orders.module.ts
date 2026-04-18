@@ -18,7 +18,7 @@ import {
   ORDERS_SERVICE,
   ORDER_REPOSITORY,
   ORDER_ITEM_REPOSITORY,
-} from './constants/orders.tokens';
+} from './constants/orders.token';
 
 @Module({
   imports: [

@@ -6,7 +6,7 @@ import { ItemsService } from './items.service';
 import { Item } from './entities/item.entity';
 import { ItemRepository } from './repositories/item.repository';
 import { ItemMessageFactory } from './factories/item-message.factory';
-import { ITEMS_SERVICE, ITEM_REPOSITORY } from './constants/items.tokens';
+import { ITEMS_SERVICE, ITEM_REPOSITORY } from './constants/items.token';
 
 @Module({
   imports: [TypeOrmModule.forFeature([Item])],

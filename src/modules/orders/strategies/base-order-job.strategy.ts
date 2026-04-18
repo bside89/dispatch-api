@@ -2,7 +2,7 @@ import type { ICacheService } from '@/shared/modules/cache/interfaces/cache-serv
 import type { IOrderRepository } from '../interfaces/order-repository.interface';
 import { OrderStatus } from '../enums/order-status.enum';
 import { DataSource } from 'typeorm';
-import { UseLock } from '@/shared/decorators/lock.decorator';
+import { Lock } from '@/shared/decorators/lock.decorator';
 import Redlock from 'redlock';
 import { BaseJobStrategy } from '@/shared/strategies/base-job.strategy';
 import { Order } from '../entities/order.entity';
@@ -30,7 +30,7 @@ export abstract class BaseOrderJobStrategy<
    * @param orderId The ID of the order to update.
    * @param updateData The data to update the order with.
    */
-  @UseLock({ prefix: LOCK_PREFIX.ORDER.UPDATE, key: ([orderId]) => orderId })
+  @Lock({ prefix: LOCK_PREFIX.ORDER.UPDATE, key: ([orderId]) => orderId })
   async updateOrderWithLock(
     orderId: string,
     updateData: Partial<Order>,

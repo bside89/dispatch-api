@@ -3,15 +3,15 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { AppModule } from '@/app.module';
 import { DataSource } from 'typeorm';
 import Redis from 'ioredis';
-import { REDIS_CLIENT } from '@/shared/modules/cache/constants/redis-client.constant';
+import { REDIS_CLIENT } from '@/shared/modules/cache/constants/redis-client.token';
 import { IUsersService } from '@/modules/users/interfaces/users-service.interface';
-import { USERS_SERVICE } from '@/modules/users/constants/users.tokens';
+import { USERS_SERVICE } from '@/modules/users/constants/users.token';
 import { IOrdersService } from '@/modules/orders/interfaces/orders-service.interface';
-import { ORDERS_SERVICE } from '@/modules/orders/constants/orders.tokens';
+import { ORDERS_SERVICE } from '@/modules/orders/constants/orders.token';
 import { IItemsService } from '@/modules/items/interfaces/items-service.interface';
-import { ITEMS_SERVICE } from '@/modules/items/constants/items.tokens';
+import { ITEMS_SERVICE } from '@/modules/items/constants/items.token';
 import { IOutboxRepository } from '@/shared/modules/outbox/interfaces/outbox-repository.interface';
-import { OUTBOX_REPOSITORY } from '@/shared/modules/outbox/constants/outbox.tokens';
+import { OUTBOX_REPOSITORY } from '@/shared/modules/outbox/constants/outbox.token';
 import { cleanDatabase, cleanRedis } from './utils/database-cleaner';
 import { paymentsGatewayServiceMock } from './utils/mock-payments-gateway-service';
 import { INestApplication } from '@nestjs/common';
@@ -19,7 +19,7 @@ import { Job } from 'bullmq';
 import { waitFor } from './utils/wait-for';
 import { ProcessOrderJobStrategy } from '@/modules/orders/strategies/process-order-job.strategy';
 import { OrderProcessor } from '@/modules/orders/processors/order.processor';
-import { PAYMENTS_GATEWAY_SERVICE } from '@/modules/payments-gateway/constants/payments-gateway.tokens';
+import { PAYMENTS_GATEWAY_SERVICE } from '@/modules/payments-gateway/constants/payments-gateway.token';
 
 // Mock the delay function to resolve almost instantly.
 // This eliminates the simulated processing delays (1s-3s) used by

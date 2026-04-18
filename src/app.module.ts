@@ -26,10 +26,7 @@ import { CorrelationIdMiddleware } from './middleware/correlation-id.middleware'
 import { LoggingMiddleware } from './middleware/logging.middleware';
 import { TerminusModule } from '@nestjs/terminus';
 import { throttleConfig } from './config/throttle.config';
-import {
-  EVENT_QUEUE_TOKEN,
-  ORDER_QUEUE_TOKEN,
-} from './shared/constants/queue-tokens.constant';
+import { EVENT_QUEUE, ORDER_QUEUE } from './shared/constants/queue-names.constant';
 import { PaymentsModule } from './modules/payments/payments.module';
 import { PaymentsGatewayModule } from './modules/payments-gateway/payments-gateway.module';
 import { ItemsModule } from './modules/items/items.module';
@@ -87,11 +84,11 @@ const i18nPath = [
     }),
     BullBoardModule.forFeature(
       {
-        name: ORDER_QUEUE_TOKEN,
+        name: ORDER_QUEUE,
         adapter: BullMQAdapter,
       },
       {
-        name: EVENT_QUEUE_TOKEN,
+        name: EVENT_QUEUE,
         adapter: BullMQAdapter,
       },
     ),

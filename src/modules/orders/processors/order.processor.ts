@@ -1,17 +1,17 @@
 import { OnWorkerEvent, Processor } from '@nestjs/bullmq';
 import { Job } from 'bullmq';
 import { OrderJobHandlerFactory } from '../factories/order-job-handler.factory';
-import { CACHE_SERVICE } from '../../../shared/modules/cache/constants/cache.tokens';
+import { CACHE_SERVICE } from '../../../shared/modules/cache/constants/cache.token';
 import type { ICacheService } from '../../../shared/modules/cache/interfaces/cache-service.interface';
 import { BaseProcessor } from '@/shared/processors/base.processor';
 import { ConfigService } from '@nestjs/config';
 import Redlock from 'redlock';
 import { ORDER_KEY } from '../../../shared/modules/cache/constants/order.key';
-import { ORDER_QUEUE_TOKEN } from '@/shared/constants/queue-tokens.constant';
+import { ORDER_QUEUE } from '@/shared/constants/queue-names.constant';
 import { Injectable, Inject } from '@nestjs/common';
 
 @Injectable()
-@Processor(ORDER_QUEUE_TOKEN, { maxStalledCount: 1 })
+@Processor(ORDER_QUEUE, { maxStalledCount: 1 })
 export class OrderProcessor extends BaseProcessor {
   constructor(
     private readonly factory: OrderJobHandlerFactory,

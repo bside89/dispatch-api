@@ -1,9 +1,9 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { UpdateCustomerJobStrategy } from './update-customer-job.strategy';
-import { CACHE_SERVICE } from '@/shared/modules/cache/constants/cache.tokens';
-import { PAYMENTS_GATEWAY_SERVICE } from '@/modules/payments-gateway/constants/payments-gateway.tokens';
-import { ORDER_REPOSITORY } from '@/modules/orders/constants/orders.tokens';
-import { USER_REPOSITORY } from '@/modules/users/constants/users.tokens';
+import { CACHE_SERVICE } from '@/shared/modules/cache/constants/cache.token';
+import { PAYMENTS_GATEWAY_SERVICE } from '@/modules/payments-gateway/constants/payments-gateway.token';
+import { ORDER_REPOSITORY } from '@/modules/orders/constants/orders.token';
+import { USER_REPOSITORY } from '@/modules/users/constants/users.token';
 import { DataSource } from 'typeorm';
 import Redlock from 'redlock';
 import {

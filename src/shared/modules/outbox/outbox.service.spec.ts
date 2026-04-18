@@ -1,13 +1,10 @@
 /*eslint-disable @typescript-eslint/no-explicit-any */
 import { Test, TestingModule } from '@nestjs/testing';
 import { OutboxService } from './outbox.service';
-import { OUTBOX_SERVICE, OUTBOX_REPOSITORY } from './constants/outbox.tokens';
+import { OUTBOX_SERVICE, OUTBOX_REPOSITORY } from './constants/outbox.token';
 import type { OutboxRepository } from './repositories/outbox.repository';
 import { getQueueToken } from '@nestjs/bullmq';
-import {
-  ORDER_QUEUE_TOKEN,
-  PAYMENT_QUEUE_TOKEN,
-} from '@/shared/constants/queue-tokens.constant';
+import { ORDER_QUEUE, PAYMENT_QUEUE } from '@/shared/constants/queue-names.constant';
 import { EVENT_BUS } from '../events/constants/event-bus.token';
 import { DataSource } from 'typeorm';
 import { OutboxType } from './enums/outbox-type.enum';
@@ -63,14 +60,14 @@ describe('OutboxService', () => {
           },
         },
         {
-          provide: getQueueToken(ORDER_QUEUE_TOKEN),
+          provide: getQueueToken(ORDER_QUEUE),
           useValue: {
             add: jest.fn(),
             addBulk: jest.fn(),
           },
         },
         {
-          provide: getQueueToken(PAYMENT_QUEUE_TOKEN),
+          provide: getQueueToken(PAYMENT_QUEUE),
           useValue: {
             add: jest.fn(),
             addBulk: jest.fn(),
@@ -98,8 +95,8 @@ describe('OutboxService', () => {
 
     service = module.get<OutboxService>(OUTBOX_SERVICE);
     repository = module.get(OUTBOX_REPOSITORY);
-    orderQueue = module.get(getQueueToken(ORDER_QUEUE_TOKEN));
-    paymentQueue = module.get(getQueueToken(PAYMENT_QUEUE_TOKEN));
+    orderQueue = module.get(getQueueToken(ORDER_QUEUE));
+    paymentQueue = module.get(getQueueToken(PAYMENT_QUEUE));
     eventBus = module.get(EVENT_BUS);
   });
 

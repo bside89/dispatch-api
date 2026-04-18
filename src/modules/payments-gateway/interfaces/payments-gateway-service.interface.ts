@@ -6,8 +6,9 @@ import {
   StripePaymentIntentCreateParams,
   StripeWebhookEvent,
 } from '../types/payment-intent.types';
+import { IBaseService } from '@/shared/services/base-service.interface';
 
-export interface IPaymentsGatewayService {
+export interface IPaymentsGatewayService extends IBaseService {
   customersCreate(
     dto: CreateCustomerDto,
     idempotencyKey: string,

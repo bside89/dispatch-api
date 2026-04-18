@@ -3,7 +3,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { OrderProcessor } from './order.processor';
 import { OrderJobHandlerFactory } from '../factories/order-job-handler.factory';
 import { CacheService } from '../../../shared/modules/cache/cache.service';
-import { CACHE_SERVICE } from '../../../shared/modules/cache/constants/cache.tokens';
+import { CACHE_SERVICE } from '../../../shared/modules/cache/constants/cache.token';
 import { ConfigService } from '@nestjs/config';
 import Redlock from 'redlock';
 

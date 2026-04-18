@@ -1,9 +1,9 @@
 /*eslint-disable @typescript-eslint/no-explicit-any */
 import { Test, TestingModule } from '@nestjs/testing';
 import { RefundOrderJobStrategy } from './refund-order-job.strategy';
-import { CACHE_SERVICE } from '../../../shared/modules/cache/constants/cache.tokens';
-import { OUTBOX_SERVICE } from '@/shared/modules/outbox/constants/outbox.tokens';
-import { ORDER_REPOSITORY } from '../constants/orders.tokens';
+import { CACHE_SERVICE } from '../../../shared/modules/cache/constants/cache.token';
+import { OUTBOX_SERVICE } from '@/shared/modules/outbox/constants/outbox.token';
+import { ORDER_REPOSITORY } from '../constants/orders.token';
 import { DataSource } from 'typeorm';
 import Redlock from 'redlock';
 import {

@@ -5,7 +5,7 @@ import { ConfigService } from '@nestjs/config';
 
 import { JwtStrategy } from './jwt.strategy';
 import { CacheService } from '../../../shared/modules/cache/cache.service';
-import { CACHE_SERVICE } from '../../../shared/modules/cache/constants/cache.tokens';
+import { CACHE_SERVICE } from '../../../shared/modules/cache/constants/cache.token';
 import { AUTH_KEY } from '../../../shared/modules/cache/constants/auth.key';
 import { UserRole } from '@/shared/enums/user-role.enum';
 import { createCacheServiceMock } from '@/shared/testing/provider-mocks';

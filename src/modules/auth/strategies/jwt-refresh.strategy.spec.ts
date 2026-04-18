@@ -5,7 +5,7 @@ import { ConfigService } from '@nestjs/config';
 import { JwtRefreshStrategy } from './jwt-refresh.strategy';
 import { UserRole } from '@/shared/enums/user-role.enum';
 import { CacheService } from '@/shared/modules/cache/cache.service';
-import { CACHE_SERVICE } from '@/shared/modules/cache/constants/cache.tokens';
+import { CACHE_SERVICE } from '@/shared/modules/cache/constants/cache.token';
 import { createCacheServiceMock } from '@/shared/testing/provider-mocks';
 
 // Stub out PassportStrategy so we can test validate() in isolation.

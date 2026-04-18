@@ -1,17 +1,24 @@
-import { Injectable, Inject } from '@nestjs/common';
+import { Injectable, Inject, OnApplicationBootstrap } from '@nestjs/common';
 import { BaseService } from '../../shared/services/base.service';
 import type { IPaymentsGatewayService } from '../payments-gateway/interfaces/payments-gateway-service.interface';
-import { PAYMENTS_GATEWAY_SERVICE } from '../payments-gateway/constants/payments-gateway.tokens';
+import { PAYMENTS_GATEWAY_SERVICE } from '../payments-gateway/constants/payments-gateway.token';
 import type { IOrdersService } from '../orders/interfaces/orders-service.interface';
-import { ORDERS_SERVICE } from '../orders/constants/orders.tokens';
+import { ORDERS_SERVICE } from '../orders/constants/orders.token';
 import { IPaymentsService } from './interfaces/payments-service.interface';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
-export class PaymentsService extends BaseService implements IPaymentsService {
+export class PaymentsService
+  extends BaseService
+  implements IPaymentsService, OnApplicationBootstrap
+{
+  private webhookSecret: string;
+
   constructor(
     @Inject(ORDERS_SERVICE) private readonly ordersService: IOrdersService,
     @Inject(PAYMENTS_GATEWAY_SERVICE)
     private readonly paymentsGatewayService: IPaymentsGatewayService,
+    private readonly configService: ConfigService,
   ) {
     super(PaymentsService.name);
   }
@@ -19,12 +26,11 @@ export class PaymentsService extends BaseService implements IPaymentsService {
   async processWebhookEvent(
     payload: Buffer | string,
     signature: string,
-    secret: string,
   ): Promise<void> {
     const event = this.paymentsGatewayService.constructWebhookEvent(
       payload,
       signature,
-      secret,
+      this.webhookSecret,
     );
 
     if (event.type === 'payment_intent.succeeded') {
@@ -58,5 +64,11 @@ export class PaymentsService extends BaseService implements IPaymentsService {
         );
       }
     }
+  }
+
+  onApplicationBootstrap() {
+    this.webhookSecret = this.configService.getOrThrow<string>(
+      'STRIPE_WEBHOOK_SECRET',
+    );
   }
 }

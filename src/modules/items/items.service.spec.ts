@@ -1,8 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { Test, TestingModule } from '@nestjs/testing';
 import { ItemsService } from './items.service';
-import { ITEMS_SERVICE, ITEM_REPOSITORY } from './constants/items.tokens';
-import { CACHE_SERVICE } from '@/shared/modules/cache/constants/cache.tokens';
+import { ITEMS_SERVICE, ITEM_REPOSITORY } from './constants/items.token';
+import { CACHE_SERVICE } from '@/shared/modules/cache/constants/cache.token';
 import { DataSource } from 'typeorm';
 import Redlock from 'redlock';
 
