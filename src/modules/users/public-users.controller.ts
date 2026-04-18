@@ -18,7 +18,6 @@ import {
   ApiOperation,
   ApiResponse,
   ApiParam,
-  ApiQuery,
   ApiBody,
   ApiHeader,
   ApiBadRequestResponse,
@@ -35,12 +34,12 @@ import { UserQueryDto } from './dto/user-query.dto';
 import { Public } from '../auth/decorators/public.decorator';
 import { PublicUserResponseDto, UserSelfResponseDto } from './dto/user-response.dto';
 import { BaseController } from '@/shared/controllers/base.controller';
-import { PaginatedResponseDto } from '@/shared/dto/paginated-response.dto';
 import { GetUser } from '@/shared/decorators/get-user.decorator';
 import type { RequestUser } from '../auth/interfaces/request-user.interface';
 import { UserMessageFactory } from './factories/user-message.factory';
 import { I18N_COMMON } from '@/shared/constants/i18n';
 import { template } from '@/shared/helpers/functions';
+import { PaginatedResultDto } from '@/shared/dto/paginated-result.dto';
 
 @Controller({ path: 'v1/users', version: '1' })
 @ApiTags('users')
@@ -107,31 +106,7 @@ export class PublicUsersController extends BaseController {
   })
   @ApiOkResponse({
     description: 'List of users retrieved successfully',
-    type: PaginatedResponseDto<PublicUserResponseDto>,
-  })
-  @ApiQuery({
-    name: 'name',
-    required: false,
-    description: 'Filter users by name (partial match)',
-    type: String,
-  })
-  @ApiQuery({
-    name: 'email',
-    required: false,
-    description: 'Filter users by email (partial match)',
-    type: String,
-  })
-  @ApiQuery({
-    name: 'limit',
-    required: false,
-    description: 'Maximum number of users to return',
-    type: Number,
-  })
-  @ApiQuery({
-    name: 'offset',
-    required: false,
-    description: 'Number of users to skip',
-    type: Number,
+    type: PaginatedResultDto<PublicUserResponseDto>,
   })
   async findAll(@Query() queryDto: UserQueryDto) {
     const result = await this.usersService.publicFindAll(queryDto);
@@ -191,7 +166,7 @@ export class PublicUsersController extends BaseController {
 
   @Patch('me')
   @ApiOperation({
-    summary: 'Update user information',
+    summary: 'Update current user information',
     description: 'Updates the authenticated user information',
   })
   @ApiOkResponse({
@@ -218,7 +193,7 @@ export class PublicUsersController extends BaseController {
   @Delete('me')
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({
-    summary: 'Delete user',
+    summary: 'Delete current user',
     description: 'Deletes the authenticated user.',
   })
   @ApiResponse({

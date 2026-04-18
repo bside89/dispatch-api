@@ -6,9 +6,12 @@ import { Repository } from 'typeorm';
 import { OrderQueryDto } from '../dto/order-query.dto';
 import { PaginatedResultDto } from '@/shared/dto/paginated-result.dto';
 import { col } from '@/shared/helpers/functions';
+import { OrderItem } from '../entities/order-item.entity';
 
-const aliasOrder = 'order';
-const order = col<Order>(aliasOrder);
+const ALIAS_ORDER = 'order';
+const ALIAS_ORDER_ITEM = 'orderItem';
+const order = col<Order>(ALIAS_ORDER);
+const orderItem = col<OrderItem>(ALIAS_ORDER_ITEM);
 
 @Injectable()
 export class OrderRepository extends BaseRepository<Order> {
@@ -19,11 +22,10 @@ export class OrderRepository extends BaseRepository<Order> {
   }
 
   async filter(query: Partial<OrderQueryDto>): Promise<PaginatedResultDto<Order>> {
-    const queryBuilder = this.createQueryBuilder(aliasOrder)
-      .leftJoinAndSelect(order('items'), 'items')
-      .leftJoinAndSelect('items.item', 'orderItemDetail')
-      .innerJoinAndSelect(order('user'), 'user')
-      .where(`${order('deactivated')} = :deactivated`, { deactivated: false });
+    const queryBuilder = this.createQueryBuilder(ALIAS_ORDER)
+      .leftJoinAndSelect(order('items'), ALIAS_ORDER_ITEM)
+      .leftJoinAndSelect(orderItem('item'), 'item')
+      .innerJoinAndSelect(order('user'), 'user');
 
     if (query.userId) {
       queryBuilder.andWhere(`${order('userId')} = :userId`, {

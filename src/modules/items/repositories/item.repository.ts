@@ -8,8 +8,8 @@ import { PaginatedResultDto } from '@/shared/dto/paginated-result.dto';
 import { col } from '@/shared/helpers/functions';
 import { ItemQueryDto } from '../dto/item-query.dto';
 
-const aliasItem = 'item';
-const item = col<Item>(aliasItem);
+const ALIAS_ITEM = 'item';
+const item = col<Item>(ALIAS_ITEM);
 
 @Injectable()
 export class ItemRepository extends BaseRepository<Item> {
@@ -21,11 +21,8 @@ export class ItemRepository extends BaseRepository<Item> {
   }
 
   async filter(query: Partial<ItemQueryDto>): Promise<PaginatedResultDto<Item>> {
-    const queryBuilder = this.createQueryBuilder(aliasItem);
+    const queryBuilder = this.createQueryBuilder(ALIAS_ITEM);
 
-    queryBuilder.where(`${item('deactivated')} = :deactivated`, {
-      deactivated: false,
-    });
     if (query.name) {
       queryBuilder.andWhere(`${item('name')} ILIKE :name`, {
         name: `%${query.name}%`,
@@ -56,10 +53,12 @@ export class ItemRepository extends BaseRepository<Item> {
   }
 
   async decrementStock(items: Item, quantity: number): Promise<void> {
-    await this.repository.decrement({ id: items.id }, 'stock', quantity);
+    const manager = this.getManager();
+    await manager.decrement(Item, { id: items.id }, 'stock', quantity);
   }
 
   async incrementStock(items: Item, quantity: number): Promise<void> {
-    await this.repository.increment({ id: items.id }, 'stock', quantity);
+    const manager = this.getManager();
+    await manager.increment(Item, { id: items.id }, 'stock', quantity);
   }
 }

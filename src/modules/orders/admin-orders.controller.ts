@@ -19,7 +19,6 @@ import {
   ApiNotFoundResponse,
   ApiOkResponse,
   ApiSecurity,
-  ApiQuery,
   ApiResponse,
 } from '@nestjs/swagger';
 import { OrdersService } from './orders.service';
@@ -57,7 +56,6 @@ export class AdminOrdersController extends BaseController {
     description: 'Orders successfully retrieved',
     type: PaginatedResultDto<OrderResponseDto>,
   })
-  @ApiQuery({ type: () => OrderQueryDto })
   async findAll(@Query() queryDto: OrderQueryDto) {
     const result = await this.ordersService.adminFindAll(queryDto);
 

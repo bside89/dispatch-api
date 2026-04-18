@@ -79,8 +79,8 @@ export class ItemsService extends TransactionalService {
     }
 
     const item = await this.itemRepository.findById(id);
-    if (!item || item.deactivated) {
-      throw new NotFoundException(template(I18N_ITEM.ERRORS.NOT_FOUND, { id }));
+    if (!item) {
+      throw new NotFoundException(template(I18N_ITEM.ERRORS.NOT_FOUND));
     }
     const itemMapped = EntityMapper.map(item, PublicItemResponseDto);
 
@@ -197,8 +197,8 @@ export class ItemsService extends TransactionalService {
     this.logger.debug('Fetching item', { itemId: id });
 
     const item = await this.itemRepository.findById(id);
-    if (!item || item.deactivated) {
-      throw new NotFoundException(template(I18N_ITEM.ERRORS.NOT_FOUND, { id }));
+    if (!item) {
+      throw new NotFoundException(template(I18N_ITEM.ERRORS.NOT_FOUND));
     }
     const itemMapped = EntityMapper.map(item, ItemResponseDto);
 
@@ -215,8 +215,8 @@ export class ItemsService extends TransactionalService {
   @UseLock({ prefix: LOCK_PREFIX.ITEM.UPDATE, key: ([id]) => id })
   async adminUpdate(id: string, dto: UpdateItemDto): Promise<ItemResponseDto> {
     const item = await this.itemRepository.findById(id);
-    if (!item || item.deactivated) {
-      throw new NotFoundException(template(I18N_ITEM.ERRORS.NOT_FOUND, { id }));
+    if (!item) {
+      throw new NotFoundException(template(I18N_ITEM.ERRORS.NOT_FOUND));
     }
 
     Object.assign(item, dto);
@@ -238,13 +238,11 @@ export class ItemsService extends TransactionalService {
     this.logger.debug('Deactivating item', { itemId: id });
 
     const item = await this.itemRepository.findById(id);
-    if (!item || item.deactivated) {
-      throw new NotFoundException(template(I18N_ITEM.ERRORS.NOT_FOUND, { id }));
+    if (!item) {
+      throw new NotFoundException(template(I18N_ITEM.ERRORS.NOT_FOUND));
     }
 
-    item.deactivated = true;
-    item.deactivatedAt = new Date();
-    await this.itemRepository.save(item);
+    await this.itemRepository.softDelete(item);
 
     await this.cacheService.deleteBulk({
       keys: [ITEM_KEY.CACHE_FIND_ONE(id)],

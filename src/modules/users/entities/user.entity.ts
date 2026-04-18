@@ -4,7 +4,7 @@ import { UserRole } from '../../../shared/enums/user-role.enum';
 import { DeactivatableEntity } from '@/shared/entities/deactivatable.entity';
 
 @Entity('users')
-@Index('IDX_user_email', ['email', 'deactivated'], { unique: true })
+@Index('IDX_user_email', ['email'], { unique: true })
 export class User extends DeactivatableEntity {
   @Column({ nullable: false })
   name: string;

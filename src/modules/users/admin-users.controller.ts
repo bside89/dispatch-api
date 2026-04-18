@@ -18,7 +18,6 @@ import {
   ApiOperation,
   ApiResponse,
   ApiParam,
-  ApiQuery,
   ApiBody,
   ApiBadRequestResponse,
   ApiNotFoundResponse,
@@ -33,7 +32,6 @@ import { UpdateUserDto } from './dto/update-user.dto';
 import { UserQueryDto } from './dto/user-query.dto';
 import { UserResponseDto } from './dto/user-response.dto';
 import { BaseController } from '@/shared/controllers/base.controller';
-import { PaginatedResponseDto } from '@/shared/dto/paginated-response.dto';
 import { GetUser } from '@/shared/decorators/get-user.decorator';
 import type { RequestUser } from '../auth/interfaces/request-user.interface';
 import { UserMessageFactory } from './factories/user-message.factory';
@@ -42,6 +40,7 @@ import { Roles } from '../auth/decorators/roles.decorator';
 import { CreateUserDto } from './dto/create-user.dto';
 import { I18N_COMMON } from '@/shared/constants/i18n/common.tokens';
 import { template } from '@/shared/helpers/functions';
+import { PaginatedResultDto } from '@/shared/dto/paginated-result.dto';
 
 @Controller({ path: 'v1/admin/users', version: '1' })
 @ApiTags('users-admin')
@@ -114,9 +113,8 @@ export class AdminUsersController extends BaseController {
   })
   @ApiOkResponse({
     description: 'List of users retrieved successfully',
-    type: PaginatedResponseDto<UserResponseDto>,
+    type: PaginatedResultDto<UserResponseDto>,
   })
-  @ApiQuery({ type: () => UserQueryDto })
   async findAll(@Query() queryDto: UserQueryDto) {
     const result = await this.usersService.adminFindAll(queryDto);
 

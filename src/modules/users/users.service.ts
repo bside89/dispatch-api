@@ -131,7 +131,7 @@ export class UsersService extends TransactionalService {
 
   async publicFindMe(requestUser: RequestUser): Promise<UserSelfResponseDto> {
     const user = await this.userRepository.findById(requestUser.id);
-    if (!user || user.deactivated) {
+    if (!user) {
       throw new NotFoundException(template(I18N_USERS.ERRORS.USER_NOT_FOUND));
     }
 
@@ -152,7 +152,7 @@ export class UsersService extends TransactionalService {
 
   async publicFindOne(id: string): Promise<PublicUserResponseDto> {
     const user = await this.userRepository.findById(id);
-    if (!user || user.deactivated) {
+    if (!user) {
       throw new NotFoundException(template(I18N_USERS.ERRORS.USER_NOT_FOUND));
     }
 
@@ -197,7 +197,7 @@ export class UsersService extends TransactionalService {
 
     /** 1. VALIDATION */
 
-    if (!user || user.deactivated) {
+    if (!user) {
       throw new NotFoundException(template(I18N_USERS.ERRORS.USER_NOT_FOUND));
     }
 
@@ -243,17 +243,14 @@ export class UsersService extends TransactionalService {
 
     /** 1. VALIDATION */
 
-    if (!user || user.deactivated) {
+    if (!user) {
       throw new NotFoundException(template(I18N_USERS.ERRORS.USER_NOT_FOUND));
     }
     await this.assertWriteAccess(user, requestUser);
 
     /** 2. DEACTIVATE USER */
 
-    await this.userRepository.update(user.id, {
-      deactivated: true,
-      deactivatedAt: new Date(),
-    });
+    await this.userRepository.softDelete(user);
 
     /** 3. SIDE EFFECTS */
 
@@ -359,7 +356,7 @@ export class UsersService extends TransactionalService {
 
   async adminFindOne(id: string): Promise<UserResponseDto> {
     const user = await this.userRepository.findById(id);
-    if (!user || user.deactivated) {
+    if (!user) {
       throw new NotFoundException(template(I18N_USERS.ERRORS.USER_NOT_FOUND));
     }
 
@@ -389,7 +386,7 @@ export class UsersService extends TransactionalService {
 
     /** 1. VALIDATION */
 
-    if (!user || user.deactivated) {
+    if (!user) {
       throw new NotFoundException(template(I18N_USERS.ERRORS.USER_NOT_FOUND));
     }
 
@@ -433,17 +430,14 @@ export class UsersService extends TransactionalService {
 
     /** 1. VALIDATION */
 
-    if (!user || user.deactivated) {
+    if (!user) {
       throw new NotFoundException(template(I18N_USERS.ERRORS.USER_NOT_FOUND));
     }
     await this.assertWriteAccess(user, requestUser);
 
     /** 2. DELETE USER */
 
-    await this.userRepository.update(id, {
-      deactivated: true,
-      deactivatedAt: new Date(),
-    });
+    await this.userRepository.softDelete(user);
 
     /** 3. SIDE EFFECTS */
 

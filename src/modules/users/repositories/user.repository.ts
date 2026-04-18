@@ -7,8 +7,8 @@ import { Injectable } from '@nestjs/common';
 import { PaginatedResultDto } from '@/shared/dto/paginated-result.dto';
 import { col } from '@/shared/helpers/functions';
 
-const aliasUser = 'user';
-const user = col<User>(aliasUser);
+const ALIAS_USER = 'user';
+const user = col<User>(ALIAS_USER);
 
 @Injectable()
 export class UserRepository extends BaseRepository<User> {
@@ -17,11 +17,8 @@ export class UserRepository extends BaseRepository<User> {
   }
 
   async filter(query: Partial<UserQueryDto>): Promise<PaginatedResultDto<User>> {
-    const queryBuilder = this.createQueryBuilder(aliasUser);
+    const queryBuilder = this.createQueryBuilder(ALIAS_USER);
 
-    queryBuilder.where(`${user('deactivated')} = :deactivated`, {
-      deactivated: false,
-    });
     if (query.name) {
       queryBuilder.andWhere(`${user('name')} ILIKE :name`, {
         name: `%${query.name}%`,

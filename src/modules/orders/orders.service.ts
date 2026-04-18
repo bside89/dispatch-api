@@ -230,7 +230,7 @@ export class OrdersService extends TransactionalService {
       where: { id },
       relations: ['user', 'items'],
     });
-    if (!order || order.deactivated) {
+    if (!order) {
       throw new NotFoundException(template(I18N_ORDER.ERRORS.ORDER_NOT_FOUND));
     }
     if (order.userId !== requestUser.id) {
@@ -279,7 +279,7 @@ export class OrdersService extends TransactionalService {
       where: { id },
       relations: ['user', 'items'],
     });
-    if (!order || order.deactivated) {
+    if (!order) {
       throw new NotFoundException(template(I18N_ORDER.ERRORS.ORDER_NOT_FOUND));
     }
 
@@ -307,7 +307,7 @@ export class OrdersService extends TransactionalService {
       where: { id },
       relations: ['items', 'user'],
     });
-    if (!order || order.deactivated) {
+    if (!order) {
       throw new NotFoundException(template(I18N_ORDER.ERRORS.ORDER_NOT_FOUND));
     }
 
@@ -336,14 +336,11 @@ export class OrdersService extends TransactionalService {
     this.logger.debug('Deleting order', { orderId: id });
 
     const order = await this.orderRepository.findById(id);
-    if (!order || order.deactivated) {
+    if (!order) {
       throw new NotFoundException(template(I18N_ORDER.ERRORS.ORDER_NOT_FOUND));
     }
 
-    await this.orderRepository.update(id, {
-      deactivated: true,
-      deactivatedAt: new Date(),
-    });
+    await this.orderRepository.softDelete(order);
 
     this.logger.debug('Order deactivated', { orderId: id });
   }
@@ -425,7 +422,7 @@ export class OrdersService extends TransactionalService {
 
     /** 1. VALIDATION */
 
-    if (!order || order.deactivated) {
+    if (!order) {
       throw new NotFoundException(template(I18N_ORDER.ERRORS.ORDER_NOT_FOUND));
     }
 
@@ -472,7 +469,7 @@ export class OrdersService extends TransactionalService {
 
     /** 1. VALIDATION */
 
-    if (!order || order.deactivated) {
+    if (!order) {
       throw new NotFoundException(template(I18N_ORDER.ERRORS.ORDER_NOT_FOUND));
     }
 
@@ -516,7 +513,7 @@ export class OrdersService extends TransactionalService {
 
     /** 1. VALIDATION */
 
-    if (!order || order.deactivated) {
+    if (!order) {
       throw new NotFoundException(template(I18N_ORDER.ERRORS.ORDER_NOT_FOUND));
     }
 
@@ -550,7 +547,7 @@ export class OrdersService extends TransactionalService {
 
     /** 1. VALIDATION */
 
-    if (!order || order.deactivated) {
+    if (!order) {
       throw new NotFoundException(template(I18N_ORDER.ERRORS.ORDER_NOT_FOUND));
     }
 

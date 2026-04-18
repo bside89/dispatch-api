@@ -93,6 +93,11 @@ export abstract class BaseRepository<T extends BaseEntity> {
     return manager.delete(this.repository.target, ids);
   }
 
+  async softDelete(entity: T): Promise<UpdateResult> {
+    const manager = this.getManager();
+    return manager.softDelete(this.repository.target, entity.id);
+  }
+
   async existsBy(params: { where: Partial<T> }): Promise<boolean> {
     const manager = this.getManager();
     const count = await manager.count(this.repository.target, {
