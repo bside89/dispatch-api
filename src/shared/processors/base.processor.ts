@@ -1,9 +1,7 @@
 import { WorkerHost } from '@nestjs/bullmq';
 import * as os from 'os';
 import { AppLogger } from '../utils/app-logger';
-import Redlock from 'redlock';
 import type { ICacheService } from '../modules/cache/interfaces/cache-service.interface';
-import { Lock } from '../decorators/lock.decorator';
 import { Job } from 'bullmq';
 import { randomUUID } from 'crypto';
 import { RequestContext } from '../utils/request-context';
@@ -12,7 +10,8 @@ import { JobStatus } from '../enums/job-status.enum';
 import { ensureError } from '../helpers/functions';
 import { BeforeApplicationShutdown, OnApplicationBootstrap } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { LOCK_PREFIX } from '../constants/lock-prefix.constant';
+import { LOCK_KEY } from '../constants/lock.key';
+import { DbGuardService } from '../modules/db-guard/db-guard.service';
 
 export abstract class BaseProcessor
   extends WorkerHost
@@ -24,7 +23,7 @@ export abstract class BaseProcessor
     processorName: string,
     protected readonly cacheService: ICacheService,
     protected readonly configService: ConfigService,
-    protected readonly redlock: Redlock, // Used in @UseLock()
+    protected readonly guard: DbGuardService,
   ) {
     super();
     this.logger = new AppLogger(processorName);
@@ -38,8 +37,19 @@ export abstract class BaseProcessor
     await this.worker.close();
   }
 
-  @Lock({ prefix: LOCK_PREFIX.JOB.EXECUTE, key: ([job]) => job.id })
   async executeJob<T extends BaseJobHandlerFactory>(
+    job: Job,
+    event: 'process' | 'failed',
+    factory: T,
+    idempotencyKey: string,
+    error?: Error,
+  ) {
+    return this.guard.lock(LOCK_KEY.JOB.EXECUTE(job.id), () =>
+      this._executeJob(job, event, factory, idempotencyKey, error),
+    );
+  }
+
+  private async _executeJob<T extends BaseJobHandlerFactory>(
     job: Job,
     event: 'process' | 'failed',
     factory: T,

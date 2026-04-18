@@ -2,8 +2,6 @@ import { Injectable, InternalServerErrorException, Inject } from '@nestjs/common
 import { UpdateCustomerJobPayload } from '@/shared/payloads/payment-job.payload';
 import { BasePaymentJobStrategy } from './base-payment-job.strategy';
 import { Job } from 'bullmq';
-import Redlock from 'redlock';
-import { DataSource } from 'typeorm';
 import { PAYMENTS_GATEWAY_SERVICE } from '@/modules/payments-gateway/constants/payments-gateway.token';
 import type { IPaymentsGatewayService } from '@/modules/payments-gateway/interfaces/payments-gateway-service.interface';
 import { ORDER_REPOSITORY } from '@/modules/orders/constants/orders.token';
@@ -21,6 +19,7 @@ import {
 import { PAYMENT_KEY } from '@/shared/modules/cache/constants/payment.key';
 import { template } from '@/shared/helpers/functions';
 import { I18N_PAYMENTS } from '@/shared/constants/i18n';
+import { DbGuardService } from '@/shared/modules/db-guard/db-guard.service';
 
 @Injectable()
 export class UpdateCustomerJobStrategy extends BasePaymentJobStrategy<UpdateCustomerJobPayload> {
@@ -30,8 +29,7 @@ export class UpdateCustomerJobStrategy extends BasePaymentJobStrategy<UpdateCust
     @Inject(CACHE_SERVICE) cacheService: ICacheService,
     @Inject(ORDER_REPOSITORY) orderRepository: IOrderRepository,
     @Inject(USER_REPOSITORY) userRepository: IUserRepository,
-    dataSource: DataSource,
-    redlock: Redlock,
+    guard: DbGuardService,
   ) {
     super(
       UpdateCustomerJobStrategy.name,
@@ -39,8 +37,7 @@ export class UpdateCustomerJobStrategy extends BasePaymentJobStrategy<UpdateCust
       cacheService,
       orderRepository,
       userRepository,
-      dataSource,
-      redlock,
+      guard,
     );
   }
 

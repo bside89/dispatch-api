@@ -14,22 +14,19 @@ import type { IOutboxService } from '@/shared/modules/outbox/interfaces/outbox-s
 import { OUTBOX_SERVICE } from '@/shared/modules/outbox/constants/outbox.token';
 import { NotifyUserJobPayload } from '@/shared/payloads/event-job.payload';
 import { OutboxType } from '@/shared/modules/outbox/enums/outbox-type.enum';
-import { Lock } from '@/shared/decorators/lock.decorator';
-import Redlock from 'redlock';
 import type { RequestUser } from './interfaces/request-user.interface';
 import { AUTH_KEY } from '../../shared/modules/cache/constants/auth.key';
 import type ms from 'ms';
-import { LOCK_PREFIX } from '@/shared/constants/lock-prefix.constant';
-import { DataSource } from 'typeorm';
-import { Transactional } from '@/shared/decorators/transactional.decorator';
-import { TransactionalService } from '@/shared/services/transactional.service';
 import { AuthMessageFactory } from './factories/auth-message.factory';
 import { template } from '@/shared/helpers/functions';
 import { I18N_AUTH, I18N_COMMON } from '@/shared/constants/i18n';
 import { IAuthService } from './interfaces/auth-service.interface';
+import { BaseService } from '@/shared/services/base.service';
+import { DbGuardService } from '@/shared/modules/db-guard/db-guard.service';
+import { LOCK_KEY } from '@/shared/constants/lock.key';
 
 @Injectable()
-export class AuthService extends TransactionalService implements IAuthService {
+export class AuthService extends BaseService implements IAuthService {
   constructor(
     private readonly jwtService: JwtService,
     @Inject(CACHE_SERVICE) private readonly cacheService: ICacheService,
@@ -37,15 +34,19 @@ export class AuthService extends TransactionalService implements IAuthService {
     @Inject(USER_REPOSITORY) private readonly userRepository: IUserRepository,
     @Inject(OUTBOX_SERVICE) private readonly outboxService: IOutboxService,
     private readonly messages: AuthMessageFactory,
-    dataSource: DataSource,
-    redlock: Redlock,
+    private readonly guard: DbGuardService,
   ) {
-    super(AuthService.name, dataSource, redlock);
+    super(AuthService.name);
   }
 
-  @Transactional()
-  @Lock({ prefix: LOCK_PREFIX.AUTH.LOGIN, key: ([email]) => email })
   async login(email: string, password: string): Promise<LoginResponseDto> {
+    return await this.guard.lockAndTransaction<LoginResponseDto>(
+      LOCK_KEY.AUTH.LOGIN(email),
+      () => this._login(email, password),
+    );
+  }
+
+  private async _login(email: string, password: string): Promise<LoginResponseDto> {
     const user = await this.userRepository.findOne({ where: { email } });
     if (!user)
       throw new UnauthorizedException(
@@ -72,12 +73,14 @@ export class AuthService extends TransactionalService implements IAuthService {
     return result;
   }
 
-  @Transactional()
-  @Lock({
-    prefix: LOCK_PREFIX.AUTH.REFRESH,
-    key: ([reqUser]) => reqUser.jwtPayload.jti,
-  })
-  async refresh(reqUser: RequestUser): Promise<LoginResponseDto> {
+  refresh(reqUser: RequestUser): Promise<LoginResponseDto> {
+    return this.guard.lockAndTransaction<LoginResponseDto>(
+      LOCK_KEY.AUTH.REFRESH(reqUser.jwtPayload.email),
+      () => this._refresh(reqUser),
+    );
+  }
+
+  private async _refresh(reqUser: RequestUser): Promise<LoginResponseDto> {
     const refreshToken = reqUser.jwtPayload.refreshToken;
     if (!refreshToken)
       throw new UnauthorizedException(template(I18N_AUTH.ERRORS.NO_REFRESH_TOKEN));
@@ -106,12 +109,14 @@ export class AuthService extends TransactionalService implements IAuthService {
     return result;
   }
 
-  @Transactional()
-  @Lock({
-    prefix: LOCK_PREFIX.AUTH.LOGOUT,
-    key: ([reqUser]) => reqUser.jwtPayload.jti,
-  })
   async logout(reqUser: RequestUser): Promise<void> {
+    await this.guard.lockAndTransaction<void>(
+      LOCK_KEY.AUTH.LOGOUT(reqUser.jwtPayload.email),
+      () => this._logout(reqUser),
+    );
+  }
+
+  private async _logout(reqUser: RequestUser): Promise<void> {
     await this.updateRefreshToken(reqUser.id, null);
 
     await this.cacheService.set(
@@ -154,12 +159,13 @@ export class AuthService extends TransactionalService implements IAuthService {
     return result;
   }
 
-  @Lock({ prefix: LOCK_PREFIX.USER.UPDATE, key: ([userId]) => userId })
   private async updateRefreshToken(
     userId: string,
     refreshToken?: string,
   ): Promise<void> {
-    const hash = refreshToken ? await HashUtils.hash(refreshToken) : null;
-    await this.userRepository.update(userId, { refreshToken: hash });
+    return this.guard.lock(LOCK_KEY.USER.UPDATE(userId), async () => {
+      const hash = refreshToken ? await HashUtils.hash(refreshToken) : null;
+      await this.userRepository.update(userId, { refreshToken: hash });
+    });
   }
 }

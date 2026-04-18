@@ -35,5 +35,5 @@ export const stripeConfig = (testMode: string) => ({
 export const stripeClient = (configService: ConfigService): Stripe.Stripe =>
   Stripe(
     configService.getOrThrow<string>('STRIPE_SECRET_KEY'),
-    stripeConfig(configService.get<string>('STRIPE_TEST_MODE')),
+    stripeConfig(configService.get<string>('STRIPE_EXEC_MODE')),
   );

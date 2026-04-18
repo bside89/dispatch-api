@@ -12,8 +12,6 @@ import { ORDER_REPOSITORY } from '@/modules/orders/constants/orders.token';
 import type { IOrderRepository } from '@/modules/orders/interfaces/order-repository.interface';
 import { USER_REPOSITORY } from '@/modules/users/constants/users.token';
 import type { IUserRepository } from '@/modules/users/interfaces/user-repository.interface';
-import { DataSource } from 'typeorm';
-import Redlock from 'redlock';
 import { CustomerResponseDto } from '@/modules/payments-gateway/dto/customer-response.dto';
 import {
   CreateCustomerAddressDto,
@@ -22,6 +20,7 @@ import {
 import { PAYMENT_KEY } from '@/shared/modules/cache/constants/payment.key';
 import { template } from '@/shared/helpers/functions';
 import { I18N_PAYMENTS } from '@/shared/constants/i18n';
+import { DbGuardService } from '@/shared/modules/db-guard/db-guard.service';
 
 @Injectable()
 export class CreateCustomerJobStrategy extends BasePaymentJobStrategy<CreateCustomerJobPayload> {
@@ -31,8 +30,7 @@ export class CreateCustomerJobStrategy extends BasePaymentJobStrategy<CreateCust
     @Inject(CACHE_SERVICE) cacheService: ICacheService,
     @Inject(ORDER_REPOSITORY) orderRepository: IOrderRepository,
     @Inject(USER_REPOSITORY) userRepository: IUserRepository,
-    dataSource: DataSource,
-    redlock: Redlock,
+    guard: DbGuardService,
   ) {
     super(
       CreateCustomerJobStrategy.name,
@@ -40,8 +38,7 @@ export class CreateCustomerJobStrategy extends BasePaymentJobStrategy<CreateCust
       cacheService,
       orderRepository,
       userRepository,
-      dataSource,
-      redlock,
+      guard,
     );
   }
 
@@ -59,7 +56,6 @@ export class CreateCustomerJobStrategy extends BasePaymentJobStrategy<CreateCust
         template(I18N_PAYMENTS.ERRORS.CREATE_CUSTOMER_FAILED),
       );
     }
-
     await this.updateUserWithLock(userDto.id, {
       customerId: customer.id,
     });

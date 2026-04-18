@@ -56,7 +56,7 @@ This script will automatically create your `.env` file from the example and star
 
 > **Note:** If you prefer to run manually, ensure you copy `.env.example` to `.env.docker` before running `docker-compose up --build`.
 
-> **Stripe tip:** Set `STRIPE_TEST_MODE` to `local`, `docker`, or `live` depending on how you want to test payments. The details are in the Stripe testing section below.
+> **Stripe tip:** Set `STRIPE_EXEC_MODE` to `local`, `docker`, or `live` depending on how you want to test payments. The details are in the Stripe testing section below.
 
 **3.** Access:
 
@@ -247,7 +247,7 @@ There's also a k6 load test that hammers the queue under concurrent load to conf
 
 ## Stripe testing
 
-Stripe behavior is controlled by `STRIPE_TEST_MODE`.
+Stripe behavior is controlled by `STRIPE_EXEC_MODE`.
 
 - `local`: starts `stripe-mock` in Docker and points the app to `localhost:12111`. Use this when you run the API on your machine.
 - `docker`: starts `stripe-mock` in Docker and points the app to `stripe-mock:12111`. Use this when the whole stack runs inside Docker.

@@ -2,7 +2,6 @@ import { Injectable } from '@nestjs/common';
 import { Job } from 'bullmq';
 import { delay } from '../../../helpers/functions';
 import { NotifyUserJobPayload } from '../../../payloads/event-job.payload';
-import { Transactional } from '@/shared/decorators/transactional.decorator';
 import { BaseEventJobStrategy } from './base-event-job.strategy';
 
 @Injectable()
@@ -15,7 +14,6 @@ export class NotifyUserJobStrategy extends BaseEventJobStrategy<NotifyUserJobPay
     await this.notifyUser(job.data);
   }
 
-  @Transactional()
   async executeAfterFail(
     job: Job<NotifyUserJobPayload>,
     error: Error,

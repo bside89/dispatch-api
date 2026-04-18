@@ -1,14 +1,12 @@
 import type { ICacheService } from '@/shared/modules/cache/interfaces/cache-service.interface';
 import type { IOrderRepository } from '../interfaces/order-repository.interface';
 import { OrderStatus } from '../enums/order-status.enum';
-import { DataSource } from 'typeorm';
-import { Lock } from '@/shared/decorators/lock.decorator';
-import Redlock from 'redlock';
 import { BaseJobStrategy } from '@/shared/strategies/base-job.strategy';
 import { Order } from '../entities/order.entity';
-import { LOCK_PREFIX } from '@/shared/constants/lock-prefix.constant';
+import { LOCK_KEY } from '@/shared/constants/lock.key';
 import { OrderJobPayload } from '@/shared/payloads/order-job.payload';
 import { ORDER_STATUS_PRECONDITIONS } from '../constants/order-status-preconditions.constant';
+import { DbGuardService } from '@/shared/modules/db-guard/db-guard.service';
 
 export abstract class BaseOrderJobStrategy<
   T extends OrderJobPayload,
@@ -19,8 +17,7 @@ export abstract class BaseOrderJobStrategy<
     jobName: string,
     protected readonly cacheService: ICacheService,
     protected readonly orderRepository: IOrderRepository,
-    protected readonly dataSource: DataSource,
-    protected readonly redlock: Redlock,
+    protected readonly guard: DbGuardService,
   ) {
     super(jobName);
   }
@@ -30,12 +27,13 @@ export abstract class BaseOrderJobStrategy<
    * @param orderId The ID of the order to update.
    * @param updateData The data to update the order with.
    */
-  @Lock({ prefix: LOCK_PREFIX.ORDER.UPDATE, key: ([orderId]) => orderId })
   async updateOrderWithLock(
     orderId: string,
     updateData: Partial<Order>,
   ): Promise<void> {
-    await this.orderRepository.update(orderId, updateData);
+    return this.guard.lock(LOCK_KEY.ORDER.UPDATE(orderId), async () => {
+      await this.orderRepository.update(orderId, updateData);
+    });
   }
 
   protected async getAndValidate(

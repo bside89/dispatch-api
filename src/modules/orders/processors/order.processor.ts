@@ -5,10 +5,10 @@ import { CACHE_SERVICE } from '../../../shared/modules/cache/constants/cache.tok
 import type { ICacheService } from '../../../shared/modules/cache/interfaces/cache-service.interface';
 import { BaseProcessor } from '@/shared/processors/base.processor';
 import { ConfigService } from '@nestjs/config';
-import Redlock from 'redlock';
 import { ORDER_KEY } from '../../../shared/modules/cache/constants/order.key';
 import { ORDER_QUEUE } from '@/shared/constants/queue-names.constant';
 import { Injectable, Inject } from '@nestjs/common';
+import { DbGuardService } from '@/shared/modules/db-guard/db-guard.service';
 
 @Injectable()
 @Processor(ORDER_QUEUE, { maxStalledCount: 1 })
@@ -17,9 +17,9 @@ export class OrderProcessor extends BaseProcessor {
     private readonly factory: OrderJobHandlerFactory,
     @Inject(CACHE_SERVICE) cacheService: ICacheService,
     configService: ConfigService,
-    redlock: Redlock,
+    guard: DbGuardService,
   ) {
-    super(OrderProcessor.name, cacheService, configService, redlock);
+    super(OrderProcessor.name, cacheService, configService, guard);
   }
 
   // Main method

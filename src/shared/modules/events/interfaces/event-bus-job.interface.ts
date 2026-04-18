@@ -1,8 +1,6 @@
-/*eslint-disable @typescript-eslint/no-explicit-any */
-export interface IEventBusJob {
-  name: string;
+import { QueueJob } from '@/shared/interfaces/queue-job.interface';
+import { BaseJobPayload } from '@/shared/payloads/base-job.payload';
 
-  data: any;
-
-  jobId: string;
+export interface EventBusJob<T extends BaseJobPayload> {
+  job: QueueJob<T>;
 }

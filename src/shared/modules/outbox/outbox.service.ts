@@ -5,26 +5,24 @@ import type { IOutboxRepository } from './interfaces/outbox-repository.interface
 import { OUTBOX_REPOSITORY } from './constants/outbox.token';
 import { RequestContext } from '@/shared/utils/request-context';
 import { randomUUID } from 'crypto';
-import { DataSource } from 'typeorm';
 import type { IEventBus } from '../events/interfaces/event-bus.interface';
 import { Queue } from 'bullmq';
 import { EVENT_BUS } from '../events/constants/event-bus.token';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Cron, CronExpression } from '@nestjs/schedule';
-import { Transactional } from '@/shared/decorators/transactional.decorator';
 import { ORDER_QUEUE, PAYMENT_QUEUE } from '@/shared/constants/queue-names.constant';
 import { OutboxPayloadMap } from './types/outbox-payload.map';
 import { ensureError } from '@/shared/helpers/functions';
-import { IEventBusJob } from '../events/interfaces/event-bus-job.interface';
-import Redlock from 'redlock';
-import { TransactionalService } from '@/shared/services/transactional.service';
+import { EventBusJob } from '../events/interfaces/event-bus-job.interface';
 import { QueueJob } from '@/shared/interfaces/queue-job.interface';
 import { OutboxPayload } from './types/outbox.payload';
 import { IOutboxService } from './interfaces/outbox-service.interface';
+import { BaseService } from '@/shared/services/base.service';
+import { DbGuardService } from '../db-guard/db-guard.service';
 
 @Injectable()
 export class OutboxService
-  extends TransactionalService
+  extends BaseService
   implements OnModuleDestroy, IOutboxService
 {
   private isProcessing = false;
@@ -32,18 +30,13 @@ export class OutboxService
   private isShuttingDown = false;
 
   constructor(
-    @InjectQueue(ORDER_QUEUE)
-    protected readonly orderQueue: Queue,
-    @InjectQueue(PAYMENT_QUEUE)
-    protected readonly paymentQueue: Queue,
-    @Inject(EVENT_BUS)
-    protected readonly eventBus: IEventBus,
-
+    @InjectQueue(ORDER_QUEUE) protected readonly orderQueue: Queue,
+    @InjectQueue(PAYMENT_QUEUE) protected readonly paymentQueue: Queue,
+    @Inject(EVENT_BUS) protected readonly eventBus: IEventBus,
     @Inject(OUTBOX_REPOSITORY) private readonly outboxRepository: IOutboxRepository,
-    dataSource: DataSource,
-    redlock: Redlock,
+    private readonly guard: DbGuardService,
   ) {
-    super(OutboxService.name, dataSource, redlock);
+    super(OutboxService.name);
   }
 
   async onModuleDestroy(): Promise<void> {
@@ -55,8 +48,11 @@ export class OutboxService
   }
 
   @Cron(CronExpression.EVERY_5_SECONDS)
-  @Transactional()
-  async process() {
+  async process(): Promise<void> {
+    return this.guard.transaction(() => this._process());
+  }
+
+  private async _process() {
     if (this.isShuttingDown || this.isProcessing) {
       // Outbox is already being processed or shutting down, skip this cycle
       return;
@@ -138,10 +134,14 @@ export class OutboxService
       .map(
         (msg) =>
           ({
-            name: msg.type,
-            data: msg.payload,
-            jobId: msg.id,
-          }) as IEventBusJob,
+            job: {
+              name: msg.type,
+              data: msg.payload,
+              opts: {
+                jobId: msg.id,
+              },
+            },
+          }) as EventBusJob<OutboxPayload>,
       );
 
     if (orderQueueMsg.length > 0) {

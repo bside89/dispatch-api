@@ -8,29 +8,25 @@ import { ItemResponseDto, PublicItemResponseDto } from './dto/item-response.dto'
 import { PaginatedResultDto } from '@/shared/dto/paginated-result.dto';
 import { EntityMapper } from '@/shared/utils/entity-mapper';
 import { Item } from './entities/item.entity';
-import Redlock from 'redlock';
-import { DataSource } from 'typeorm';
-import { Lock } from '@/shared/decorators/lock.decorator';
-import { Transactional } from '@/shared/decorators/transactional.decorator';
 import type { ICacheService } from '@/shared/modules/cache/interfaces/cache-service.interface';
 import { CACHE_SERVICE } from '@/shared/modules/cache/constants/cache.token';
 import { ITEM_KEY } from '@/shared/modules/cache/constants/item.key';
 import { CACHE_TTL } from '@/shared/constants/cache-ttl.constant';
 import { runAndIgnoreError, template } from '@/shared/helpers/functions';
-import { LOCK_PREFIX } from '@/shared/constants/lock-prefix.constant';
-import { TransactionalService } from '@/shared/services/transactional.service';
+import { LOCK_KEY } from '@/shared/constants/lock.key';
 import { I18N_ITEMS } from '@/shared/constants/i18n';
 import { IItemsService } from './interfaces/items-service.interface';
+import { BaseService } from '@/shared/services/base.service';
+import { DbGuardService } from '@/shared/modules/db-guard/db-guard.service';
 
 @Injectable()
-export class ItemsService extends TransactionalService implements IItemsService {
+export class ItemsService extends BaseService implements IItemsService {
   constructor(
     @Inject(ITEM_REPOSITORY) private readonly itemRepository: IItemRepository,
     @Inject(CACHE_SERVICE) private readonly cacheService: ICacheService,
-    dataSource: DataSource,
-    redlock: Redlock,
+    private readonly guard: DbGuardService,
   ) {
-    super(ItemsService.name, dataSource, redlock);
+    super(ItemsService.name);
   }
 
   // #region Public endpoints
@@ -100,12 +96,17 @@ export class ItemsService extends TransactionalService implements IItemsService 
 
   // #region Admin endpoints
 
-  @Transactional()
-  @Lock({
-    prefix: LOCK_PREFIX.ITEM.CREATE,
-    key: ([, idempotencyKey]) => idempotencyKey,
-  })
   async adminCreate(
+    dto: CreateItemDto,
+    idempotencyKey: string,
+  ): Promise<ItemResponseDto> {
+    return this.guard.lockAndTransaction(
+      LOCK_KEY.ITEM.CREATE(idempotencyKey),
+      async () => this._adminCreate(dto, idempotencyKey),
+    );
+  }
+
+  private async _adminCreate(
     dto: CreateItemDto,
     idempotencyKey: string,
   ): Promise<ItemResponseDto> {
@@ -214,9 +215,16 @@ export class ItemsService extends TransactionalService implements IItemsService 
     return itemMapped;
   }
 
-  @Transactional()
-  @Lock({ prefix: LOCK_PREFIX.ITEM.UPDATE, key: ([id]) => id })
   async adminUpdate(id: string, dto: UpdateItemDto): Promise<ItemResponseDto> {
+    return this.guard.lockAndTransaction(LOCK_KEY.ITEM.UPDATE(id), async () =>
+      this._adminUpdate(id, dto),
+    );
+  }
+
+  private async _adminUpdate(
+    id: string,
+    dto: UpdateItemDto,
+  ): Promise<ItemResponseDto> {
     const item = await this.itemRepository.findById(id);
     if (!item) {
       throw new NotFoundException(template(I18N_ITEMS.ERRORS.NOT_FOUND));
@@ -235,11 +243,13 @@ export class ItemsService extends TransactionalService implements IItemsService 
     return EntityMapper.map(savedItem, ItemResponseDto);
   }
 
-  @Transactional()
-  @Lock({ prefix: LOCK_PREFIX.ITEM.REMOVE, key: ([id]) => id })
   async adminRemove(id: string): Promise<void> {
-    this.logger.debug('Deactivating item', { itemId: id });
+    return this.guard.lockAndTransaction(LOCK_KEY.ITEM.REMOVE(id), async () =>
+      this._adminRemove(id),
+    );
+  }
 
+  private async _adminRemove(id: string): Promise<void> {
     const item = await this.itemRepository.findById(id);
     if (!item) {
       throw new NotFoundException(template(I18N_ITEMS.ERRORS.NOT_FOUND));
@@ -263,16 +273,16 @@ export class ItemsService extends TransactionalService implements IItemsService 
     return this.itemRepository.findManyByIds(ids);
   }
 
-  @Transactional()
-  @Lock({ prefix: LOCK_PREFIX.ITEM.UPDATE, key: ([item]) => item.id })
   async decrementItemStock(item: Item, quantity: number): Promise<void> {
-    await this.itemRepository.decrementStock(item, quantity);
+    return this.guard.lockAndTransaction(LOCK_KEY.ITEM.UPDATE(item.id), async () =>
+      this.itemRepository.decrementStock(item, quantity),
+    );
   }
 
-  @Transactional()
-  @Lock({ prefix: LOCK_PREFIX.ITEM.UPDATE, key: ([item]) => item.id })
   async incrementItemStock(item: Item, quantity: number): Promise<void> {
-    await this.itemRepository.incrementStock(item, quantity);
+    return this.guard.lockAndTransaction(LOCK_KEY.ITEM.UPDATE(item.id), async () =>
+      this.itemRepository.incrementStock(item, quantity),
+    );
   }
 
   // #endregion

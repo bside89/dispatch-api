@@ -5,44 +5,38 @@ import {
   CancelOrderJobPayload,
   ProcessOrderJobPayload,
   RefundOrderJobPayload,
-} from '../../../shared/payloads/order-job.payload';
+} from '@/shared/payloads/order-job.payload';
 import { NotifyUserJobPayload } from '@/shared/payloads/event-job.payload';
-import { ensureError } from '../../../shared/helpers/functions';
-import { Transactional } from '@/shared/decorators/transactional.decorator';
+import { ensureError } from '@/shared/helpers/functions';
 import { OutboxType } from '@/shared/modules/outbox/enums/outbox-type.enum';
-import { CACHE_SERVICE } from '../../../shared/modules/cache/constants/cache.token';
-import type { ICacheService } from '../../../shared/modules/cache/interfaces/cache-service.interface';
+import { CACHE_SERVICE } from '@/shared/modules/cache/constants/cache.token';
+import type { ICacheService } from '@/shared/modules/cache/interfaces/cache-service.interface';
 import { OUTBOX_SERVICE } from '@/shared/modules/outbox/constants/outbox.token';
 import type { IOutboxService } from '@/shared/modules/outbox/interfaces/outbox-service.interface';
 import { ORDER_REPOSITORY } from '../constants/orders.token';
 import type { IOrderRepository } from '../interfaces/order-repository.interface';
-import { DataSource } from 'typeorm';
 import { BaseOrderJobStrategy } from './base-order-job.strategy';
-import Redlock from 'redlock';
 import { OrderMessageFactory } from '../factories/order-message.factory';
 import { Order } from '../entities/order.entity';
+import { DbGuardService } from '@/shared/modules/db-guard/db-guard.service';
 
 @Injectable()
 export class ProcessOrderJobStrategy extends BaseOrderJobStrategy<ProcessOrderJobPayload> {
   constructor(
-    @Inject(OUTBOX_SERVICE) private readonly outboxService: IOutboxService,
     private readonly messages: OrderMessageFactory,
+    @Inject(OUTBOX_SERVICE) private readonly outboxService: IOutboxService,
     @Inject(CACHE_SERVICE) cacheService: ICacheService,
     @Inject(ORDER_REPOSITORY) orderRepository: IOrderRepository,
-    dataSource: DataSource,
-    redlock: Redlock,
+    guard: DbGuardService,
   ) {
-    super(
-      ProcessOrderJobStrategy.name,
-      cacheService,
-      orderRepository,
-      dataSource,
-      redlock,
-    );
+    super(ProcessOrderJobStrategy.name, cacheService, orderRepository, guard);
   }
 
-  @Transactional()
   async execute(job: Job<ProcessOrderJobPayload>): Promise<void> {
+    return this.guard.transaction(() => this._execute(job));
+  }
+
+  private async _execute(job: Job<ProcessOrderJobPayload>): Promise<void> {
     const { orderId } = job.data;
 
     const order = await this.getAndValidate(orderId, OrderStatus.PROCESSED);
@@ -56,8 +50,14 @@ export class ProcessOrderJobStrategy extends BaseOrderJobStrategy<ProcessOrderJo
     await this.finish(order);
   }
 
-  @Transactional()
   async executeAfterFail(
+    job: Job<ProcessOrderJobPayload>,
+    error: Error,
+  ): Promise<void> {
+    return this.guard.transaction(() => this._executeAfterFail(job, error));
+  }
+
+  private async _executeAfterFail(
     job: Job<ProcessOrderJobPayload>,
     error: Error,
   ): Promise<void> {

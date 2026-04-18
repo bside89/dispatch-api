@@ -21,12 +21,8 @@ import {
 } from './dto/user-response.dto';
 import { EntityMapper } from '@/shared/utils/entity-mapper';
 import { HashUtils } from '@/shared/utils/hash.utils';
-import { DataSource } from 'typeorm';
-import { Transactional } from '@/shared/decorators/transactional.decorator';
 import { CACHE_TTL } from '@/shared/constants/cache-ttl.constant';
 import { ensureError, template } from '@/shared/helpers/functions';
-import { Lock } from '@/shared/decorators/lock.decorator';
-import Redlock from 'redlock';
 import { USER_KEY } from '../../shared/modules/cache/constants/user.key';
 import type { IOutboxService } from '@/shared/modules/outbox/interfaces/outbox-service.interface';
 import { OUTBOX_SERVICE } from '@/shared/modules/outbox/constants/outbox.token';
@@ -41,8 +37,6 @@ import { UserRole } from '../../shared/enums/user-role.enum';
 import type { IPaymentsGatewayService } from '../payments-gateway/interfaces/payments-gateway-service.interface';
 import { PAYMENTS_GATEWAY_SERVICE } from '../payments-gateway/constants/payments-gateway.token';
 import { CustomerResponseDto } from '../payments-gateway/dto/customer-response.dto';
-import { LOCK_PREFIX } from '@/shared/constants/lock-prefix.constant';
-import { TransactionalService } from '@/shared/services/transactional.service';
 import { I18N_USERS } from '@/shared/constants/i18n';
 import {
   UserAddressSnapshotDto,
@@ -51,29 +45,35 @@ import {
 import { User } from './entities/user.entity';
 import { USER_ROLE_LEVEL } from '@/shared/constants/user-role-level.constant';
 import { IUsersService } from './interfaces/users-service.interface';
+import { BaseService } from '@/shared/services/base.service';
+import { DbGuardService } from '@/shared/modules/db-guard/db-guard.service';
+import { LOCK_KEY } from '@/shared/constants/lock.key';
 
 @Injectable()
-export class UsersService extends TransactionalService implements IUsersService {
+export class UsersService extends BaseService implements IUsersService {
   constructor(
     @Inject(USER_REPOSITORY) private readonly userRepository: IUserRepository,
     @Inject(PAYMENTS_GATEWAY_SERVICE)
     private readonly paymentsGatewayService: IPaymentsGatewayService,
     @Inject(CACHE_SERVICE) private readonly cacheService: ICacheService,
     @Inject(OUTBOX_SERVICE) private readonly outboxService: IOutboxService,
-    dataSource: DataSource,
-    redlock: Redlock,
+    private readonly guard: DbGuardService,
   ) {
-    super(UsersService.name, dataSource, redlock);
+    super(UsersService.name);
   }
 
   //#region Public endpoints
 
-  @Transactional()
-  @Lock({
-    prefix: LOCK_PREFIX.USER.CREATE,
-    key: ([, idempotencyKey]) => idempotencyKey,
-  })
   async publicCreate(
+    dto: PublicCreateUserDto,
+    idempotencyKey: string,
+  ): Promise<UserSelfResponseDto> {
+    return this.guard.lockAndTransaction(LOCK_KEY.USER.CREATE(idempotencyKey), () =>
+      this._publicCreate(dto, idempotencyKey),
+    );
+  }
+
+  private async _publicCreate(
     dto: PublicCreateUserDto,
     idempotencyKey: string,
   ): Promise<UserSelfResponseDto> {
@@ -194,9 +194,16 @@ export class UsersService extends TransactionalService implements IUsersService 
     return resultMapped;
   }
 
-  @Transactional()
-  @Lock({ prefix: LOCK_PREFIX.USER.UPDATE, key: ([id]) => id })
   async publicUpdate(
+    dto: PublicUpdateUserDto,
+    requestUser: RequestUser,
+  ): Promise<UserSelfResponseDto> {
+    return this.guard.lockAndTransaction(LOCK_KEY.USER.UPDATE(requestUser.id), () =>
+      this._publicUpdate(dto, requestUser),
+    );
+  }
+
+  private async _publicUpdate(
     dto: PublicUpdateUserDto,
     requestUser: RequestUser,
   ): Promise<UserSelfResponseDto> {
@@ -240,12 +247,13 @@ export class UsersService extends TransactionalService implements IUsersService 
     return EntityMapper.map(updatedUser, UserSelfResponseDto);
   }
 
-  @Transactional()
-  @Lock({
-    prefix: LOCK_PREFIX.USER.REMOVE,
-    key: ([requestUser]) => requestUser.id,
-  })
   async publicRemove(requestUser: RequestUser): Promise<void> {
+    return this.guard.lockAndTransaction(LOCK_KEY.USER.REMOVE(requestUser.id), () =>
+      this._publicRemove(requestUser),
+    );
+  }
+
+  private async _publicRemove(requestUser: RequestUser): Promise<void> {
     const user = await this.userRepository.findById(requestUser.id);
 
     /** 1. VALIDATION */
@@ -272,12 +280,18 @@ export class UsersService extends TransactionalService implements IUsersService 
 
   //#region Admin endpoints
 
-  @Transactional()
-  @Lock({
-    prefix: LOCK_PREFIX.USER.CREATE,
-    key: ([, idempotencyKey]) => idempotencyKey,
-  })
   async adminCreate(
+    dto: CreateUserDto,
+    idempotencyKey: string,
+    requestUser: RequestUser,
+  ): Promise<UserResponseDto> {
+    return this.guard.lockAndTransaction(
+      `${LOCK_KEY.USER.CREATE}:${idempotencyKey}`,
+      () => this._adminCreate(dto, idempotencyKey, requestUser),
+    );
+  }
+
+  private async _adminCreate(
     dto: CreateUserDto,
     idempotencyKey: string,
     requestUser: RequestUser,
@@ -382,9 +396,17 @@ export class UsersService extends TransactionalService implements IUsersService 
     return userMapped;
   }
 
-  @Transactional()
-  @Lock({ prefix: LOCK_PREFIX.USER.UPDATE, key: ([id]) => id })
   async adminUpdate(
+    id: string,
+    dto: UpdateUserDto,
+    requestUser: RequestUser,
+  ): Promise<UserResponseDto> {
+    return this.guard.lockAndTransaction(LOCK_KEY.USER.UPDATE(id), () =>
+      this._adminUpdate(id, dto, requestUser),
+    );
+  }
+
+  private async _adminUpdate(
     id: string,
     dto: UpdateUserDto,
     requestUser: RequestUser,
@@ -430,9 +452,13 @@ export class UsersService extends TransactionalService implements IUsersService 
     return EntityMapper.map(updatedUser, UserResponseDto);
   }
 
-  @Transactional()
-  @Lock({ prefix: LOCK_PREFIX.USER.REMOVE, key: ([id]) => id })
   async adminRemove(id: string, requestUser: RequestUser): Promise<void> {
+    return this.guard.lockAndTransaction(LOCK_KEY.USER.REMOVE(id), () =>
+      this._adminRemove(id, requestUser),
+    );
+  }
+
+  private async _adminRemove(id: string, requestUser: RequestUser): Promise<void> {
     const user = await this.userRepository.findById(id);
 
     /** 1. VALIDATION */

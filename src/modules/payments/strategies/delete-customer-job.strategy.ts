@@ -2,8 +2,6 @@ import { Injectable, Inject } from '@nestjs/common';
 import { DeleteCustomerJobPayload } from '@/shared/payloads/payment-job.payload';
 import { BasePaymentJobStrategy } from './base-payment-job.strategy';
 import { Job } from 'bullmq';
-import Redlock from 'redlock';
-import { DataSource } from 'typeorm';
 import { PAYMENTS_GATEWAY_SERVICE } from '@/modules/payments-gateway/constants/payments-gateway.token';
 import type { IPaymentsGatewayService } from '@/modules/payments-gateway/interfaces/payments-gateway-service.interface';
 import { ORDER_REPOSITORY } from '@/modules/orders/constants/orders.token';
@@ -13,6 +11,7 @@ import type { IUserRepository } from '@/modules/users/interfaces/user-repository
 import { CACHE_SERVICE } from '@/shared/modules/cache/constants/cache.token';
 import type { ICacheService } from '@/shared/modules/cache/interfaces/cache-service.interface';
 import { PAYMENT_KEY } from '@/shared/modules/cache/constants/payment.key';
+import { DbGuardService } from '@/shared/modules/db-guard/db-guard.service';
 
 @Injectable()
 export class DeleteCustomerJobStrategy extends BasePaymentJobStrategy<DeleteCustomerJobPayload> {
@@ -22,8 +21,7 @@ export class DeleteCustomerJobStrategy extends BasePaymentJobStrategy<DeleteCust
     @Inject(CACHE_SERVICE) cacheService: ICacheService,
     @Inject(ORDER_REPOSITORY) orderRepository: IOrderRepository,
     @Inject(USER_REPOSITORY) userRepository: IUserRepository,
-    dataSource: DataSource,
-    redlock: Redlock,
+    guard: DbGuardService,
   ) {
     super(
       DeleteCustomerJobStrategy.name,
@@ -31,8 +29,7 @@ export class DeleteCustomerJobStrategy extends BasePaymentJobStrategy<DeleteCust
       cacheService,
       orderRepository,
       userRepository,
-      dataSource,
-      redlock,
+      guard,
     );
   }
 
@@ -50,7 +47,6 @@ export class DeleteCustomerJobStrategy extends BasePaymentJobStrategy<DeleteCust
         customerId: null,
       });
     }
-
     await this.deleteCustomer(job.data);
 
     this.logger.log(`Customer deleted successfully with ID: ${userDto.id}`, {

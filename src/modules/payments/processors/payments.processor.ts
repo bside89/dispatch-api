@@ -4,11 +4,11 @@ import { Job } from 'bullmq';
 import { BaseProcessor } from '@/shared/processors/base.processor';
 import { PAYMENT_QUEUE } from '@/shared/constants/queue-names.constant';
 import { PAYMENT_KEY } from '../../../shared/modules/cache/constants/payment.key';
-import Redlock from 'redlock';
 import { ConfigService } from '@nestjs/config';
 import { CACHE_SERVICE } from '@/shared/modules/cache/constants/cache.token';
 import type { ICacheService } from '@/shared/modules/cache/interfaces/cache-service.interface';
 import { PaymentJobHandlerFactory } from '../factories/payment-job-handler.factory';
+import { DbGuardService } from '@/shared/modules/db-guard/db-guard.service';
 
 @Injectable()
 @Processor(PAYMENT_QUEUE, { maxStalledCount: 1 })
@@ -17,9 +17,9 @@ export class PaymentsProcessor extends BaseProcessor {
     private readonly factory: PaymentJobHandlerFactory,
     @Inject(CACHE_SERVICE) cacheService: ICacheService,
     configService: ConfigService,
-    redlock: Redlock,
+    guard: DbGuardService,
   ) {
-    super(PaymentsProcessor.name, cacheService, configService, redlock);
+    super(PaymentsProcessor.name, cacheService, configService, guard);
   }
 
   // Main method

@@ -17,8 +17,6 @@ import { ORDER_REPOSITORY } from './constants/orders.token';
 import type { IOrderItemRepository } from './interfaces/order-item-repository.interface';
 import { ORDER_ITEM_REPOSITORY } from './constants/orders.token';
 import { PaginatedResultDto } from '@/shared/dto/paginated-result.dto';
-import { DataSource } from 'typeorm';
-import { Transactional } from '@/shared/decorators/transactional.decorator';
 import {
   OrderPaymentIntentDto,
   OrderResponseDto,
@@ -37,14 +35,11 @@ import {
 import { ShipOrderDto } from './dto/ship-order.dto';
 import { ORDER_STATUS_PRECONDITIONS } from './constants/order-status-preconditions.constant';
 import { template } from '@/shared/helpers/functions';
-import { Lock } from '@/shared/decorators/lock.decorator';
-import Redlock from 'redlock';
 import { ORDER_KEY } from '../../shared/modules/cache/constants/order.key';
 import type { RequestUser } from '../auth/interfaces/request-user.interface';
-import { LOCK_PREFIX } from '@/shared/constants/lock-prefix.constant';
+import { LOCK_KEY } from '@/shared/constants/lock.key';
 import type { IItemsService } from '../items/interfaces/items-service.interface';
 import { ITEMS_SERVICE } from '../items/constants/items.token';
-import { TransactionalService } from '@/shared/services/transactional.service';
 import type { IPaymentsGatewayService } from '../payments-gateway/interfaces/payments-gateway-service.interface';
 import { PAYMENTS_GATEWAY_SERVICE } from '../payments-gateway/constants/payments-gateway.token';
 import { StripePaymentIntentCreateParams } from '../payments-gateway/types/payment-intent.types';
@@ -57,9 +52,11 @@ import {
 } from './helpers/functions';
 import { OrderByUserQueryDto } from './dto/order-by-user-query.dto';
 import { IOrdersService } from './interfaces/orders-service.interface';
+import { BaseService } from '@/shared/services/base.service';
+import { DbGuardService } from '@/shared/modules/db-guard/db-guard.service';
 
 @Injectable()
-export class OrdersService extends TransactionalService implements IOrdersService {
+export class OrdersService extends BaseService implements IOrdersService {
   constructor(
     @Inject(ORDER_REPOSITORY) private readonly orderRepository: IOrderRepository,
     @Inject(ORDER_ITEM_REPOSITORY)
@@ -70,20 +67,25 @@ export class OrdersService extends TransactionalService implements IOrdersServic
     private readonly paymentsGatewayService: IPaymentsGatewayService,
     @Inject(CACHE_SERVICE) private readonly cacheService: ICacheService,
     private readonly messages: OrderMessageFactory,
-    dataSource: DataSource,
-    redlock: Redlock,
+    private readonly guard: DbGuardService,
   ) {
-    super(OrdersService.name, dataSource, redlock);
+    super(OrdersService.name);
   }
 
   //#region Public endpoints
 
-  @Transactional()
-  @Lock({
-    prefix: LOCK_PREFIX.ORDER.CREATE,
-    key: ([, , idempotencyKey]) => idempotencyKey,
-  })
   async publicCreate(
+    dto: CreateOrderDto,
+    userId: string,
+    idempotencyKey: string,
+  ): Promise<PublicOrderResponseDto> {
+    return this.guard.lockAndTransaction(
+      LOCK_KEY.ORDER.CREATE(idempotencyKey),
+      async () => this._publicCreate(dto, userId, idempotencyKey),
+    );
+  }
+
+  private async _publicCreate(
     dto: CreateOrderDto,
     userId: string,
     idempotencyKey: string,
@@ -308,9 +310,16 @@ export class OrdersService extends TransactionalService implements IOrdersServic
     return orderMapped;
   }
 
-  @Transactional()
-  @Lock({ prefix: LOCK_PREFIX.ORDER.UPDATE, key: ([id]) => id })
   async adminUpdate(id: string, dto: UpdateOrderDto): Promise<OrderResponseDto> {
+    return this.guard.lockAndTransaction(LOCK_KEY.ORDER.UPDATE(id), async () =>
+      this._adminUpdate(id, dto),
+    );
+  }
+
+  private async _adminUpdate(
+    id: string,
+    dto: UpdateOrderDto,
+  ): Promise<OrderResponseDto> {
     this.logger.debug('Updating order', { orderId: id });
 
     const order = await this.orderRepository.findOne({
@@ -340,9 +349,13 @@ export class OrdersService extends TransactionalService implements IOrdersServic
     return EntityMapper.map(order, OrderResponseDto);
   }
 
-  @Transactional()
-  @Lock({ prefix: LOCK_PREFIX.ORDER.REMOVE, key: ([id]) => id })
   async adminRemove(id: string): Promise<void> {
+    return this.guard.lockAndTransaction(LOCK_KEY.ORDER.REMOVE(id), async () =>
+      this._adminRemove(id),
+    );
+  }
+
+  private async _adminRemove(id: string): Promise<void> {
     this.logger.debug('Deleting order', { orderId: id });
 
     const order = await this.orderRepository.findById(id);
@@ -359,9 +372,17 @@ export class OrdersService extends TransactionalService implements IOrdersServic
 
   //#region Internal / webhook methods
 
-  @Transactional()
-  @Lock({ prefix: LOCK_PREFIX.ORDER.UPDATE, key: ([orderId]) => orderId })
   async markPaymentAsSucceeded(
+    orderId: string,
+    paymentIntentId: string,
+    paymentIntentStatus: string,
+  ): Promise<OrderResponseDto> {
+    return this.guard.lockAndTransaction(LOCK_KEY.ORDER.UPDATE(orderId), async () =>
+      this._markPaymentAsSucceeded(orderId, paymentIntentId, paymentIntentStatus),
+    );
+  }
+
+  private async _markPaymentAsSucceeded(
     orderId: string,
     paymentIntentId: string,
     paymentIntentStatus: string,
@@ -389,9 +410,17 @@ export class OrdersService extends TransactionalService implements IOrdersServic
     return EntityMapper.map(order, OrderResponseDto);
   }
 
-  @Transactional()
-  @Lock({ prefix: LOCK_PREFIX.ORDER.UPDATE, key: ([orderId]) => orderId })
   async markPaymentAsFailed(
+    orderId: string,
+    paymentIntentId: string,
+    paymentIntentStatus: string,
+  ): Promise<OrderResponseDto> {
+    return this.guard.lockAndTransaction(LOCK_KEY.ORDER.UPDATE(orderId), async () =>
+      this._markPaymentAsFailed(orderId, paymentIntentId, paymentIntentStatus),
+    );
+  }
+
+  private async _markPaymentAsFailed(
     orderId: string,
     paymentIntentId: string,
     paymentIntentStatus: string,
@@ -422,9 +451,13 @@ export class OrdersService extends TransactionalService implements IOrdersServic
 
   //#region Operational admin methods
 
-  @Transactional()
-  @Lock({ prefix: LOCK_PREFIX.ORDER.UPDATE, key: ([id]) => id })
   async ship(id: string, dto: ShipOrderDto): Promise<OrderResponseDto> {
+    return this.guard.lockAndTransaction(LOCK_KEY.ORDER.UPDATE(id), async () =>
+      this._ship(id, dto),
+    );
+  }
+
+  private async _ship(id: string, dto: ShipOrderDto): Promise<OrderResponseDto> {
     const order = await this.orderRepository.findOne({
       where: { id },
       relations: ['user', 'items'],
@@ -469,9 +502,13 @@ export class OrdersService extends TransactionalService implements IOrdersServic
     return EntityMapper.map(order, OrderResponseDto);
   }
 
-  @Transactional()
-  @Lock({ prefix: LOCK_PREFIX.ORDER.UPDATE, key: ([id]) => id })
   async deliver(id: string): Promise<OrderResponseDto> {
+    return this.guard.lockAndTransaction(LOCK_KEY.ORDER.UPDATE(id), async () =>
+      this._deliver(id),
+    );
+  }
+
+  private async _deliver(id: string): Promise<OrderResponseDto> {
     const order = await this.orderRepository.findOne({
       where: { id },
       relations: ['user', 'items'],
@@ -513,9 +550,13 @@ export class OrdersService extends TransactionalService implements IOrdersServic
     return EntityMapper.map(order, OrderResponseDto);
   }
 
-  @Transactional()
-  @Lock({ prefix: LOCK_PREFIX.ORDER.UPDATE, key: ([id]) => id })
   async cancel(id: string): Promise<void> {
+    return this.guard.lockAndTransaction(LOCK_KEY.ORDER.UPDATE(id), async () =>
+      this._cancel(id),
+    );
+  }
+
+  private async _cancel(id: string): Promise<void> {
     const order = await this.orderRepository.findOne({
       where: { id },
       relations: ['user'],
@@ -547,9 +588,13 @@ export class OrdersService extends TransactionalService implements IOrdersServic
     this.logger.debug('Order cancel enqueued', { orderId: id });
   }
 
-  @Transactional()
-  @Lock({ prefix: LOCK_PREFIX.ORDER.UPDATE, key: ([id]) => id })
   async refund(id: string): Promise<void> {
+    return this.guard.lockAndTransaction(LOCK_KEY.ORDER.UPDATE(id), async () =>
+      this._refund(id),
+    );
+  }
+
+  private async _refund(id: string): Promise<void> {
     const order = await this.orderRepository.findOne({
       where: { id },
       relations: ['user'],

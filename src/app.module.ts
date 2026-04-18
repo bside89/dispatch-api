@@ -33,6 +33,7 @@ import { ItemsModule } from './modules/items/items.module';
 import * as path from 'path';
 import { existsSync } from 'fs';
 import { AcceptLanguageResolver, I18nModule, QueryResolver } from 'nestjs-i18n';
+import { DbGuardModule } from './shared/modules/db-guard/db-guard.module';
 
 const i18nPath = [
   path.join(__dirname, 'i18n'),
@@ -113,6 +114,7 @@ const i18nPath = [
     ItemsModule,
     EventsModule,
     CacheModule,
+    DbGuardModule,
     OutboxModule,
     TerminusModule,
     PaymentsModule,
