@@ -6,7 +6,7 @@ import { ConfigService } from '@nestjs/config';
 import { BasicAuthMiddleware } from './middleware/basic-auth.middleware';
 import helmet from 'helmet';
 import { Logger } from 'nestjs-pino';
-import { AllExceptionsFilter } from './shared/filters/http-exception.filter';
+import { AllExceptionsFilter } from './shared/filters/exception.filter';
 import { DataSource } from 'typeorm';
 import { seedMockAdminUser } from './shared/helpers/seed-mock-admin-user.helper';
 import { seedMockItems } from './shared/helpers/seed-mock-items.helper';

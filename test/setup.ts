@@ -18,9 +18,9 @@ export default async () => {
   // NestJS will use them when loading the ConfigService or TypeOrmModule.
   process.env.DB_HOST = postgres.getHost();
   process.env.DB_PORT = postgres.getMappedPort(5432).toString();
-  process.env.DB_USERNAME = 'test_user';
-  process.env.DB_PASSWORD = 'test_pass';
-  process.env.DB_DATABASE = 'test_db';
+  process.env.DB_USERNAME = postgres.getUsername();
+  process.env.DB_PASSWORD = postgres.getPassword();
+  process.env.DB_DATABASE = postgres.getDatabase();
   process.env.DB_SYNCHRONIZE = 'true';
 
   process.env.REDIS_HOST = redis.getHost();

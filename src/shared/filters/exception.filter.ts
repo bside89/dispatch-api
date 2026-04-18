@@ -11,6 +11,7 @@ import { Request, Response } from 'express';
 import { ErrorResponseDto } from '../dto/error-response.dto';
 import { I18nContext } from 'nestjs-i18n';
 import { I18N_COMMON } from '../constants/i18n';
+import os from 'os';
 
 @Catch()
 export class AllExceptionsFilter implements ExceptionFilter {
@@ -29,7 +30,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
 
     const i18n = I18nContext.current();
 
-    let message = 'Internal server error';
+    let message = '';
     if (exceptionResponse.key) {
       // Use I18nContext to translate the message
       message = i18n.translate(exceptionResponse.key, {
@@ -43,14 +44,17 @@ export class AllExceptionsFilter implements ExceptionFilter {
       }
     }
 
+    const newline = os.EOL || '\n';
     this.logger.error(
-      `HTTP Status: ${status} Error: ${JSON.stringify(message)} Path: ${request.url}`,
+      `HTTP Status: ${status}${newline}` +
+        `Error: ${JSON.stringify(message)}${newline}` +
+        `Path: ${request.url}`,
       exception instanceof Error ? exception.stack : '',
     );
 
     const errorResponse: ErrorResponseDto = {
       success: false,
-      message: Array.isArray(message) ? message[0] : message, // Class-Validator errors can be arrays
+      message: Array.isArray(message) ? message.join(', ') : message, // Class-Validator errors can be arrays
       error: exception instanceof Error ? exception.name : 'Error',
       statusCode: status,
       timestamp: new Date().toISOString(),

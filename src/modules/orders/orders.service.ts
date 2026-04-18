@@ -49,7 +49,7 @@ import {
   languageToCurrency,
   languageToLocale,
   toCurrencyFormatted,
-} from './helpers/functions';
+} from './helpers/order-functions';
 import { OrderByUserQueryDto } from './dto/order-by-user-query.dto';
 import { IOrdersService } from './interfaces/orders-service.interface';
 import { BaseService } from '@/shared/services/base.service';
