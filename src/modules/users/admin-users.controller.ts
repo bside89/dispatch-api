@@ -151,7 +151,7 @@ export class AdminUsersController extends BaseController {
   ) {
     const result = await this.usersService.adminFindOne(id);
 
-    const message = await this.messages.responses.findOne(user.jwtPayload.language);
+    const message = await this.messages.responses.findOne(user.language);
     return this.success(result, message);
   }
 
@@ -193,7 +193,7 @@ export class AdminUsersController extends BaseController {
   ) {
     const result = await this.usersService.adminUpdate(id, updateUserDto, user);
 
-    const message = await this.messages.responses.update(user.jwtPayload.language);
+    const message = await this.messages.responses.update(user.language);
     return this.success(result, message);
   }
 
@@ -226,7 +226,7 @@ export class AdminUsersController extends BaseController {
   ) {
     await this.usersService.adminRemove(id, user);
 
-    const message = await this.messages.responses.remove(user.jwtPayload.language);
+    const message = await this.messages.responses.remove(user.language);
     return this.success(null, message);
   }
 }

@@ -87,7 +87,7 @@ export class AuthController extends BaseController {
   async logout(@GetUser() user: RequestUser) {
     await this.authService.logout(user);
 
-    const message = await this.messages.responses.logout(user.jwtPayload.language);
+    const message = await this.messages.responses.logout(user.language);
     return this.success({}, message);
   }
 }

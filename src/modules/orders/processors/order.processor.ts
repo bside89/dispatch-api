@@ -6,7 +6,7 @@ import type { ICacheService } from '../../../shared/modules/cache/interfaces/cac
 import { BaseProcessor } from '@/shared/processors/base.processor';
 import { ConfigService } from '@nestjs/config';
 import { ORDER_KEY } from '../../../shared/modules/cache/constants/order.key';
-import { ORDER_QUEUE } from '@/shared/constants/queue-names.constant';
+import { ORDER_QUEUE } from '@/shared/constants/queues.token';
 import { Injectable, Inject } from '@nestjs/common';
 import { DbGuardService } from '@/shared/modules/db-guard/db-guard.service';
 

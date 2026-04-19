@@ -26,10 +26,12 @@ export class DbGuardService {
    * Acquires a lock and executes the provided work within the lock.
    * @param key The key for the lock.
    * @param work The work to be executed within the lock.
+   * @param ttl The time-to-live for the lock in milliseconds. If not provided, a
+   * default value will be used.
    * @returns The result of the work.
    */
-  async lock<T>(key: string, work: () => Promise<T>): Promise<T> {
-    const lock = await this.redlock.acquire([key], CACHE_TTL.LOCK);
+  async lock<T>(key: string, work: () => Promise<T>, ttl?: number): Promise<T> {
+    const lock = await this.redlock.acquire([key], ttl ?? CACHE_TTL.LOCK);
     try {
       return await work();
     } finally {
@@ -41,9 +43,15 @@ export class DbGuardService {
    * Acquires a lock and executes a transaction within the lock.
    * @param key The key for the lock.
    * @param work The work to be executed within the lock and transaction.
+   * @param ttl The time-to-live for the lock in milliseconds. If not provided, a
+   * default value will be used.
    * @returns The result of the work.
    */
-  async lockAndTransaction<T>(key: string, work: () => Promise<T>): Promise<T> {
-    return this.lock(key, () => this.transaction(() => work()));
+  async lockAndTransaction<T>(
+    key: string,
+    work: () => Promise<T>,
+    ttl?: number,
+  ): Promise<T> {
+    return this.lock(key, () => this.transaction(() => work()), ttl);
   }
 }

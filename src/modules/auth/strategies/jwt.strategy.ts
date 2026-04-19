@@ -2,18 +2,18 @@ import { Injectable, Inject, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
-import { JwtStrategyName } from '../enums/jwt-strategy-name.enum';
+import { JWT_ACCESS } from '../constants/jwt-name.token';
 import { JwtPayload } from '../interfaces/jwt-payload.interface';
 import { CACHE_SERVICE } from '../../../shared/modules/cache/constants/cache.token';
 import type { ICacheService } from '../../../shared/modules/cache/interfaces/cache-service.interface';
 import { Request } from 'express';
-import { RequestUser } from '../interfaces/request-user.interface';
 import { AUTH_KEY } from '../../../shared/modules/cache/constants/auth.key';
 import { template } from '@/shared/helpers/functions';
 import { I18N_AUTH } from '@/shared/constants/i18n';
+import { jwtToRequestUser } from '../helper/auth-functions';
 
 @Injectable()
-export class JwtStrategy extends PassportStrategy(Strategy, JwtStrategyName.ACCESS) {
+export class JwtStrategy extends PassportStrategy(Strategy, JWT_ACCESS) {
   constructor(
     configService: ConfigService,
     @Inject(CACHE_SERVICE) private readonly cacheService: ICacheService,
@@ -33,12 +33,6 @@ export class JwtStrategy extends PassportStrategy(Strategy, JwtStrategyName.ACCE
     if (isBlacklisted) {
       throw new UnauthorizedException(template(I18N_AUTH.ERRORS.TOKEN_REVOKED));
     }
-
-    const user: RequestUser = {
-      id: payload.sub,
-      jwtPayload: payload,
-    };
-
-    return user; // Req.user
+    return jwtToRequestUser(payload); // Req.user
   }
 }

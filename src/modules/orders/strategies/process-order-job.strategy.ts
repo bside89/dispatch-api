@@ -8,7 +8,6 @@ import {
 } from '@/shared/payloads/order-job.payload';
 import { NotifyUserJobPayload } from '@/shared/payloads/event-job.payload';
 import { ensureError } from '@/shared/helpers/functions';
-import { OutboxType } from '@/shared/modules/outbox/enums/outbox-type.enum';
 import { CACHE_SERVICE } from '@/shared/modules/cache/constants/cache.token';
 import type { ICacheService } from '@/shared/modules/cache/interfaces/cache-service.interface';
 import { OUTBOX_SERVICE } from '@/shared/modules/outbox/constants/outbox.token';
@@ -97,16 +96,10 @@ export class ProcessOrderJobStrategy extends BaseOrderJobStrategy<ProcessOrderJo
 
     if (refundStatuses.includes(order.status)) {
       // Payment was already captured — refund
-      await this.outboxService.add(
-        OutboxType.ORDER_REFUND,
-        new RefundOrderJobPayload(orderId),
-      );
+      await this.outboxService.add(new RefundOrderJobPayload(orderId));
     } else {
       // Payment was never captured — just cancel
-      await this.outboxService.add(
-        OutboxType.ORDER_CANCEL,
-        new CancelOrderJobPayload(orderId),
-      );
+      await this.outboxService.add(new CancelOrderJobPayload(orderId));
     }
 
     // Notify the user about the failure
@@ -114,10 +107,7 @@ export class ProcessOrderJobStrategy extends BaseOrderJobStrategy<ProcessOrderJo
     const message = await this.messages.notifications.orderProcessFailed(
       user.language,
     );
-    await this.outboxService.add(
-      OutboxType.EVENTS_NOTIFY_USER,
-      new NotifyUserJobPayload(user.id, message),
-    );
+    await this.outboxService.add(new NotifyUserJobPayload(user.id, message));
   }
 
   private async finish(order: Order) {
@@ -128,10 +118,7 @@ export class ProcessOrderJobStrategy extends BaseOrderJobStrategy<ProcessOrderJo
     // Notify the user
     const user = order.user;
     const message = await this.messages.notifications.orderProcessed(user.language);
-    await this.outboxService.add(
-      OutboxType.EVENTS_NOTIFY_USER,
-      new NotifyUserJobPayload(user.id, message),
-    );
+    await this.outboxService.add(new NotifyUserJobPayload(user.id, message));
 
     this.logger.log(`Order moved to PROCESSED`, { orderId });
   }

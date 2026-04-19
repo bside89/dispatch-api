@@ -26,7 +26,6 @@ import { EntityMapper } from '@/shared/utils/entity-mapper';
 import { CACHE_TTL } from '@/shared/constants/cache-ttl.constant';
 import type { IOutboxService } from '@/shared/modules/outbox/interfaces/outbox-service.interface';
 import { OUTBOX_SERVICE } from '@/shared/modules/outbox/constants/outbox.token';
-import { OutboxType } from '@/shared/modules/outbox/enums/outbox-type.enum';
 import {
   ProcessOrderJobPayload,
   CancelOrderJobPayload,
@@ -190,10 +189,7 @@ export class OrdersService extends BaseService implements IOrdersService {
       user.language,
       totalPrice,
     );
-    await this.outboxService.add(
-      OutboxType.EVENTS_NOTIFY_USER,
-      new NotifyUserJobPayload(user.id, message),
-    );
+    await this.outboxService.add(new NotifyUserJobPayload(user.id, message));
 
     const orderMapped = EntityMapper.map(completeOrder, PublicOrderResponseDto);
     orderMapped.paymentIntent = EntityMapper.map(
@@ -339,10 +335,7 @@ export class OrdersService extends BaseService implements IOrdersService {
       user.language,
       order.status,
     );
-    await this.outboxService.add(
-      OutboxType.EVENTS_NOTIFY_USER,
-      new NotifyUserJobPayload(user.id, message),
-    );
+    await this.outboxService.add(new NotifyUserJobPayload(user.id, message));
 
     this.logger.debug('Order updated', { orderId: id });
 
@@ -402,10 +395,7 @@ export class OrdersService extends BaseService implements IOrdersService {
     await this.orderRepository.save(order);
 
     // Kick off the order processing pipeline
-    await this.outboxService.add(
-      OutboxType.ORDER_PROCESS,
-      new ProcessOrderJobPayload(orderId),
-    );
+    await this.outboxService.add(new ProcessOrderJobPayload(orderId));
 
     return EntityMapper.map(order, OrderResponseDto);
   }
@@ -439,10 +429,7 @@ export class OrdersService extends BaseService implements IOrdersService {
     await this.orderRepository.save(order);
 
     // Enqueue the cancellation job (restores stock and updates status)
-    await this.outboxService.add(
-      OutboxType.ORDER_CANCEL,
-      new CancelOrderJobPayload(orderId),
-    );
+    await this.outboxService.add(new CancelOrderJobPayload(orderId));
 
     return EntityMapper.map(order, OrderResponseDto);
   }
@@ -492,10 +479,7 @@ export class OrdersService extends BaseService implements IOrdersService {
 
     const user = order.user;
     const message = await this.messages.notifications.orderShipped(user.language);
-    await this.outboxService.add(
-      OutboxType.EVENTS_NOTIFY_USER,
-      new NotifyUserJobPayload(user.id, message),
-    );
+    await this.outboxService.add(new NotifyUserJobPayload(user.id, message));
 
     this.logger.debug('Order shipped', { orderId: id });
 
@@ -541,10 +525,7 @@ export class OrdersService extends BaseService implements IOrdersService {
 
     const user = order.user;
     const message = await this.messages.notifications.orderDelivered(user.language);
-    await this.outboxService.add(
-      OutboxType.EVENTS_NOTIFY_USER,
-      new NotifyUserJobPayload(user.id, message),
-    );
+    await this.outboxService.add(new NotifyUserJobPayload(user.id, message));
 
     this.logger.debug('Order delivered', { orderId: id });
     return EntityMapper.map(order, OrderResponseDto);
@@ -580,10 +561,7 @@ export class OrdersService extends BaseService implements IOrdersService {
 
     /** 2. DELEGATE TO JOB STRATEGY */
 
-    await this.outboxService.add(
-      OutboxType.ORDER_CANCEL,
-      new CancelOrderJobPayload(id),
-    );
+    await this.outboxService.add(new CancelOrderJobPayload(id));
 
     this.logger.debug('Order cancel enqueued', { orderId: id });
   }
@@ -618,10 +596,7 @@ export class OrdersService extends BaseService implements IOrdersService {
 
     /** 2. DELEGATE TO JOB STRATEGY */
 
-    await this.outboxService.add(
-      OutboxType.ORDER_REFUND,
-      new RefundOrderJobPayload(id),
-    );
+    await this.outboxService.add(new RefundOrderJobPayload(id));
 
     this.logger.debug('Order refund enqueued', { orderId: id });
   }

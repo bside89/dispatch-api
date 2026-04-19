@@ -6,7 +6,7 @@ import { CACHE_SERVICE } from '@/shared/modules/cache/constants/cache.token';
 import type { ICacheService } from '@/shared/modules/cache/interfaces/cache-service.interface';
 import { EventJobHandlerFactory } from '../factories/event-job-handler.factory';
 import { EVENT_KEY } from '../constants/event.key';
-import { EVENT_QUEUE } from '@/shared/constants/queue-names.constant';
+import { EVENT_QUEUE } from '@/shared/constants/queues.token';
 import { Injectable, Inject } from '@nestjs/common';
 import { DbGuardService } from '../../db-guard/db-guard.service';
 

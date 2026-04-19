@@ -91,7 +91,7 @@ export class PublicOrdersController extends BaseController {
       idempotencyKey,
     );
 
-    const message = await this.messages.responses.create(user.jwtPayload.language);
+    const message = await this.messages.responses.create(user.language);
     return this.success(result, message);
   }
 
@@ -140,7 +140,7 @@ export class PublicOrdersController extends BaseController {
   ) {
     const result = await this.ordersService.publicFindOne(id, user);
 
-    const message = await this.messages.responses.findOne(user.jwtPayload.language);
+    const message = await this.messages.responses.findOne(user.language);
     return this.success(result, message);
   }
 }

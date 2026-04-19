@@ -13,7 +13,6 @@ import { CACHE_TTL } from '@/shared/constants/cache-ttl.constant';
 import type { IOutboxService } from '@/shared/modules/outbox/interfaces/outbox-service.interface';
 import { OUTBOX_SERVICE } from '@/shared/modules/outbox/constants/outbox.token';
 import { NotifyUserJobPayload } from '@/shared/payloads/event-job.payload';
-import { OutboxType } from '@/shared/modules/outbox/enums/outbox-type.enum';
 import type { RequestUser } from './interfaces/request-user.interface';
 import { AUTH_KEY } from '../../shared/modules/cache/constants/auth.key';
 import type ms from 'ms';
@@ -65,33 +64,30 @@ export class AuthService extends BaseService implements IAuthService {
       user.language,
       user.name,
     );
-    await this.outboxService.add(
-      OutboxType.EVENTS_NOTIFY_USER,
-      new NotifyUserJobPayload(user.id, message),
-    );
+    await this.outboxService.add(new NotifyUserJobPayload(user.id, message));
 
     return result;
   }
 
   refresh(reqUser: RequestUser): Promise<LoginResponseDto> {
     return this.guard.lockAndTransaction<LoginResponseDto>(
-      LOCK_KEY.AUTH.REFRESH(reqUser.jwtPayload.email),
+      LOCK_KEY.AUTH.REFRESH(reqUser.email),
       () => this._refresh(reqUser),
     );
   }
 
   private async _refresh(reqUser: RequestUser): Promise<LoginResponseDto> {
-    const refreshToken = reqUser.jwtPayload.refreshToken;
+    const refreshToken = reqUser.jwt.refreshToken;
     if (!refreshToken)
       throw new UnauthorizedException(template(I18N_AUTH.ERRORS.NO_REFRESH_TOKEN));
 
     const user = await this.userRepository.findOne({
-      where: { email: reqUser.jwtPayload.email },
+      where: { email: reqUser.email },
     });
     if (!user)
       throw new UnauthorizedException(
         template(I18N_COMMON.ERRORS.USER_NOT_FOUND, {
-          email: reqUser.jwtPayload.email,
+          email: reqUser.email,
         }),
       );
 
@@ -111,7 +107,7 @@ export class AuthService extends BaseService implements IAuthService {
 
   async logout(reqUser: RequestUser): Promise<void> {
     await this.guard.lockAndTransaction<void>(
-      LOCK_KEY.AUTH.LOGOUT(reqUser.jwtPayload.email),
+      LOCK_KEY.AUTH.LOGOUT(reqUser.email),
       () => this._logout(reqUser),
     );
   }
@@ -120,7 +116,7 @@ export class AuthService extends BaseService implements IAuthService {
     await this.updateRefreshToken(reqUser.id, null);
 
     await this.cacheService.set(
-      AUTH_KEY.BLACKLIST(reqUser.jwtPayload.jti),
+      AUTH_KEY.BLACKLIST(reqUser.jwt.jti),
       true,
       CACHE_TTL.AUTH_BLACKLIST,
     );

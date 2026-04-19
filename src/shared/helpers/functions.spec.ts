@@ -2,10 +2,21 @@ import { delay, col, runAndIgnoreError, ensureError, template } from './function
 
 describe('functions.ts', () => {
   describe('delay', () => {
-    it('should resolve after at least the specified time', async () => {
-      const start = Date.now();
-      await delay(50);
-      expect(Date.now() - start).toBeGreaterThanOrEqual(50);
+    beforeEach(() => {
+      jest.useFakeTimers();
+    });
+
+    afterEach(() => {
+      jest.clearAllTimers();
+      jest.useRealTimers();
+    });
+
+    it('should resolve after 50ms', async () => {
+      const promise = delay(50);
+
+      await jest.advanceTimersByTimeAsync(50);
+
+      await expect(promise).resolves.toBeUndefined();
     });
   });
 

@@ -1,7 +1,7 @@
 import { Entity, Column } from 'typeorm';
 import { OutboxType } from '../enums/outbox-type.enum';
 import { BaseEntity } from '@/shared/entities/base.entity';
-import type { OutboxPayload } from '@/shared/modules/outbox/types/outbox.payload';
+import { BaseOutboxJobPayload } from '../payloads/outbox.payload';
 
 @Entity('outbox')
 export class Outbox extends BaseEntity {
@@ -16,5 +16,5 @@ export class Outbox extends BaseEntity {
   type: OutboxType;
 
   @Column('jsonb', { nullable: false })
-  payload: OutboxPayload;
+  payload: BaseOutboxJobPayload;
 }

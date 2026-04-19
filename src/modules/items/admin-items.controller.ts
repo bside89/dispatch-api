@@ -94,7 +94,7 @@ export class AdminItemsController extends BaseController {
       idempotencyKey,
     );
 
-    const message = await this.messages.responses.create(user.jwtPayload.language);
+    const message = await this.messages.responses.create(user.language);
     return this.success(result, message);
   }
 
@@ -136,7 +136,7 @@ export class AdminItemsController extends BaseController {
   ) {
     const result = await this.itemsService.adminFindOne(id);
 
-    const message = await this.messages.responses.findOne(user.jwtPayload.language);
+    const message = await this.messages.responses.findOne(user.language);
     return this.success(result, message);
   }
 
@@ -162,7 +162,7 @@ export class AdminItemsController extends BaseController {
   ) {
     const result = await this.itemsService.adminUpdate(id, updateItemDto);
 
-    const message = await this.messages.responses.update(user.jwtPayload.language);
+    const message = await this.messages.responses.update(user.language);
     return this.success(result, message);
   }
 
@@ -184,7 +184,7 @@ export class AdminItemsController extends BaseController {
   ) {
     await this.itemsService.adminRemove(id);
 
-    const message = await this.messages.responses.remove(user.jwtPayload.language);
+    const message = await this.messages.responses.remove(user.language);
     return this.success({}, message);
   }
 }

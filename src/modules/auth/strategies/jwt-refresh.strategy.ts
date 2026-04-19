@@ -1,22 +1,19 @@
 import { PassportStrategy } from '@nestjs/passport';
-import { JwtStrategyName } from '../enums/jwt-strategy-name.enum';
 import { ConfigService } from '@nestjs/config';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { Injectable, Inject, UnauthorizedException } from '@nestjs/common';
 import { JwtPayload } from '../interfaces/jwt-payload.interface';
 import { Request } from 'express';
-import { RequestUser } from '../interfaces/request-user.interface';
 import { AUTH_KEY } from '@/shared/modules/cache/constants/auth.key';
 import { CACHE_SERVICE } from '@/shared/modules/cache/constants/cache.token';
 import type { ICacheService } from '@/shared/modules/cache/interfaces/cache-service.interface';
 import { I18N_AUTH } from '@/shared/constants/i18n';
 import { template } from '@/shared/helpers/functions';
+import { jwtToRequestUser } from '../helper/auth-functions';
+import { JWT_REFRESH } from '../constants/jwt-name.token';
 
 @Injectable()
-export class JwtRefreshStrategy extends PassportStrategy(
-  Strategy,
-  JwtStrategyName.REFRESH,
-) {
+export class JwtRefreshStrategy extends PassportStrategy(Strategy, JWT_REFRESH) {
   constructor(
     configService: ConfigService,
     @Inject(CACHE_SERVICE) private readonly cacheService: ICacheService,
@@ -37,14 +34,7 @@ export class JwtRefreshStrategy extends PassportStrategy(
       throw new UnauthorizedException(template(I18N_AUTH.ERRORS.TOKEN_REVOKED));
     }
     const authHeader = req.headers.authorization;
-
     payload.refreshToken = authHeader?.replace('Bearer', '').trim();
-
-    const user: RequestUser = {
-      id: payload.sub,
-      jwtPayload: payload,
-    };
-
-    return user; // Req.user
+    return jwtToRequestUser(payload); // Req.user
   }
 }

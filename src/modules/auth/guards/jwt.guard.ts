@@ -1,10 +1,10 @@
 import { ExecutionContext, Injectable } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { AuthGuard } from '@nestjs/passport';
-import { JwtStrategyName } from '../enums/jwt-strategy-name.enum';
+import { JWT_ACCESS } from '../constants/jwt-name.token';
 
 @Injectable()
-export class JwtAuthGuard extends AuthGuard(JwtStrategyName.ACCESS) {
+export class JwtAuthGuard extends AuthGuard(JWT_ACCESS) {
   constructor(private reflector: Reflector) {
     super();
   }
@@ -17,7 +17,6 @@ export class JwtAuthGuard extends AuthGuard(JwtStrategyName.ACCESS) {
     if (isPublic) {
       return true;
     }
-
     return super.canActivate(context);
   }
 }

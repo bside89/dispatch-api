@@ -1,17 +1,28 @@
-import { BaseJobPayload } from '@/shared/payloads/base-job.payload';
+import { OutboxType } from '../modules/outbox/enums/outbox-type.enum';
+import { BaseOutboxJobPayload } from '../modules/outbox/payloads/outbox.payload';
 
-export class OrderJobPayload extends BaseJobPayload {
+export abstract class OrderJobPayload extends BaseOutboxJobPayload {
   constructor(public readonly orderId: string) {
     super();
   }
 }
 
-export class ProcessOrderJobPayload extends OrderJobPayload {}
+export class ProcessOrderJobPayload extends OrderJobPayload {
+  readonly type = OutboxType.ORDER_PROCESS;
+}
 
-export class ShipOrderJobPayload extends OrderJobPayload {}
+export class ShipOrderJobPayload extends OrderJobPayload {
+  readonly type = OutboxType.ORDER_SHIP;
+}
 
-export class DeliverOrderJobPayload extends OrderJobPayload {}
+export class DeliverOrderJobPayload extends OrderJobPayload {
+  readonly type = OutboxType.ORDER_DELIVER;
+}
 
-export class CancelOrderJobPayload extends OrderJobPayload {}
+export class CancelOrderJobPayload extends OrderJobPayload {
+  readonly type = OutboxType.ORDER_CANCEL;
+}
 
-export class RefundOrderJobPayload extends OrderJobPayload {}
+export class RefundOrderJobPayload extends OrderJobPayload {
+  readonly type = OutboxType.ORDER_REFUND;
+}

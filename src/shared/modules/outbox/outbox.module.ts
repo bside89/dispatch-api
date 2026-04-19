@@ -5,7 +5,7 @@ import { bullmqDefaultJobOptions } from '@/config/bullmq.config';
 import { BullModule } from '@nestjs/bullmq';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Outbox } from './entities/outbox.entity';
-import { ORDER_QUEUE, PAYMENT_QUEUE } from '@/shared/constants/queue-names.constant';
+import { ORDER_QUEUE, PAYMENT_QUEUE } from '@/shared/constants/queues.token';
 import { OUTBOX_SERVICE, OUTBOX_REPOSITORY } from './constants/outbox.token';
 
 @Global()

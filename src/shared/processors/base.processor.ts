@@ -12,6 +12,7 @@ import { BeforeApplicationShutdown, OnApplicationBootstrap } from '@nestjs/commo
 import { ConfigService } from '@nestjs/config';
 import { LOCK_KEY } from '../constants/lock.key';
 import { DbGuardService } from '../modules/db-guard/db-guard.service';
+import { CACHE_TTL } from '../constants/cache-ttl.constant';
 
 export abstract class BaseProcessor
   extends WorkerHost
@@ -44,8 +45,10 @@ export abstract class BaseProcessor
     idempotencyKey: string,
     error?: Error,
   ) {
-    return this.guard.lock(LOCK_KEY.JOB.EXECUTE(job.id), () =>
-      this._executeJob(job, event, factory, idempotencyKey, error),
+    return this.guard.lock(
+      LOCK_KEY.JOB.EXECUTE(job.id),
+      () => this._executeJob(job, event, factory, idempotencyKey, error),
+      CACHE_TTL.JOB_LOCK,
     );
   }
 

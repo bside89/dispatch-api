@@ -26,7 +26,7 @@ import { CorrelationIdMiddleware } from './middleware/correlation-id.middleware'
 import { LoggingMiddleware } from './middleware/logging.middleware';
 import { TerminusModule } from '@nestjs/terminus';
 import { throttleConfig } from './config/throttle.config';
-import { EVENT_QUEUE, ORDER_QUEUE } from './shared/constants/queue-names.constant';
+import { EVENT_QUEUE, ORDER_QUEUE } from './shared/constants/queues.token';
 import { PaymentsModule } from './modules/payments/payments.module';
 import { PaymentsGatewayModule } from './modules/payments-gateway/payments-gateway.module';
 import { ItemsModule } from './modules/items/items.module';

@@ -131,7 +131,7 @@ export class PublicUsersController extends BaseController {
   async findMe(@GetUser() user: RequestUser) {
     const result = await this.usersService.publicFindMe(user);
 
-    const message = await this.messages.responses.findOne(user.jwtPayload.language);
+    const message = await this.messages.responses.findOne(user.language);
     return this.success(result, message);
   }
 
@@ -162,7 +162,7 @@ export class PublicUsersController extends BaseController {
   ) {
     const result = await this.usersService.publicFindOne(id);
 
-    const message = await this.messages.responses.findOne(user.jwtPayload.language);
+    const message = await this.messages.responses.findOne(user.language);
     return this.success(result, message);
   }
 
@@ -188,7 +188,7 @@ export class PublicUsersController extends BaseController {
   async update(@Body() dto: PublicUpdateUserDto, @GetUser() user: RequestUser) {
     const result = await this.usersService.publicUpdate(dto, user);
 
-    const message = await this.messages.responses.update(user.jwtPayload.language);
+    const message = await this.messages.responses.update(user.language);
     return this.success(result, message);
   }
 
@@ -208,7 +208,7 @@ export class PublicUsersController extends BaseController {
   async remove(@GetUser() user: RequestUser) {
     await this.usersService.publicRemove(user);
 
-    const message = await this.messages.responses.remove(user.jwtPayload.language);
+    const message = await this.messages.responses.remove(user.language);
     return this.success(null, message);
   }
 }

@@ -87,7 +87,7 @@ export class AdminOrdersController extends BaseController {
   ) {
     const result = await this.ordersService.adminFindOne(id);
 
-    const message = await this.messages.responses.findOne(user.jwtPayload.language);
+    const message = await this.messages.responses.findOne(user.language);
     return this.success(result, message);
   }
 
@@ -123,7 +123,7 @@ export class AdminOrdersController extends BaseController {
     const result = await this.ordersService.adminUpdate(id, updateOrderDto);
 
     const message = await this.messages.responses.update(
-      user.jwtPayload.language,
+      user.language,
       result.status,
     );
     return this.success(result, message);
@@ -158,7 +158,7 @@ export class AdminOrdersController extends BaseController {
   ) {
     await this.ordersService.adminRemove(id);
 
-    const message = await this.messages.responses.remove(user.jwtPayload.language);
+    const message = await this.messages.responses.remove(user.language);
     return this.success({}, message);
   }
 
@@ -188,7 +188,7 @@ export class AdminOrdersController extends BaseController {
   ) {
     const result = await this.ordersService.ship(id, shipOrderDto);
 
-    const message = await this.messages.responses.ship(user.jwtPayload.language);
+    const message = await this.messages.responses.ship(user.language);
     return this.success(result, message);
   }
 
@@ -214,7 +214,7 @@ export class AdminOrdersController extends BaseController {
   ) {
     const result = await this.ordersService.deliver(id);
 
-    const message = await this.messages.responses.deliver(user.jwtPayload.language);
+    const message = await this.messages.responses.deliver(user.language);
     return this.success(result, message);
   }
 
@@ -239,7 +239,7 @@ export class AdminOrdersController extends BaseController {
   ) {
     await this.ordersService.cancel(id);
 
-    const message = await this.messages.responses.cancel(user.jwtPayload.language);
+    const message = await this.messages.responses.cancel(user.language);
     return this.success({}, message);
   }
 
@@ -264,7 +264,7 @@ export class AdminOrdersController extends BaseController {
   ) {
     await this.ordersService.refund(id);
 
-    const message = await this.messages.responses.refund(user.jwtPayload.language);
+    const message = await this.messages.responses.refund(user.language);
     return this.success({}, message);
   }
 }

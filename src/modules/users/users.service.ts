@@ -26,7 +26,6 @@ import { ensureError, template } from '@/shared/helpers/functions';
 import { USER_KEY } from '../../shared/modules/cache/constants/user.key';
 import type { IOutboxService } from '@/shared/modules/outbox/interfaces/outbox-service.interface';
 import { OUTBOX_SERVICE } from '@/shared/modules/outbox/constants/outbox.token';
-import { OutboxType } from '@/shared/modules/outbox/enums/outbox-type.enum';
 import {
   CreateCustomerJobPayload,
   DeleteCustomerJobPayload,
@@ -117,10 +116,7 @@ export class UsersService extends BaseService implements IUsersService {
 
     const snapshottedUser = EntityMapper.map(savedUser, UserSnapshotDto);
     snapshottedUser.address = EntityMapper.map(dto.address, UserAddressSnapshotDto);
-    await this.outboxService.add(
-      OutboxType.PAYMENT_CREATE_CUSTOMER,
-      new CreateCustomerJobPayload(snapshottedUser),
-    );
+    await this.outboxService.add(new CreateCustomerJobPayload(snapshottedUser));
 
     await this.cacheService.set(
       idempotencyKeyFormatted,
@@ -237,10 +233,7 @@ export class UsersService extends BaseService implements IUsersService {
 
     const snapshottedUser = EntityMapper.map(updatedUser, UserSnapshotDto);
     snapshottedUser.address = EntityMapper.map(dto.address, UserAddressSnapshotDto);
-    await this.outboxService.add(
-      OutboxType.PAYMENT_UPDATE_CUSTOMER,
-      new UpdateCustomerJobPayload(snapshottedUser),
-    );
+    await this.outboxService.add(new UpdateCustomerJobPayload(snapshottedUser));
 
     this.logger.debug(`User updated successfully: ${updatedUser.id}`);
 
@@ -270,10 +263,7 @@ export class UsersService extends BaseService implements IUsersService {
     /** 3. SIDE EFFECTS */
 
     const snapshottedUser = EntityMapper.map(user, UserSnapshotDto);
-    await this.outboxService.add(
-      OutboxType.PAYMENT_DELETE_CUSTOMER,
-      new DeleteCustomerJobPayload(snapshottedUser),
-    );
+    await this.outboxService.add(new DeleteCustomerJobPayload(snapshottedUser));
   }
 
   //#endregion
@@ -339,10 +329,7 @@ export class UsersService extends BaseService implements IUsersService {
 
     const snapshottedUser = EntityMapper.map(savedUser, UserSnapshotDto);
     snapshottedUser.address = EntityMapper.map(dto.address, UserAddressSnapshotDto);
-    await this.outboxService.add(
-      OutboxType.PAYMENT_CREATE_CUSTOMER,
-      new CreateCustomerJobPayload(snapshottedUser),
-    );
+    await this.outboxService.add(new CreateCustomerJobPayload(snapshottedUser));
 
     await this.cacheService.set(
       idempotencyKeyFormatted,
@@ -442,10 +429,7 @@ export class UsersService extends BaseService implements IUsersService {
 
     const snapshottedUser = EntityMapper.map(updatedUser, UserSnapshotDto);
     snapshottedUser.address = EntityMapper.map(dto.address, UserAddressSnapshotDto);
-    await this.outboxService.add(
-      OutboxType.PAYMENT_UPDATE_CUSTOMER,
-      new UpdateCustomerJobPayload(snapshottedUser),
-    );
+    await this.outboxService.add(new UpdateCustomerJobPayload(snapshottedUser));
 
     this.logger.debug(`User updated successfully: ${updatedUser.id}`);
 
@@ -475,10 +459,7 @@ export class UsersService extends BaseService implements IUsersService {
     /** 3. SIDE EFFECTS */
 
     const snapshottedUser = EntityMapper.map(user, UserSnapshotDto);
-    await this.outboxService.add(
-      OutboxType.PAYMENT_DELETE_CUSTOMER,
-      new DeleteCustomerJobPayload(snapshottedUser),
-    );
+    await this.outboxService.add(new DeleteCustomerJobPayload(snapshottedUser));
 
     this.logger.debug('User deleted successfully', { userId: id });
   }
@@ -492,7 +473,7 @@ export class UsersService extends BaseService implements IUsersService {
       throw new ForbiddenException(template(I18N_USERS.ERRORS.AUTH_IS_REQUIRED));
     }
 
-    const requestUserRoleLevel = USER_ROLE_LEVEL[requestUser.jwtPayload.role];
+    const requestUserRoleLevel = USER_ROLE_LEVEL[requestUser.role];
     const targetUserRoleLevel = USER_ROLE_LEVEL[targetUser.role];
 
     if (requestUserRoleLevel <= targetUserRoleLevel) {
@@ -508,7 +489,7 @@ export class UsersService extends BaseService implements IUsersService {
       throw new ForbiddenException(template(I18N_USERS.ERRORS.AUTH_IS_REQUIRED));
     }
 
-    const requestUserRoleLevel = USER_ROLE_LEVEL[requestUser.jwtPayload.role];
+    const requestUserRoleLevel = USER_ROLE_LEVEL[requestUser.role];
     const targetRoleLevel = USER_ROLE_LEVEL[targetRole];
 
     if (requestUserRoleLevel <= targetRoleLevel) {

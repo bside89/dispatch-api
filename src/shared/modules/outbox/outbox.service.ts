@@ -10,15 +10,14 @@ import { Queue } from 'bullmq';
 import { EVENT_BUS } from '../events/constants/event-bus.token';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Cron, CronExpression } from '@nestjs/schedule';
-import { ORDER_QUEUE, PAYMENT_QUEUE } from '@/shared/constants/queue-names.constant';
-import { OutboxPayloadMap } from './types/outbox-payload.map';
+import { ORDER_QUEUE, PAYMENT_QUEUE } from '@/shared/constants/queues.token';
 import { ensureError } from '@/shared/helpers/functions';
 import { EventBusJob } from '../events/interfaces/event-bus-job.interface';
 import { QueueJob } from '@/shared/interfaces/queue-job.interface';
-import { OutboxPayload } from './types/outbox.payload';
 import { IOutboxService } from './interfaces/outbox-service.interface';
 import { BaseService } from '@/shared/services/base.service';
 import { DbGuardService } from '../db-guard/db-guard.service';
+import { BaseOutboxJobPayload } from './payloads/outbox.payload';
 
 @Injectable()
 export class OutboxService
@@ -30,9 +29,9 @@ export class OutboxService
   private isShuttingDown = false;
 
   constructor(
-    @InjectQueue(ORDER_QUEUE) protected readonly orderQueue: Queue,
-    @InjectQueue(PAYMENT_QUEUE) protected readonly paymentQueue: Queue,
-    @Inject(EVENT_BUS) protected readonly eventBus: IEventBus,
+    @InjectQueue(ORDER_QUEUE) private readonly orderQueue: Queue,
+    @InjectQueue(PAYMENT_QUEUE) private readonly paymentQueue: Queue,
+    @Inject(EVENT_BUS) private readonly eventBus: IEventBus,
     @Inject(OUTBOX_REPOSITORY) private readonly outboxRepository: IOutboxRepository,
     private readonly guard: DbGuardService,
   ) {
@@ -109,7 +108,7 @@ export class OutboxService
             opts: {
               jobId: msg.id,
             },
-          }) as QueueJob<OutboxPayload>,
+          }) as QueueJob<BaseOutboxJobPayload>,
       );
     const paymentQueueMsg = messages
       .filter((m) =>
@@ -127,7 +126,7 @@ export class OutboxService
             opts: {
               jobId: msg.id,
             },
-          }) as QueueJob<OutboxPayload>,
+          }) as QueueJob<BaseOutboxJobPayload>,
       );
     const eventBusMsg = messages
       .filter((m) => m.type === OutboxType.EVENTS_NOTIFY_USER)
@@ -141,7 +140,7 @@ export class OutboxService
                 jobId: msg.id,
               },
             },
-          }) as EventBusJob<OutboxPayload>,
+          }) as EventBusJob<BaseOutboxJobPayload>,
       );
 
     if (orderQueueMsg.length > 0) {
@@ -155,14 +154,11 @@ export class OutboxService
     }
   }
 
-  async add<T extends OutboxType>(
-    type: T,
-    payload: OutboxPayloadMap[T],
-  ): Promise<void> {
+  async add<T extends BaseOutboxJobPayload>(outboxPayload: T): Promise<void> {
     const correlationId = RequestContext.getCorrelationId() ?? randomUUID();
     const outboxEntry = this.outboxRepository.createEntity({
-      type,
-      payload,
+      type: outboxPayload.type,
+      payload: outboxPayload,
       correlationId,
       createdAt: new Date(),
     });

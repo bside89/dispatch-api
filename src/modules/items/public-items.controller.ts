@@ -70,7 +70,7 @@ export class PublicItemsController extends BaseController {
   ) {
     const result = await this.itemsService.publicFindOne(id);
 
-    const message = await this.messages.responses.findOne(user.jwtPayload.language);
+    const message = await this.messages.responses.findOne(user.language);
     return this.success(result, message);
   }
 }

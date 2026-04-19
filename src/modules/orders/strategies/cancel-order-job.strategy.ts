@@ -3,7 +3,6 @@ import { Job } from 'bullmq';
 import { OrderStatus } from '../enums/order-status.enum';
 import { CancelOrderJobPayload } from '../../../shared/payloads/order-job.payload';
 import { NotifyUserJobPayload } from '../../../shared/payloads/event-job.payload';
-import { OutboxType } from '@/shared/modules/outbox/enums/outbox-type.enum';
 import { CACHE_SERVICE } from '../../../shared/modules/cache/constants/cache.token';
 import type { ICacheService } from '../../../shared/modules/cache/interfaces/cache-service.interface';
 import { OUTBOX_SERVICE } from '@/shared/modules/outbox/constants/outbox.token';
@@ -89,10 +88,7 @@ export class CancelOrderJobStrategy extends BaseOrderJobStrategy<CancelOrderJobP
     // Notify the user
     const user = order.user;
     const message = await this.messages.notifications.orderCanceled(user.language);
-    await this.outboxService.add(
-      OutboxType.EVENTS_NOTIFY_USER,
-      new NotifyUserJobPayload(user.id, message),
-    );
+    await this.outboxService.add(new NotifyUserJobPayload(user.id, message));
 
     this.logger.log(`Order moved to CANCELED`, { orderId: order.id });
   }
