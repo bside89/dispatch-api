@@ -26,8 +26,6 @@ export class OutboxService
 
   private isShuttingDown = false;
 
-  private readonly dispatcher = new OutboxDispatcher();
-
   constructor(
     @InjectQueue(ORDER_QUEUE) private readonly orderQueue: Queue,
     @InjectQueue(PAYMENT_QUEUE) private readonly paymentQueue: Queue,
@@ -91,7 +89,7 @@ export class OutboxService
     if (messages.length === 0) return;
 
     const { orderQueueMsg, paymentQueueMsg, eventBusMsg } =
-      this.dispatcher.partition(messages);
+      OutboxDispatcher.partition(messages);
 
     if (orderQueueMsg.length > 0) {
       await this.orderQueue.addBulk(orderQueueMsg);

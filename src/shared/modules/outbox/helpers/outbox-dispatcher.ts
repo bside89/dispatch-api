@@ -10,34 +10,38 @@ type OutboxDispatchPlan = {
   eventBusMsg: EventBusJob<BaseOutboxJobPayload>[];
 };
 
-const ORDER_TYPES = new Set<OutboxType>([
-  OutboxType.ORDER_PROCESS,
-  OutboxType.ORDER_CANCEL,
-  OutboxType.ORDER_REFUND,
-]);
-
-const PAYMENT_TYPES = new Set<OutboxType>([
-  OutboxType.PAYMENT_CREATE_CUSTOMER,
-  OutboxType.PAYMENT_UPDATE_CUSTOMER,
-  OutboxType.PAYMENT_DELETE_CUSTOMER,
-]);
-
 export class OutboxDispatcher {
-  partition(messages: Outbox[]): OutboxDispatchPlan {
+  private static readonly ORDER_TYPES = new Set<OutboxType>([
+    OutboxType.ORDER_PROCESS,
+    OutboxType.ORDER_CANCEL,
+    OutboxType.ORDER_REFUND,
+  ]);
+
+  private static readonly PAYMENT_TYPES = new Set<OutboxType>([
+    OutboxType.PAYMENT_CREATE_CUSTOMER,
+    OutboxType.PAYMENT_UPDATE_CUSTOMER,
+    OutboxType.PAYMENT_DELETE_CUSTOMER,
+  ]);
+
+  private static readonly EVENT_TYPES = new Set<OutboxType>([
+    OutboxType.EVENTS_NOTIFY_USER,
+  ]);
+
+  static partition(messages: Outbox[]): OutboxDispatchPlan {
     return {
       orderQueueMsg: messages
-        .filter((message) => ORDER_TYPES.has(message.type))
-        .map((message) => this.toQueueJob(message)),
+        .filter((message) => OutboxDispatcher.ORDER_TYPES.has(message.type))
+        .map((message) => OutboxDispatcher.toQueueJob(message)),
       paymentQueueMsg: messages
-        .filter((message) => PAYMENT_TYPES.has(message.type))
-        .map((message) => this.toQueueJob(message)),
+        .filter((message) => OutboxDispatcher.PAYMENT_TYPES.has(message.type))
+        .map((message) => OutboxDispatcher.toQueueJob(message)),
       eventBusMsg: messages
-        .filter((message) => message.type === OutboxType.EVENTS_NOTIFY_USER)
-        .map((message) => this.toEventBusJob(message)),
+        .filter((message) => OutboxDispatcher.EVENT_TYPES.has(message.type))
+        .map((message) => OutboxDispatcher.toEventBusJob(message)),
     };
   }
 
-  private toQueueJob(message: Outbox): QueueJob<BaseOutboxJobPayload> {
+  private static toQueueJob(message: Outbox): QueueJob<BaseOutboxJobPayload> {
     return {
       name: message.type,
       data: message.payload,
@@ -47,9 +51,9 @@ export class OutboxDispatcher {
     };
   }
 
-  private toEventBusJob(message: Outbox): EventBusJob<BaseOutboxJobPayload> {
+  private static toEventBusJob(message: Outbox): EventBusJob<BaseOutboxJobPayload> {
     return {
-      job: this.toQueueJob(message),
+      job: OutboxDispatcher.toQueueJob(message),
     };
   }
 }

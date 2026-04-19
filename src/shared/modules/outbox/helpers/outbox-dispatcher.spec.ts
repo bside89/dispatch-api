@@ -4,8 +4,6 @@ import { Outbox } from '../entities/outbox.entity';
 
 describe('OutboxDispatcher', () => {
   it('should partition outbox messages by target transport', () => {
-    const dispatcher = new OutboxDispatcher();
-
     const messages = [
       {
         id: '1',
@@ -41,7 +39,7 @@ describe('OutboxDispatcher', () => {
       },
     ] as unknown as Outbox[];
 
-    const result = dispatcher.partition(messages);
+    const result = OutboxDispatcher.partition(messages);
 
     expect(result.orderQueueMsg).toEqual([
       {
