@@ -18,6 +18,7 @@ import { BaseOrderJobStrategy } from './base-order-job.strategy';
 import { OrderMessageFactory } from '../factories/order-message.factory';
 import { Order } from '../entities/order.entity';
 import { DbGuardService } from '@/shared/modules/db-guard/db-guard.service';
+import { OrderTransitionPolicy } from '../services/order-transition-policy.service';
 
 @Injectable()
 export class ProcessOrderJobStrategy extends BaseOrderJobStrategy<ProcessOrderJobPayload> {
@@ -27,8 +28,15 @@ export class ProcessOrderJobStrategy extends BaseOrderJobStrategy<ProcessOrderJo
     @Inject(CACHE_SERVICE) cacheService: ICacheService,
     @Inject(ORDER_REPOSITORY) orderRepository: IOrderRepository,
     guard: DbGuardService,
+    transitionPolicy: OrderTransitionPolicy,
   ) {
-    super(ProcessOrderJobStrategy.name, cacheService, orderRepository, guard);
+    super(
+      ProcessOrderJobStrategy.name,
+      cacheService,
+      orderRepository,
+      guard,
+      transitionPolicy,
+    );
   }
 
   async execute(job: Job<ProcessOrderJobPayload>): Promise<void> {

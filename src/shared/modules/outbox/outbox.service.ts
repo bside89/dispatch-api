@@ -1,6 +1,5 @@
 import { Outbox } from './entities/outbox.entity';
 import { Inject, Injectable, OnModuleDestroy } from '@nestjs/common';
-import { OutboxType } from './enums/outbox-type.enum';
 import type { IOutboxRepository } from './interfaces/outbox-repository.interface';
 import { OUTBOX_REPOSITORY } from './constants/outbox.token';
 import { RequestContext } from '@/shared/utils/request-context';
@@ -12,12 +11,11 @@ import { InjectQueue } from '@nestjs/bullmq';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { ORDER_QUEUE, PAYMENT_QUEUE } from '@/shared/constants/queues.token';
 import { ensureError } from '@/shared/helpers/functions';
-import { EventBusJob } from '../events/interfaces/event-bus-job.interface';
-import { QueueJob } from '@/shared/interfaces/queue-job.interface';
 import { IOutboxService } from './interfaces/outbox-service.interface';
 import { BaseService } from '@/shared/services/base.service';
 import { DbGuardService } from '../db-guard/db-guard.service';
 import { BaseOutboxJobPayload } from './payloads/outbox.payload';
+import { OutboxDispatcher } from './helpers/outbox-dispatcher';
 
 @Injectable()
 export class OutboxService
@@ -27,6 +25,8 @@ export class OutboxService
   private isProcessing = false;
 
   private isShuttingDown = false;
+
+  private readonly dispatcher = new OutboxDispatcher();
 
   constructor(
     @InjectQueue(ORDER_QUEUE) private readonly orderQueue: Queue,
@@ -90,58 +90,8 @@ export class OutboxService
   private async dispatch(messages: Outbox[]): Promise<void> {
     if (messages.length === 0) return;
 
-    // Separate messages based on their type to determine the appropriate dispatch
-    // method (queue vs event bus)
-    const orderQueueMsg = messages
-      .filter((m) =>
-        [
-          OutboxType.ORDER_PROCESS,
-          OutboxType.ORDER_CANCEL,
-          OutboxType.ORDER_REFUND,
-        ].includes(m.type),
-      )
-      .map(
-        (msg) =>
-          ({
-            name: msg.type,
-            data: msg.payload,
-            opts: {
-              jobId: msg.id,
-            },
-          }) as QueueJob<BaseOutboxJobPayload>,
-      );
-    const paymentQueueMsg = messages
-      .filter((m) =>
-        [
-          OutboxType.PAYMENT_CREATE_CUSTOMER,
-          OutboxType.PAYMENT_UPDATE_CUSTOMER,
-          OutboxType.PAYMENT_DELETE_CUSTOMER,
-        ].includes(m.type),
-      )
-      .map(
-        (msg) =>
-          ({
-            name: msg.type,
-            data: msg.payload,
-            opts: {
-              jobId: msg.id,
-            },
-          }) as QueueJob<BaseOutboxJobPayload>,
-      );
-    const eventBusMsg = messages
-      .filter((m) => m.type === OutboxType.EVENTS_NOTIFY_USER)
-      .map(
-        (msg) =>
-          ({
-            job: {
-              name: msg.type,
-              data: msg.payload,
-              opts: {
-                jobId: msg.id,
-              },
-            },
-          }) as EventBusJob<BaseOutboxJobPayload>,
-      );
+    const { orderQueueMsg, paymentQueueMsg, eventBusMsg } =
+      this.dispatcher.partition(messages);
 
     if (orderQueueMsg.length > 0) {
       await this.orderQueue.addBulk(orderQueueMsg);

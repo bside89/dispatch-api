@@ -14,6 +14,7 @@ import { delay } from '@/shared/helpers/functions';
 import { OrderMessageFactory } from '../factories/order-message.factory';
 import { Order } from '../entities/order.entity';
 import { DbGuardService } from '@/shared/modules/db-guard/db-guard.service';
+import { OrderTransitionPolicy } from '../services/order-transition-policy.service';
 
 @Injectable()
 export class RefundOrderJobStrategy extends BaseOrderJobStrategy<RefundOrderJobPayload> {
@@ -23,8 +24,15 @@ export class RefundOrderJobStrategy extends BaseOrderJobStrategy<RefundOrderJobP
     @Inject(CACHE_SERVICE) cacheService: ICacheService,
     @Inject(ORDER_REPOSITORY) orderRepository: IOrderRepository,
     guard: DbGuardService,
+    transitionPolicy: OrderTransitionPolicy,
   ) {
-    super(RefundOrderJobStrategy.name, cacheService, orderRepository, guard);
+    super(
+      RefundOrderJobStrategy.name,
+      cacheService,
+      orderRepository,
+      guard,
+      transitionPolicy,
+    );
   }
 
   async execute(job: Job<RefundOrderJobPayload>): Promise<void> {

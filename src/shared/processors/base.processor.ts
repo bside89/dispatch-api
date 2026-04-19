@@ -38,7 +38,24 @@ export abstract class BaseProcessor
     await this.worker.close();
   }
 
-  async executeJob<T extends BaseJobHandlerFactory>(
+  protected async executeProcessJob<T extends BaseJobHandlerFactory>(
+    job: Job,
+    factory: T,
+    idempotencyKey: string,
+  ) {
+    return this.executeJob(job, 'process', factory, idempotencyKey);
+  }
+
+  protected async executeFailedJob<T extends BaseJobHandlerFactory>(
+    job: Job,
+    factory: T,
+    idempotencyKey: string,
+    error: Error,
+  ) {
+    return this.executeJob(job, 'failed', factory, idempotencyKey, error);
+  }
+
+  private async executeJob<T extends BaseJobHandlerFactory>(
     job: Job,
     event: 'process' | 'failed',
     factory: T,

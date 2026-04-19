@@ -24,21 +24,15 @@ export class EventProcessor extends BaseProcessor {
 
   // Main method
   async process(job: Job) {
-    await this.executeJob(
-      job,
-      'process',
-      this.factory,
-      EVENT_KEY.IDEMPOTENCY(job.id),
-    );
+    await this.executeProcessJob(job, this.factory, EVENT_KEY.IDEMPOTENCY(job.id));
   }
 
   @OnWorkerEvent('failed')
   async processFailed(job: Job, error: Error) {
     if (job.attemptsMade >= (job.opts.attempts || 1)) {
       // Execute after all retries have been exhausted
-      await this.executeJob(
+      await this.executeFailedJob(
         job,
-        'failed',
         this.factory,
         EVENT_KEY.IDEMPOTENCY(job.id),
         error,

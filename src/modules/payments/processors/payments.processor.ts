@@ -24,9 +24,8 @@ export class PaymentsProcessor extends BaseProcessor {
 
   // Main method
   async process(job: Job) {
-    await this.executeJob(
+    await this.executeProcessJob(
       job,
-      'process',
       this.factory,
       PAYMENT_KEY.IDEMPOTENCY('job', job.id),
     );
@@ -36,9 +35,8 @@ export class PaymentsProcessor extends BaseProcessor {
   async processFailed(job: Job, error: Error) {
     if (job.attemptsMade >= (job.opts.attempts || 1)) {
       // Execute after all retries have been exhausted
-      await this.executeJob(
+      await this.executeFailedJob(
         job,
-        'failed',
         this.factory,
         PAYMENT_KEY.IDEMPOTENCY('job', job.id),
         error,

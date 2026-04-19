@@ -5,19 +5,18 @@ import { BaseJobStrategy } from '@/shared/strategies/base-job.strategy';
 import { Order } from '../entities/order.entity';
 import { LOCK_KEY } from '@/shared/constants/lock.key';
 import { OrderJobPayload } from '@/shared/payloads/order-job.payload';
-import { ORDER_STATUS_PRECONDITIONS } from '../constants/order-status-preconditions.constant';
 import { DbGuardService } from '@/shared/modules/db-guard/db-guard.service';
+import { OrderTransitionPolicy } from '../services/order-transition-policy.service';
 
 export abstract class BaseOrderJobStrategy<
   T extends OrderJobPayload,
 > extends BaseJobStrategy<T> {
-  protected readonly VALID_PRECONDITIONS = ORDER_STATUS_PRECONDITIONS;
-
   constructor(
     jobName: string,
     protected readonly cacheService: ICacheService,
     protected readonly orderRepository: IOrderRepository,
     protected readonly guard: DbGuardService,
+    protected readonly transitionPolicy: OrderTransitionPolicy,
   ) {
     super(jobName);
   }
@@ -47,8 +46,8 @@ export abstract class BaseOrderJobStrategy<
       this.logger.error(`Order ${orderId} does not exist`);
       return null;
     }
-    const preconditions = this.VALID_PRECONDITIONS[newStatus];
-    if (!preconditions.includes(order.status)) {
+    if (!this.transitionPolicy.canTransition(order.status, newStatus)) {
+      const preconditions = this.transitionPolicy.getPreconditions(newStatus);
       this.logger.error(
         `Order ${orderId} must be ${preconditions.join(' or ')} ` +
           `to proceed; current status: ${order.status}`,

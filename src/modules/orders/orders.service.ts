@@ -32,7 +32,6 @@ import {
   RefundOrderJobPayload,
 } from '@/shared/payloads/order-job.payload';
 import { ShipOrderDto } from './dto/ship-order.dto';
-import { ORDER_STATUS_PRECONDITIONS } from './constants/order-status-preconditions.constant';
 import { template } from '@/shared/helpers/functions';
 import { ORDER_KEY } from '../../shared/modules/cache/constants/order.key';
 import type { RequestUser } from '../auth/interfaces/request-user.interface';
@@ -53,6 +52,7 @@ import { OrderByUserQueryDto } from './dto/order-by-user-query.dto';
 import { IOrdersService } from './interfaces/orders-service.interface';
 import { BaseService } from '@/shared/services/base.service';
 import { DbGuardService } from '@/shared/modules/db-guard/db-guard.service';
+import { OrderTransitionPolicy } from './services/order-transition-policy.service';
 
 @Injectable()
 export class OrdersService extends BaseService implements IOrdersService {
@@ -66,6 +66,7 @@ export class OrdersService extends BaseService implements IOrdersService {
     private readonly paymentsGatewayService: IPaymentsGatewayService,
     @Inject(CACHE_SERVICE) private readonly cacheService: ICacheService,
     private readonly messages: OrderMessageFactory,
+    private readonly transitionPolicy: OrderTransitionPolicy,
     private readonly guard: DbGuardService,
   ) {
     super(OrdersService.name);
@@ -456,8 +457,7 @@ export class OrdersService extends BaseService implements IOrdersService {
       throw new NotFoundException(template(I18N_ORDERS.ERRORS.ORDER_NOT_FOUND));
     }
 
-    const preconditions = ORDER_STATUS_PRECONDITIONS[OrderStatus.SHIPPED];
-    if (!preconditions.includes(order.status)) {
+    if (!this.transitionPolicy.canTransition(order.status, OrderStatus.SHIPPED)) {
       throw new BadRequestException(
         template(I18N_ORDERS.ERRORS.BAD_PRECONDITIONS, {
           status: OrderStatus.SHIPPED,
@@ -504,8 +504,7 @@ export class OrdersService extends BaseService implements IOrdersService {
       throw new NotFoundException(template(I18N_ORDERS.ERRORS.ORDER_NOT_FOUND));
     }
 
-    const preconditions = ORDER_STATUS_PRECONDITIONS[OrderStatus.DELIVERED];
-    if (!preconditions.includes(order.status)) {
+    if (!this.transitionPolicy.canTransition(order.status, OrderStatus.DELIVERED)) {
       throw new BadRequestException(
         template(I18N_ORDERS.ERRORS.BAD_PRECONDITIONS, {
           status: OrderStatus.DELIVERED,
@@ -549,8 +548,7 @@ export class OrdersService extends BaseService implements IOrdersService {
       throw new NotFoundException(template(I18N_ORDERS.ERRORS.ORDER_NOT_FOUND));
     }
 
-    const preconditions = ORDER_STATUS_PRECONDITIONS[OrderStatus.CANCELED];
-    if (!preconditions.includes(order.status)) {
+    if (!this.transitionPolicy.canTransition(order.status, OrderStatus.CANCELED)) {
       throw new BadRequestException(
         template(I18N_ORDERS.ERRORS.BAD_PRECONDITIONS, {
           status: OrderStatus.CANCELED,
@@ -584,8 +582,7 @@ export class OrdersService extends BaseService implements IOrdersService {
       throw new NotFoundException(template(I18N_ORDERS.ERRORS.ORDER_NOT_FOUND));
     }
 
-    const preconditions = ORDER_STATUS_PRECONDITIONS[OrderStatus.REFUNDED];
-    if (!preconditions.includes(order.status)) {
+    if (!this.transitionPolicy.canTransition(order.status, OrderStatus.REFUNDED)) {
       throw new BadRequestException(
         template(I18N_ORDERS.ERRORS.BAD_PRECONDITIONS, {
           status: OrderStatus.REFUNDED,
