@@ -12,7 +12,7 @@ import { PublicUpdateUserDto, UpdateUserDto } from './dto/update-user.dto';
 import { PublicUserQueryDto, UserQueryDto } from './dto/user-query.dto';
 import type { IUserRepository } from './interfaces/user-repository.interface';
 import { USER_REPOSITORY } from './constants/users.token';
-import { PaginatedResultDto } from '@/shared/dto/paginated-result.dto';
+import { PagOffsetResultDto } from '@/shared/dto/pag-offset-result.dto';
 import {
   PublicUserResponseDto,
   UserAddressResponseDto,
@@ -30,7 +30,7 @@ import {
   CreateCustomerJobPayload,
   DeleteCustomerJobPayload,
   UpdateCustomerJobPayload,
-} from '@/shared/payloads/payment-job.payload';
+} from '@/shared/payloads/payments-job.payload';
 import type { RequestUser } from '../auth/interfaces/request-user.interface';
 import { UserRole } from '../../shared/enums/user-role.enum';
 import type { IPaymentsGatewayService } from '../payments-gateway/interfaces/payments-gateway-service.interface';
@@ -173,17 +173,17 @@ export class UsersService extends BaseService implements IUsersService {
 
   async publicFindAll(
     query: PublicUserQueryDto,
-  ): Promise<PaginatedResultDto<PublicUserResponseDto>> {
+  ): Promise<PagOffsetResultDto<PublicUserResponseDto>> {
     const result = await this.userRepository.filter(query);
 
-    const resultMapped = new PaginatedResultDto<PublicUserResponseDto>(
-      result.total,
-      result.page,
-      result.limit,
-      EntityMapper.mapArray(result.data, PublicUserResponseDto),
+    const resultMapped = new PagOffsetResultDto<PublicUserResponseDto>(
+      result.meta.total,
+      result.meta.page,
+      result.meta.limit,
+      EntityMapper.mapArray(result.items, PublicUserResponseDto),
     );
 
-    this.logger.debug(`Retrieved ${result.data.length} users with public query`, {
+    this.logger.debug(`Retrieved ${result.items.length} users with public query`, {
       query,
     });
 
@@ -347,17 +347,17 @@ export class UsersService extends BaseService implements IUsersService {
 
   async adminFindAll(
     query: UserQueryDto,
-  ): Promise<PaginatedResultDto<UserResponseDto>> {
+  ): Promise<PagOffsetResultDto<UserResponseDto>> {
     const result = await this.userRepository.filter(query);
 
-    const resultMapped = new PaginatedResultDto<UserResponseDto>(
-      result.total,
-      result.page,
-      result.limit,
-      EntityMapper.mapArray(result.data, UserResponseDto),
+    const resultMapped = new PagOffsetResultDto<UserResponseDto>(
+      result.meta.total,
+      result.meta.page,
+      result.meta.limit,
+      EntityMapper.mapArray(result.items, UserResponseDto),
     );
 
-    this.logger.debug(`Retrieved ${result.data.length} users`);
+    this.logger.debug(`Retrieved ${result.items.length} users`);
 
     return resultMapped;
   }

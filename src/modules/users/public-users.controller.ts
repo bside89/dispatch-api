@@ -41,7 +41,7 @@ import type { RequestUser } from '../auth/interfaces/request-user.interface';
 import { UserMessageFactory } from './factories/user-message.factory';
 import { I18N_COMMON } from '@/shared/constants/i18n';
 import { template } from '@/shared/helpers/functions';
-import { PaginatedResultDto } from '@/shared/dto/paginated-result.dto';
+import { PagOffsetResultDto } from '@/shared/dto/pag-offset-result.dto';
 
 @Controller({ path: 'v1/users', version: '1' })
 @ApiTags('users')
@@ -108,12 +108,12 @@ export class PublicUsersController extends BaseController {
   })
   @ApiOkResponse({
     description: 'List of users retrieved successfully',
-    type: PaginatedResultDto<PublicUserResponseDto>,
+    type: PagOffsetResultDto<PublicUserResponseDto>,
   })
   async findAll(@Query() queryDto: UserQueryDto) {
     const result = await this.usersService.publicFindAll(queryDto);
 
-    return this.paginate(result.data, result.total, result.page, result.limit);
+    return this.paginateOffset(result);
   }
 
   @Get('me')

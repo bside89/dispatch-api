@@ -6,7 +6,7 @@ export const I18N_USERS = {
     UPDATE_LOGIN: 'users.responses.updateLogin',
     DELETE: 'users.responses.delete',
     UPDATE_ROLE: 'users.responses.updateRole',
-  },
+  } as const,
   ERRORS: {
     USER_NOT_FOUND: 'users.errors.userNotFound',
     EMAIL_ALREADY_EXISTS: 'users.errors.emailAlreadyExists',
@@ -15,5 +15,5 @@ export const I18N_USERS = {
     AUTH_IS_REQUIRED: 'users.errors.authIsRequired',
     ACCESS_DENIED: 'users.errors.accessDenied',
     ROLE_CHANGE_DENIED: 'users.errors.roleChangeDenied',
-  },
-};
+  } as const,
+} as const;

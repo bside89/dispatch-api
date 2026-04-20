@@ -5,8 +5,8 @@ import {
   CancelOrderJobPayload,
   ProcessOrderJobPayload,
   RefundOrderJobPayload,
-} from '@/shared/payloads/order-job.payload';
-import { NotifyUserJobPayload } from '@/shared/payloads/event-job.payload';
+} from '@/shared/payloads/orders-job.payload';
+import { NotifyUserJobPayload } from '@/shared/payloads/side-effects-job.payload';
 import { ensureError } from '@/shared/helpers/functions';
 import { CACHE_SERVICE } from '@/shared/modules/cache/constants/cache.token';
 import type { ICacheService } from '@/shared/modules/cache/interfaces/cache-service.interface';
@@ -18,7 +18,7 @@ import { BaseOrderJobStrategy } from './base-order-job.strategy';
 import { OrderMessageFactory } from '../factories/order-message.factory';
 import { Order } from '../entities/order.entity';
 import { DbGuardService } from '@/shared/modules/db-guard/db-guard.service';
-import { OrderTransitionPolicy } from '../services/order-transition-policy.service';
+import { OrderTransitionPolicy } from '../helpers/order-transition-policy';
 
 @Injectable()
 export class ProcessOrderJobStrategy extends BaseOrderJobStrategy<ProcessOrderJobPayload> {
@@ -28,15 +28,8 @@ export class ProcessOrderJobStrategy extends BaseOrderJobStrategy<ProcessOrderJo
     @Inject(CACHE_SERVICE) cacheService: ICacheService,
     @Inject(ORDER_REPOSITORY) orderRepository: IOrderRepository,
     guard: DbGuardService,
-    transitionPolicy: OrderTransitionPolicy,
   ) {
-    super(
-      ProcessOrderJobStrategy.name,
-      cacheService,
-      orderRepository,
-      guard,
-      transitionPolicy,
-    );
+    super(ProcessOrderJobStrategy.name, cacheService, orderRepository, guard);
   }
 
   async execute(job: Job<ProcessOrderJobPayload>): Promise<void> {
@@ -46,7 +39,10 @@ export class ProcessOrderJobStrategy extends BaseOrderJobStrategy<ProcessOrderJo
   private async _execute(job: Job<ProcessOrderJobPayload>): Promise<void> {
     const { orderId } = job.data;
 
-    const order = await this.getAndValidate(orderId, OrderStatus.PROCESSED);
+    const order = await this.validateAndRetrieveOrder(
+      orderId,
+      OrderStatus.PROCESSED,
+    );
     if (!order) return;
 
     this.logger.log(
@@ -95,14 +91,7 @@ export class ProcessOrderJobStrategy extends BaseOrderJobStrategy<ProcessOrderJo
       return;
     }
 
-    const refundStatuses = [
-      OrderStatus.PAID,
-      OrderStatus.PROCESSED,
-      OrderStatus.SHIPPED,
-      OrderStatus.DELIVERED,
-    ];
-
-    if (refundStatuses.includes(order.status)) {
+    if (OrderTransitionPolicy.canTransition(order.status, OrderStatus.REFUNDED)) {
       // Payment was already captured — refund
       await this.outboxService.add(new RefundOrderJobPayload(orderId));
     } else {

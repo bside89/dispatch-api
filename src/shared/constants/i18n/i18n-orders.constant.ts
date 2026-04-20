@@ -8,7 +8,7 @@ export const I18N_ORDERS = {
     DELIVER: 'orders.responses.deliver',
     CANCEL: 'orders.responses.cancel',
     REFUND: 'orders.responses.refund',
-  },
+  } as const,
   NOTIFICATIONS: {
     ORDER_CREATED: 'orders.notifications.orderCreated',
     ORDER_UPDATED: 'orders.notifications.orderUpdated',
@@ -19,12 +19,12 @@ export const I18N_ORDERS = {
     ORDER_CANCELED: 'orders.notifications.orderCanceled',
     ORDER_REFUNDED: 'orders.notifications.orderRefunded',
     ORDER_PROCESS_FAILED: 'orders.notifications.orderProcessFailed',
-  },
+  } as const,
   ERRORS: {
     ORDER_NOT_FOUND: 'orders.errors.orderNotFound',
     INVALID_ORDER_DATA: 'orders.errors.invalidOrderData',
     INSUFFICIENT_STOCK: 'orders.errors.insufficientStock',
     BAD_PRECONDITIONS: 'orders.errors.badPreconditions',
     ACCESS_DENIED: 'orders.errors.accessDenied',
-  },
-};
+  } as const,
+} as const;

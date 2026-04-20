@@ -15,7 +15,7 @@ import { APP_GUARD } from '@nestjs/core';
 import { JwtAuthGuard } from './modules/auth/guards/jwt.guard';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { RolesGuard } from './modules/auth/guards/roles.guard';
-import { EventsModule } from './shared/modules/events/events.module';
+import { SideEffectsModule } from './modules/side-effects/side-effects.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { loggerConfig } from './config/logger.config';
 import { LoggerModule } from 'nestjs-pino';
@@ -26,7 +26,7 @@ import { CorrelationIdMiddleware } from './middleware/correlation-id.middleware'
 import { LoggingMiddleware } from './middleware/logging.middleware';
 import { TerminusModule } from '@nestjs/terminus';
 import { throttleConfig } from './config/throttle.config';
-import { EVENT_QUEUE, ORDER_QUEUE } from './shared/constants/queues.token';
+import { SIDE_EFFECTS_QUEUE, ORDER_QUEUE } from './shared/constants/queues.token';
 import { PaymentsModule } from './modules/payments/payments.module';
 import { PaymentsGatewayModule } from './modules/payments-gateway/payments-gateway.module';
 import { ItemsModule } from './modules/items/items.module';
@@ -34,6 +34,7 @@ import * as path from 'path';
 import { existsSync } from 'fs';
 import { AcceptLanguageResolver, I18nModule, QueryResolver } from 'nestjs-i18n';
 import { DbGuardModule } from './shared/modules/db-guard/db-guard.module';
+import { NotificationsModule } from './modules/notifications/notifications.module';
 
 const i18nPath = [
   path.join(__dirname, 'i18n'),
@@ -89,7 +90,7 @@ const i18nPath = [
         adapter: BullMQAdapter,
       },
       {
-        name: EVENT_QUEUE,
+        name: SIDE_EFFECTS_QUEUE,
         adapter: BullMQAdapter,
       },
     ),
@@ -112,13 +113,14 @@ const i18nPath = [
     OrdersModule,
     UsersModule,
     ItemsModule,
-    EventsModule,
+    SideEffectsModule,
     CacheModule,
     DbGuardModule,
     OutboxModule,
     TerminusModule,
     PaymentsModule,
     PaymentsGatewayModule,
+    NotificationsModule,
   ],
   controllers: [AppController],
   providers: [

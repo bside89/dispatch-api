@@ -42,7 +42,7 @@ import { Roles } from '../auth/decorators/roles.decorator';
 import { CreateUserDto } from './dto/create-user.dto';
 import { I18N_COMMON } from '@/shared/constants/i18n/i18n-common.constant';
 import { template } from '@/shared/helpers/functions';
-import { PaginatedResultDto } from '@/shared/dto/paginated-result.dto';
+import { PagOffsetResultDto } from '@/shared/dto/pag-offset-result.dto';
 
 @Controller({ path: 'v1/admin/users', version: '1' })
 @ApiTags('users-admin')
@@ -115,12 +115,12 @@ export class AdminUsersController extends BaseController {
   })
   @ApiOkResponse({
     description: 'List of users retrieved successfully',
-    type: PaginatedResultDto<UserResponseDto>,
+    type: PagOffsetResultDto<UserResponseDto>,
   })
   async findAll(@Query() queryDto: UserQueryDto) {
     const result = await this.usersService.adminFindAll(queryDto);
 
-    return this.paginate(result.data, result.total, result.page, result.limit);
+    return this.paginateOffset(result);
   }
 
   @Get(':id')

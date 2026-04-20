@@ -103,9 +103,14 @@ export abstract class BaseRepository<
     return count > 0;
   }
 
-  async count(): Promise<number> {
+  async count(params?: { where: Partial<T> }): Promise<number> {
     const manager = this.getManager();
-    return manager.count(this.repository.target);
+    if (!params) {
+      return manager.count(this.repository.target);
+    }
+    return manager.count(this.repository.target, {
+      where: params.where as FindOptionsWhere<T>,
+    });
   }
 
   /**

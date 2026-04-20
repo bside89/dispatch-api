@@ -34,7 +34,7 @@ export default async () => {
   process.env.STRIPE_SECRET_KEY = 'sk_test_your_secret_key_here';
   process.env.STRIPE_WEBHOOK_SECRET = 'whsec_your_webhook_secret_here';
   process.env.QUEUE_ORDER_CONCURRENCY = '1';
-  process.env.QUEUE_EVENT_CONCURRENCY = '1';
+  process.env.QUEUE_SE_CONCURRENCY = '1';
   process.env.QUEUE_PAYMENT_CONCURRENCY = '1';
 
   const dataSource = require('../src/config/typeorm.config').default;

@@ -14,7 +14,6 @@ import { RefundOrderJobStrategy } from './strategies/refund-order-job.strategy';
 import { PaymentsGatewayModule } from '../payments-gateway/payments-gateway.module';
 import { ItemsModule } from '../items/items.module';
 import { OrderMessageFactory } from './factories/order-message.factory';
-import { OrderTransitionPolicy } from './services/order-transition-policy.service';
 import {
   ORDERS_SERVICE,
   ORDER_REPOSITORY,
@@ -38,7 +37,6 @@ import {
     CancelOrderJobStrategy,
     RefundOrderJobStrategy,
     OrderMessageFactory,
-    OrderTransitionPolicy,
   ],
   exports: [ORDERS_SERVICE, ORDER_REPOSITORY, ORDER_ITEM_REPOSITORY],
 })

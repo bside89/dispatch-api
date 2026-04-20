@@ -5,7 +5,7 @@ export class InitialSchema1775596616058 implements MigrationInterface {
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(
-      `CREATE TYPE "public"."outbox_type_enum" AS ENUM('ORDER_PROCESS', 'ORDER_SHIP', 'ORDER_DELIVER', 'ORDER_CANCEL', 'ORDER_REFUND', 'EVENTS_NOTIFY_USER')`,
+      `CREATE TYPE "public"."outbox_type_enum" AS ENUM('ORDER_PROCESS', 'ORDER_SHIP', 'ORDER_DELIVER', 'ORDER_CANCEL', 'ORDER_REFUND', 'SIDE_EFFECTS_NOTIFY_USER')`,
     );
     await queryRunner.query(
       `CREATE TABLE "outbox" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "createdAt" TIMESTAMP NOT NULL DEFAULT now(), "updatedAt" TIMESTAMP NOT NULL DEFAULT now(), "correlationId" character varying NOT NULL, "type" "public"."outbox_type_enum" NOT NULL, "payload" jsonb NOT NULL, CONSTRAINT "PK_340ab539f309f03bdaa14aa7649" PRIMARY KEY ("id"))`,

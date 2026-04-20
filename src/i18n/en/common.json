@@ -2,6 +2,7 @@
   "errors": {
     "userNotFound": "User not found.",
     "internalServerError": "Internal server error.",
-    "idempotencyKeyRequired": "idempotency-key header is required."
+    "idempotencyKeyRequired": "idempotency-key header is required.",
+    "invalidCursor": "Invalid cursor."
   }
 }

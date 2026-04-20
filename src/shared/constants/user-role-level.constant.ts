@@ -7,4 +7,4 @@ export const USER_ROLE_LEVEL = {
   [UserRole.DELIVERY]: 2,
   [UserRole.FINANCIAL]: 2,
   [UserRole.USER]: 1,
-};
+} as const;

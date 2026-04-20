@@ -6,5 +6,5 @@ export const I18N_PAYMENTS = {
     UPDATE_CUSTOMER_FAILED: 'payments.errors.updateCustomerFailed',
     CUSTOMER_DELETED: 'payments.errors.customerDeleted',
     CUSTOMER_NOT_FOUND: 'payments.errors.customerNotFound',
-  },
-};
+  } as const,
+} as const;

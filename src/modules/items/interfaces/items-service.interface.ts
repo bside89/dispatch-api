@@ -1,4 +1,4 @@
-import { PaginatedResultDto } from '@/shared/dto/paginated-result.dto';
+import { PagOffsetResultDto } from '@/shared/dto/pag-offset-result.dto';
 import { CreateItemDto } from '../dto/create-item.dto';
 import { UpdateItemDto } from '../dto/update-item.dto';
 import { ItemQueryDto, PublicItemQueryDto } from '../dto/item-query.dto';
@@ -9,13 +9,13 @@ import { IBaseService } from '@/shared/services/base-service.interface';
 export interface IItemsService extends IBaseService {
   publicFindAll(
     query: PublicItemQueryDto,
-  ): Promise<PaginatedResultDto<PublicItemResponseDto>>;
+  ): Promise<PagOffsetResultDto<PublicItemResponseDto>>;
 
   publicFindOne(id: string): Promise<PublicItemResponseDto>;
 
   adminCreate(dto: CreateItemDto, idempotencyKey: string): Promise<ItemResponseDto>;
 
-  adminFindAll(query: ItemQueryDto): Promise<PaginatedResultDto<ItemResponseDto>>;
+  adminFindAll(query: ItemQueryDto): Promise<PagOffsetResultDto<ItemResponseDto>>;
 
   adminFindOne(id: string): Promise<ItemResponseDto>;
 

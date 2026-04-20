@@ -1,8 +1,8 @@
 import { Injectable, Inject } from '@nestjs/common';
 import { Job } from 'bullmq';
 import { OrderStatus } from '../enums/order-status.enum';
-import { RefundOrderJobPayload } from '../../../shared/payloads/order-job.payload';
-import { NotifyUserJobPayload } from '@/shared/payloads/event-job.payload';
+import { RefundOrderJobPayload } from '../../../shared/payloads/orders-job.payload';
+import { NotifyUserJobPayload } from '@/shared/payloads/side-effects-job.payload';
 import { CACHE_SERVICE } from '../../../shared/modules/cache/constants/cache.token';
 import type { ICacheService } from '../../../shared/modules/cache/interfaces/cache-service.interface';
 import { OUTBOX_SERVICE } from '@/shared/modules/outbox/constants/outbox.token';
@@ -14,7 +14,6 @@ import { delay } from '@/shared/helpers/functions';
 import { OrderMessageFactory } from '../factories/order-message.factory';
 import { Order } from '../entities/order.entity';
 import { DbGuardService } from '@/shared/modules/db-guard/db-guard.service';
-import { OrderTransitionPolicy } from '../services/order-transition-policy.service';
 
 @Injectable()
 export class RefundOrderJobStrategy extends BaseOrderJobStrategy<RefundOrderJobPayload> {
@@ -24,15 +23,8 @@ export class RefundOrderJobStrategy extends BaseOrderJobStrategy<RefundOrderJobP
     @Inject(CACHE_SERVICE) cacheService: ICacheService,
     @Inject(ORDER_REPOSITORY) orderRepository: IOrderRepository,
     guard: DbGuardService,
-    transitionPolicy: OrderTransitionPolicy,
   ) {
-    super(
-      RefundOrderJobStrategy.name,
-      cacheService,
-      orderRepository,
-      guard,
-      transitionPolicy,
-    );
+    super(RefundOrderJobStrategy.name, cacheService, orderRepository, guard);
   }
 
   async execute(job: Job<RefundOrderJobPayload>): Promise<void> {
@@ -42,7 +34,7 @@ export class RefundOrderJobStrategy extends BaseOrderJobStrategy<RefundOrderJobP
   private async _execute(job: Job<RefundOrderJobPayload>): Promise<void> {
     const { orderId } = job.data;
 
-    const order = await this.getAndValidate(orderId, OrderStatus.REFUNDED);
+    const order = await this.validateAndRetrieveOrder(orderId, OrderStatus.REFUNDED);
     if (!order) return;
 
     this.logger.log(

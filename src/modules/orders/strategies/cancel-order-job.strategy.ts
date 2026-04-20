@@ -1,8 +1,8 @@
 import { Injectable, Inject } from '@nestjs/common';
 import { Job } from 'bullmq';
 import { OrderStatus } from '../enums/order-status.enum';
-import { CancelOrderJobPayload } from '../../../shared/payloads/order-job.payload';
-import { NotifyUserJobPayload } from '../../../shared/payloads/event-job.payload';
+import { CancelOrderJobPayload } from '../../../shared/payloads/orders-job.payload';
+import { NotifyUserJobPayload } from '../../../shared/payloads/side-effects-job.payload';
 import { CACHE_SERVICE } from '../../../shared/modules/cache/constants/cache.token';
 import type { ICacheService } from '../../../shared/modules/cache/interfaces/cache-service.interface';
 import { OUTBOX_SERVICE } from '@/shared/modules/outbox/constants/outbox.token';
@@ -15,7 +15,6 @@ import { BaseOrderJobStrategy } from './base-order-job.strategy';
 import { OrderMessageFactory } from '../factories/order-message.factory';
 import { Order } from '../entities/order.entity';
 import { DbGuardService } from '@/shared/modules/db-guard/db-guard.service';
-import { OrderTransitionPolicy } from '../services/order-transition-policy.service';
 
 @Injectable()
 export class CancelOrderJobStrategy extends BaseOrderJobStrategy<CancelOrderJobPayload> {
@@ -26,15 +25,8 @@ export class CancelOrderJobStrategy extends BaseOrderJobStrategy<CancelOrderJobP
     @Inject(CACHE_SERVICE) cacheService: ICacheService,
     @Inject(ORDER_REPOSITORY) orderRepository: IOrderRepository,
     guard: DbGuardService,
-    transitionPolicy: OrderTransitionPolicy,
   ) {
-    super(
-      CancelOrderJobStrategy.name,
-      cacheService,
-      orderRepository,
-      guard,
-      transitionPolicy,
-    );
+    super(CancelOrderJobStrategy.name, cacheService, orderRepository, guard);
   }
 
   async execute(job: Job<CancelOrderJobPayload>): Promise<void> {
@@ -44,7 +36,7 @@ export class CancelOrderJobStrategy extends BaseOrderJobStrategy<CancelOrderJobP
   private async _execute(job: Job<CancelOrderJobPayload>): Promise<void> {
     const { orderId } = job.data;
 
-    const order = await this.getAndValidate(orderId, OrderStatus.CANCELED);
+    const order = await this.validateAndRetrieveOrder(orderId, OrderStatus.CANCELED);
     if (!order) return;
 
     this.logger.log(

@@ -1,0 +1,6 @@
+{
+  "errors": {
+    "notificationNotFound": "Notificação não encontrada.",
+    "accessDenied": "Você não tem permissão para acessar esta notificação."
+  }
+}

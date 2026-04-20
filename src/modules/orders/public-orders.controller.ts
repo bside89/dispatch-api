@@ -29,7 +29,7 @@ import type { IOrdersService } from './interfaces/orders-service.interface';
 import { ORDERS_SERVICE } from './constants/orders.token';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { OrderByUserQueryDto } from './dto/order-by-user-query.dto';
-import { PaginatedResultDto } from '@/shared/dto/paginated-result.dto';
+import { PagOffsetResultDto } from '@/shared/dto/pag-offset-result.dto';
 import { GetUser } from '@/shared/decorators/get-user.decorator';
 import { PublicOrderResponseDto } from './dto/order-response.dto';
 import { BaseController } from '@/shared/controllers/base.controller';
@@ -103,7 +103,7 @@ export class PublicOrdersController extends BaseController {
   })
   @ApiOkResponse({
     description: 'Orders successfully retrieved',
-    type: PaginatedResultDto<PublicOrderResponseDto>,
+    type: PagOffsetResultDto<PublicOrderResponseDto>,
   })
   async findByUser(
     @Query() queryDto: OrderByUserQueryDto,
@@ -111,7 +111,7 @@ export class PublicOrdersController extends BaseController {
   ) {
     const result = await this.ordersService.publicFindByUser(queryDto, user.id);
 
-    return this.paginate(result.data, result.total, result.page, result.limit);
+    return this.paginateOffset(result);
   }
 
   @Get(':id')

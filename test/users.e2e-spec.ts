@@ -109,8 +109,8 @@ describe('Users (E2E)', () => {
         .set('Authorization', `Bearer ${adminToken}`)
         .expect(HttpStatus.OK);
 
-      expect(res.body.data).toBeInstanceOf(Array);
-      expect(res.body.data.length).toBeGreaterThan(0);
+      expect(res.body.items).toBeInstanceOf(Array);
+      expect(res.body.items.length).toBeGreaterThan(0);
     });
 
     it('GET /v1/users/:id - should get a specific user', async () => {

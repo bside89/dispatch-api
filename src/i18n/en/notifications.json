@@ -1,0 +1,6 @@
+{
+  "errors": {
+    "notificationNotFound": "Notification not found.",
+    "accessDenied": "You are not allowed to access this notification."
+  }
+}

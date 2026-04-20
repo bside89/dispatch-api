@@ -4,7 +4,7 @@ import { UserQueryDto } from '../dto/user-query.dto';
 import { User } from '../entities/user.entity';
 import { BaseRepository } from '@/shared/repositories/base.repository';
 import { Injectable } from '@nestjs/common';
-import { PaginatedResultDto } from '@/shared/dto/paginated-result.dto';
+import { PagOffsetResultDto } from '@/shared/dto/pag-offset-result.dto';
 import { col } from '@/shared/helpers/functions';
 import { IUserRepository } from '../interfaces/user-repository.interface';
 
@@ -17,7 +17,7 @@ export class UserRepository extends BaseRepository<User> implements IUserReposit
     super(repository);
   }
 
-  async filter(query: Partial<UserQueryDto>): Promise<PaginatedResultDto<User>> {
+  async filter(query: Partial<UserQueryDto>): Promise<PagOffsetResultDto<User>> {
     const queryBuilder = this.createQueryBuilder(ALIAS_USER);
 
     if (query.name) {
@@ -41,7 +41,7 @@ export class UserRepository extends BaseRepository<User> implements IUserReposit
       .orderBy(user('createdAt'), 'DESC')
       .getManyAndCount()
       .then(
-        ([data, total]) => new PaginatedResultDto(total, query.page, limit, data),
+        ([data, total]) => new PagOffsetResultDto(total, query.page, limit, data),
       );
   }
 }

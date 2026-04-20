@@ -2,6 +2,7 @@ import { Entity, Column, OneToMany, Index } from 'typeorm';
 import { Order } from '../../orders/entities/order.entity';
 import { UserRole } from '../../../shared/enums/user-role.enum';
 import { DeactivatableEntity } from '@/shared/entities/deactivatable.entity';
+import { Notification } from '@/modules/notifications/entities/notification.entity';
 
 @Entity('users')
 @Index('IDX_user_email', ['email'], { unique: true })
@@ -33,4 +34,9 @@ export class User extends DeactivatableEntity {
 
   @OneToMany(() => Order, (order) => order.user, { cascade: true })
   orders: Order[];
+
+  @OneToMany(() => Notification, (notification) => notification.user, {
+    cascade: true,
+  })
+  notifications: Notification[];
 }

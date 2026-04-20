@@ -5,7 +5,7 @@ import { CreateItemDto } from './dto/create-item.dto';
 import { UpdateItemDto } from './dto/update-item.dto';
 import { ItemQueryDto, PublicItemQueryDto } from './dto/item-query.dto';
 import { ItemResponseDto, PublicItemResponseDto } from './dto/item-response.dto';
-import { PaginatedResultDto } from '@/shared/dto/paginated-result.dto';
+import { PagOffsetResultDto } from '@/shared/dto/pag-offset-result.dto';
 import { EntityMapper } from '@/shared/utils/entity-mapper';
 import { Item } from './entities/item.entity';
 import type { ICacheService } from '@/shared/modules/cache/interfaces/cache-service.interface';
@@ -33,11 +33,11 @@ export class ItemsService extends BaseService implements IItemsService {
 
   async publicFindAll(
     query: PublicItemQueryDto,
-  ): Promise<PaginatedResultDto<PublicItemResponseDto>> {
+  ): Promise<PagOffsetResultDto<PublicItemResponseDto>> {
     const cacheKey = ITEM_KEY.CACHE_FIND_ALL(query);
     const cachedResult = await runAndIgnoreError(
       () =>
-        this.cacheService.get<PaginatedResultDto<PublicItemResponseDto>>(cacheKey),
+        this.cacheService.get<PagOffsetResultDto<PublicItemResponseDto>>(cacheKey),
       `fetching items list from cache with key: ${cacheKey}`,
       this.logger,
     );
@@ -47,11 +47,11 @@ export class ItemsService extends BaseService implements IItemsService {
     }
 
     const result = await this.itemRepository.filter(query);
-    const resultMapped = new PaginatedResultDto<PublicItemResponseDto>(
-      result.total,
-      result.page,
-      result.limit,
-      EntityMapper.mapArray(result.data, PublicItemResponseDto),
+    const resultMapped = new PagOffsetResultDto<PublicItemResponseDto>(
+      result.meta.total,
+      result.meta.page,
+      result.meta.limit,
+      EntityMapper.mapArray(result.items, PublicItemResponseDto),
     );
 
     await runAndIgnoreError(
@@ -60,7 +60,7 @@ export class ItemsService extends BaseService implements IItemsService {
       this.logger,
     );
 
-    this.logger.debug(`Retrieved ${result.data.length} items`, { cacheKey });
+    this.logger.debug(`Retrieved ${result.items.length} items`, { cacheKey });
 
     return resultMapped;
   }
@@ -155,10 +155,10 @@ export class ItemsService extends BaseService implements IItemsService {
 
   async adminFindAll(
     query: ItemQueryDto,
-  ): Promise<PaginatedResultDto<ItemResponseDto>> {
+  ): Promise<PagOffsetResultDto<ItemResponseDto>> {
     const cacheKey = ITEM_KEY.CACHE_FIND_ALL(query);
     const cachedResult = await runAndIgnoreError(
-      () => this.cacheService.get<PaginatedResultDto<ItemResponseDto>>(cacheKey),
+      () => this.cacheService.get<PagOffsetResultDto<ItemResponseDto>>(cacheKey),
       `fetching items list from cache with key: ${cacheKey}`,
       this.logger,
     );
@@ -168,11 +168,11 @@ export class ItemsService extends BaseService implements IItemsService {
     }
 
     const result = await this.itemRepository.filter(query);
-    const resultMapped = new PaginatedResultDto<ItemResponseDto>(
-      result.total,
-      result.page,
-      result.limit,
-      EntityMapper.mapArray(result.data, ItemResponseDto),
+    const resultMapped = new PagOffsetResultDto<ItemResponseDto>(
+      result.meta.total,
+      result.meta.page,
+      result.meta.limit,
+      EntityMapper.mapArray(result.items, ItemResponseDto),
     );
 
     await runAndIgnoreError(
@@ -181,7 +181,7 @@ export class ItemsService extends BaseService implements IItemsService {
       this.logger,
     );
 
-    this.logger.debug(`Retrieved ${result.data.length} items`, { cacheKey });
+    this.logger.debug(`Retrieved ${result.items.length} items`, { cacheKey });
 
     return resultMapped;
   }

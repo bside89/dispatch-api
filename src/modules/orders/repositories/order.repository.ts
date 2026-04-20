@@ -4,7 +4,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { OrderQueryDto } from '../dto/order-query.dto';
-import { PaginatedResultDto } from '@/shared/dto/paginated-result.dto';
+import { PagOffsetResultDto } from '@/shared/dto/pag-offset-result.dto';
 import { col } from '@/shared/helpers/functions';
 import { OrderItem } from '../entities/order-item.entity';
 import { IOrderRepository } from '../interfaces/order-repository.interface';
@@ -25,7 +25,7 @@ export class OrderRepository
     super(repository);
   }
 
-  async filter(query: Partial<OrderQueryDto>): Promise<PaginatedResultDto<Order>> {
+  async filter(query: Partial<OrderQueryDto>): Promise<PagOffsetResultDto<Order>> {
     const queryBuilder = this.createQueryBuilder(ALIAS_ORDER)
       .leftJoinAndSelect(order('items'), ALIAS_ORDER_ITEM)
       .leftJoinAndSelect(orderItem('item'), 'item')
@@ -61,7 +61,7 @@ export class OrderRepository
       .orderBy(order('createdAt'), 'DESC')
       .getManyAndCount()
       .then(
-        ([data, total]) => new PaginatedResultDto(total, query.page, limit, data),
+        ([data, total]) => new PagOffsetResultDto(total, query.page, limit, data),
       );
   }
 }

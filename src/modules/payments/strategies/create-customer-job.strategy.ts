@@ -1,5 +1,5 @@
 import { Injectable, InternalServerErrorException, Inject } from '@nestjs/common';
-import { CreateCustomerJobPayload } from '@/shared/payloads/payment-job.payload';
+import { CreateCustomerJobPayload } from '@/shared/payloads/payments-job.payload';
 import { BasePaymentJobStrategy } from './base-payment-job.strategy';
 import { Job } from 'bullmq';
 import { plainToInstance } from 'class-transformer';

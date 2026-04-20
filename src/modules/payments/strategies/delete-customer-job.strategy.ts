@@ -1,5 +1,5 @@
 import { Injectable, Inject } from '@nestjs/common';
-import { DeleteCustomerJobPayload } from '@/shared/payloads/payment-job.payload';
+import { DeleteCustomerJobPayload } from '@/shared/payloads/payments-job.payload';
 import { BasePaymentJobStrategy } from './base-payment-job.strategy';
 import { Job } from 'bullmq';
 import { PAYMENTS_GATEWAY_SERVICE } from '@/modules/payments-gateway/constants/payments-gateway.token';

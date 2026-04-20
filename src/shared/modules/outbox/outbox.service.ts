@@ -4,9 +4,7 @@ import type { IOutboxRepository } from './interfaces/outbox-repository.interface
 import { OUTBOX_REPOSITORY } from './constants/outbox.token';
 import { RequestContext } from '@/shared/utils/request-context';
 import { randomUUID } from 'crypto';
-import type { IEventBus } from '../events/interfaces/event-bus.interface';
 import { Queue } from 'bullmq';
-import { EVENT_BUS } from '../events/constants/event-bus.token';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { ORDER_QUEUE, PAYMENT_QUEUE } from '@/shared/constants/queues.token';
@@ -16,6 +14,7 @@ import { BaseService } from '@/shared/services/base.service';
 import { DbGuardService } from '../db-guard/db-guard.service';
 import { BaseOutboxJobPayload } from './payloads/outbox.payload';
 import { OutboxDispatcher } from './helpers/outbox-dispatcher';
+import { SIDE_EFFECTS_QUEUE } from '@/shared/constants/queues.token';
 
 @Injectable()
 export class OutboxService
@@ -29,7 +28,7 @@ export class OutboxService
   constructor(
     @InjectQueue(ORDER_QUEUE) private readonly orderQueue: Queue,
     @InjectQueue(PAYMENT_QUEUE) private readonly paymentQueue: Queue,
-    @Inject(EVENT_BUS) private readonly eventBus: IEventBus,
+    @InjectQueue(SIDE_EFFECTS_QUEUE) private readonly sideEffectQueue: Queue,
     @Inject(OUTBOX_REPOSITORY) private readonly outboxRepository: IOutboxRepository,
     private readonly guard: DbGuardService,
   ) {
@@ -88,7 +87,7 @@ export class OutboxService
   private async dispatch(messages: Outbox[]): Promise<void> {
     if (messages.length === 0) return;
 
-    const { orderQueueMsg, paymentQueueMsg, eventBusMsg } =
+    const { orderQueueMsg, paymentQueueMsg, sideEffectQueueMsg } =
       OutboxDispatcher.partition(messages);
 
     if (orderQueueMsg.length > 0) {
@@ -97,8 +96,8 @@ export class OutboxService
     if (paymentQueueMsg.length > 0) {
       await this.paymentQueue.addBulk(paymentQueueMsg);
     }
-    if (eventBusMsg.length > 0) {
-      await this.eventBus.publishBulk(eventBusMsg);
+    if (sideEffectQueueMsg.length > 0) {
+      await this.sideEffectQueue.addBulk(sideEffectQueueMsg);
     }
   }
 
@@ -108,7 +107,6 @@ export class OutboxService
       type: outboxPayload.type,
       payload: outboxPayload,
       correlationId,
-      createdAt: new Date(),
     });
     await this.outboxRepository.save(outboxEntry);
 

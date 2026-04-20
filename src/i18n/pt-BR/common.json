@@ -2,6 +2,7 @@
   "errors": {
     "userNotFound": "Usuário não encontrado.",
     "internalServerError": "Erro interno do servidor.",
-    "idempotencyKeyRequired": "O cabeçalho idempotency-key é obrigatório."
+    "idempotencyKeyRequired": "O cabeçalho idempotency-key é obrigatório.",
+    "invalidCursor": "Cursor inválido."
   }
 }

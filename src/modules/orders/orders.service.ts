@@ -11,12 +11,12 @@ import { OrderQueryDto } from './dto/order-query.dto';
 import { OrderStatus } from './enums/order-status.enum';
 import type { ICacheService } from '../../shared/modules/cache/interfaces/cache-service.interface';
 import { CACHE_SERVICE } from '../../shared/modules/cache/constants/cache.token';
-import { NotifyUserJobPayload } from '@/shared/payloads/event-job.payload';
+import { NotifyUserJobPayload } from '@/shared/payloads/side-effects-job.payload';
 import type { IOrderRepository } from './interfaces/order-repository.interface';
 import { ORDER_REPOSITORY } from './constants/orders.token';
 import type { IOrderItemRepository } from './interfaces/order-item-repository.interface';
 import { ORDER_ITEM_REPOSITORY } from './constants/orders.token';
-import { PaginatedResultDto } from '@/shared/dto/paginated-result.dto';
+import { PagOffsetResultDto } from '@/shared/dto/pag-offset-result.dto';
 import {
   OrderPaymentIntentDto,
   OrderResponseDto,
@@ -30,7 +30,7 @@ import {
   ProcessOrderJobPayload,
   CancelOrderJobPayload,
   RefundOrderJobPayload,
-} from '@/shared/payloads/order-job.payload';
+} from '@/shared/payloads/orders-job.payload';
 import { ShipOrderDto } from './dto/ship-order.dto';
 import { template } from '@/shared/helpers/functions';
 import { ORDER_KEY } from '../../shared/modules/cache/constants/order.key';
@@ -52,7 +52,7 @@ import { OrderByUserQueryDto } from './dto/order-by-user-query.dto';
 import { IOrdersService } from './interfaces/orders-service.interface';
 import { BaseService } from '@/shared/services/base.service';
 import { DbGuardService } from '@/shared/modules/db-guard/db-guard.service';
-import { OrderTransitionPolicy } from './services/order-transition-policy.service';
+import { OrderTransitionPolicy } from './helpers/order-transition-policy';
 
 @Injectable()
 export class OrdersService extends BaseService implements IOrdersService {
@@ -66,7 +66,6 @@ export class OrdersService extends BaseService implements IOrdersService {
     private readonly paymentsGatewayService: IPaymentsGatewayService,
     @Inject(CACHE_SERVICE) private readonly cacheService: ICacheService,
     private readonly messages: OrderMessageFactory,
-    private readonly transitionPolicy: OrderTransitionPolicy,
     private readonly guard: DbGuardService,
   ) {
     super(OrdersService.name);
@@ -122,7 +121,6 @@ export class OrdersService extends BaseService implements IOrdersService {
     const order = this.orderRepository.createEntity({
       userId,
       total,
-      status: OrderStatus.PENDING,
     });
     const savedOrder = await this.orderRepository.save(order);
 
@@ -215,19 +213,19 @@ export class OrdersService extends BaseService implements IOrdersService {
   async publicFindByUser(
     queryDto: OrderByUserQueryDto,
     userId: string,
-  ): Promise<PaginatedResultDto<PublicOrderResponseDto>> {
+  ): Promise<PagOffsetResultDto<PublicOrderResponseDto>> {
     const result = await this.orderRepository.filter({ ...queryDto, userId });
 
-    this.logger.debug(`Found ${result.data.length} orders for user ${userId}`, {
+    this.logger.debug(`Found ${result.items.length} orders for user ${userId}`, {
       page: queryDto.page,
-      totalPages: result.totalPages,
+      totalPages: result.meta.totalPages,
     });
 
-    return new PaginatedResultDto<PublicOrderResponseDto>(
-      result.total,
-      result.page,
-      result.limit,
-      EntityMapper.mapArray(result.data, PublicOrderResponseDto),
+    return new PagOffsetResultDto<PublicOrderResponseDto>(
+      result.meta.total,
+      result.meta.page,
+      result.meta.limit,
+      EntityMapper.mapArray(result.items, PublicOrderResponseDto),
     );
   }
 
@@ -267,19 +265,19 @@ export class OrdersService extends BaseService implements IOrdersService {
 
   async adminFindAll(
     queryDto: OrderQueryDto,
-  ): Promise<PaginatedResultDto<OrderResponseDto>> {
+  ): Promise<PagOffsetResultDto<OrderResponseDto>> {
     const result = await this.orderRepository.filter(queryDto);
 
-    this.logger.debug(`Found ${result.data.length} orders`, {
+    this.logger.debug(`Found ${result.items.length} orders`, {
       page: queryDto.page,
-      totalPages: result.totalPages,
+      totalPages: result.meta.totalPages,
     });
 
-    return new PaginatedResultDto<OrderResponseDto>(
-      result.total,
-      result.page,
-      result.limit,
-      EntityMapper.mapArray(result.data, OrderResponseDto),
+    return new PagOffsetResultDto<OrderResponseDto>(
+      result.meta.total,
+      result.meta.page,
+      result.meta.limit,
+      EntityMapper.mapArray(result.items, OrderResponseDto),
     );
   }
 
@@ -457,7 +455,7 @@ export class OrdersService extends BaseService implements IOrdersService {
       throw new NotFoundException(template(I18N_ORDERS.ERRORS.ORDER_NOT_FOUND));
     }
 
-    if (!this.transitionPolicy.canTransition(order.status, OrderStatus.SHIPPED)) {
+    if (!OrderTransitionPolicy.canTransition(order.status, OrderStatus.SHIPPED)) {
       throw new BadRequestException(
         template(I18N_ORDERS.ERRORS.BAD_PRECONDITIONS, {
           status: OrderStatus.SHIPPED,
@@ -504,7 +502,7 @@ export class OrdersService extends BaseService implements IOrdersService {
       throw new NotFoundException(template(I18N_ORDERS.ERRORS.ORDER_NOT_FOUND));
     }
 
-    if (!this.transitionPolicy.canTransition(order.status, OrderStatus.DELIVERED)) {
+    if (!OrderTransitionPolicy.canTransition(order.status, OrderStatus.DELIVERED)) {
       throw new BadRequestException(
         template(I18N_ORDERS.ERRORS.BAD_PRECONDITIONS, {
           status: OrderStatus.DELIVERED,
@@ -548,7 +546,7 @@ export class OrdersService extends BaseService implements IOrdersService {
       throw new NotFoundException(template(I18N_ORDERS.ERRORS.ORDER_NOT_FOUND));
     }
 
-    if (!this.transitionPolicy.canTransition(order.status, OrderStatus.CANCELED)) {
+    if (!OrderTransitionPolicy.canTransition(order.status, OrderStatus.CANCELED)) {
       throw new BadRequestException(
         template(I18N_ORDERS.ERRORS.BAD_PRECONDITIONS, {
           status: OrderStatus.CANCELED,
@@ -582,7 +580,7 @@ export class OrdersService extends BaseService implements IOrdersService {
       throw new NotFoundException(template(I18N_ORDERS.ERRORS.ORDER_NOT_FOUND));
     }
 
-    if (!this.transitionPolicy.canTransition(order.status, OrderStatus.REFUNDED)) {
+    if (!OrderTransitionPolicy.canTransition(order.status, OrderStatus.REFUNDED)) {
       throw new BadRequestException(
         template(I18N_ORDERS.ERRORS.BAD_PRECONDITIONS, {
           status: OrderStatus.REFUNDED,

@@ -34,5 +34,5 @@ export interface IBaseRepository<T extends BaseEntity> {
 
   existsBy(params: { where: Partial<T> }): Promise<boolean>;
 
-  count(): Promise<number>;
+  count(params?: { where: Partial<T> }): Promise<number>;
 }

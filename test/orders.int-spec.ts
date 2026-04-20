@@ -204,9 +204,9 @@ describe('Orders (Integration)', () => {
         firstUser.id,
       );
 
-      expect(result.total).toBe(1);
-      expect(result.data).toHaveLength(1);
-      expect(result.data[0].id).toBe(firstOrder.id);
+      expect(result.meta.total).toBe(1);
+      expect(result.items).toHaveLength(1);
+      expect(result.items[0].id).toBe(firstOrder.id);
     });
   });
 
@@ -326,7 +326,7 @@ describe('Orders (Integration)', () => {
 
       // Wait for the async BullMQ pipeline to advance the order to PROCESSED.
       //   webhook → markPaymentAsSucceeded → PAID + Outbox → ORDER_PROCESS
-      //   Outbox → ORDER_PROCESS → PROCESSED + EVENTS_NOTIFY_USER
+      //   Outbox → ORDER_PROCESS → PROCESSED + SIDE_EFFECTS_NOTIFY_USER
       //
       // delay() is mocked and setImmediate triggers process() after each add(),
       // so this resolves in ~10-50ms (BullMQ + Redis latency).
@@ -465,7 +465,7 @@ describe('Orders (Integration)', () => {
         expect(finalOrder.status).toBe('REFUNDED');
 
         // Assert: outbox should be fully consumed (RefundOrderJobStrategy adds one
-        // final EVENTS_NOTIFY_USER entry; setImmediate dispatches it immediately)
+        // final SIDE_EFFECTS_NOTIFY_USER entry; setImmediate dispatches it immediately)
         await waitFor(
           async () => {
             const rows = await dataSource.query(`SELECT id FROM outbox`);

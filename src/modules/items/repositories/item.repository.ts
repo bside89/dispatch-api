@@ -4,7 +4,7 @@ import { In, Repository } from 'typeorm';
 import { Item } from '../entities/item.entity';
 import { BaseRepository } from '@/shared/repositories/base.repository';
 import { Injectable } from '@nestjs/common';
-import { PaginatedResultDto } from '@/shared/dto/paginated-result.dto';
+import { PagOffsetResultDto } from '@/shared/dto/pag-offset-result.dto';
 import { col } from '@/shared/helpers/functions';
 import { ItemQueryDto } from '../dto/item-query.dto';
 import { IItemRepository } from '../interfaces/item-repository.interface';
@@ -21,7 +21,7 @@ export class ItemRepository extends BaseRepository<Item> implements IItemReposit
     super(repository);
   }
 
-  async filter(query: Partial<ItemQueryDto>): Promise<PaginatedResultDto<Item>> {
+  async filter(query: Partial<ItemQueryDto>): Promise<PagOffsetResultDto<Item>> {
     const queryBuilder = this.createQueryBuilder(ALIAS_ITEM);
 
     if (query.name) {
@@ -44,7 +44,7 @@ export class ItemRepository extends BaseRepository<Item> implements IItemReposit
       .orderBy(item('createdAt'), 'DESC')
       .getManyAndCount()
       .then(
-        ([data, total]) => new PaginatedResultDto(total, query.page, limit, data),
+        ([data, total]) => new PagOffsetResultDto(total, query.page, limit, data),
       );
   }
 

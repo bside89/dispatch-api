@@ -82,9 +82,9 @@ describe('Items (E2E)', () => {
         .set('Authorization', `Bearer ${userToken}`)
         .expect(HttpStatus.OK);
 
-      expect(res.body.data).toHaveLength(1);
-      expect(res.body.data[0].id).toBe(testItemId);
-      expect(res.body.data[0]).not.toHaveProperty('pricePaymentId');
+      expect(res.body.items).toHaveLength(1);
+      expect(res.body.items[0].id).toBe(testItemId);
+      expect(res.body.items[0]).not.toHaveProperty('pricePaymentId');
     });
 
     it('GET /v1/items/:id - should return a public item without admin-only fields', async () => {
@@ -175,9 +175,9 @@ describe('Items (E2E)', () => {
         .set('Authorization', `Bearer ${adminToken}`)
         .expect(HttpStatus.OK);
 
-      expect(res.body.data).toHaveLength(1);
-      expect(res.body.data[0].id).toBe(testItemId);
-      expect(res.body.data[0]).toHaveProperty('pricePaymentId', null);
+      expect(res.body.items).toHaveLength(1);
+      expect(res.body.items[0].id).toBe(testItemId);
+      expect(res.body.items[0]).toHaveProperty('pricePaymentId', null);
     });
 
     it('GET /v1/admin/items/:id - should return an item with admin-only fields', async () => {

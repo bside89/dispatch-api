@@ -19,7 +19,7 @@ import type { IItemsService } from './interfaces/items-service.interface';
 import { ITEMS_SERVICE } from './constants/items.token';
 import { PublicItemQueryDto } from './dto/item-query.dto';
 import { PublicItemResponseDto } from './dto/item-response.dto';
-import { PaginatedResultDto } from '@/shared/dto/paginated-result.dto';
+import { PagOffsetResultDto } from '@/shared/dto/pag-offset-result.dto';
 import { BaseController } from '@/shared/controllers/base.controller';
 import { GetUser } from '@/shared/decorators/get-user.decorator';
 import { ItemMessageFactory } from './factories/item-message.factory';
@@ -43,13 +43,13 @@ export class PublicItemsController extends BaseController {
   })
   @ApiOkResponse({
     description: 'Items successfully retrieved',
-    type: PaginatedResultDto<PublicItemResponseDto>,
+    type: PagOffsetResultDto<PublicItemResponseDto>,
   })
   @ApiQuery({ type: () => PublicItemQueryDto })
   async findAll(@Query() queryDto: PublicItemQueryDto) {
     const result = await this.itemsService.publicFindAll(queryDto);
 
-    return this.paginate(result.data, result.total, result.page, result.limit);
+    return this.paginateOffset(result);
   }
 
   @Get(':id')

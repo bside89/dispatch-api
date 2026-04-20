@@ -36,7 +36,7 @@ import { ItemQueryDto } from './dto/item-query.dto';
 import { ItemResponseDto } from './dto/item-response.dto';
 import { UserRole } from '../../shared/enums/user-role.enum';
 import { Roles } from '../auth/decorators/roles.decorator';
-import { PaginatedResultDto } from '@/shared/dto/paginated-result.dto';
+import { PagOffsetResultDto } from '@/shared/dto/pag-offset-result.dto';
 import { BaseController } from '@/shared/controllers/base.controller';
 import { GetUser } from '@/shared/decorators/get-user.decorator';
 import { ItemMessageFactory } from './factories/item-message.factory';
@@ -107,13 +107,13 @@ export class AdminItemsController extends BaseController {
   })
   @ApiOkResponse({
     description: 'Items successfully retrieved',
-    type: PaginatedResultDto<ItemResponseDto>,
+    type: PagOffsetResultDto<ItemResponseDto>,
   })
   @ApiQuery({ type: () => ItemQueryDto })
   async findAll(@Query() queryDto: ItemQueryDto) {
     const result = await this.itemsService.adminFindAll(queryDto);
 
-    return this.paginate(result.data, result.total, result.page, result.limit);
+    return this.paginateOffset(result);
   }
 
   @Get(':id')

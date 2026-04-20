@@ -79,6 +79,7 @@ async function bootstrap() {
     .addTag('items', 'Item management endpoints')
     .addTag('items-admin', 'Item management endpoints (admins only)')
     .addTag('payments', 'Payment processing endpoints')
+    .addTag('notifications', 'User notifications endpoints')
     .addBearerAuth()
     .build();
 

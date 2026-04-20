@@ -188,7 +188,7 @@ describe('Orders (E2E)', () => {
         .set('Authorization', `Bearer ${adminToken}`)
         .expect(HttpStatus.OK);
 
-      expect(res.body.data).toBeInstanceOf(Array);
+      expect(res.body.items).toBeInstanceOf(Array);
 
       process.env.TEST_ENV = originalTestEnv;
     });
@@ -223,8 +223,8 @@ describe('Orders (E2E)', () => {
         .set('Authorization', `Bearer ${userToken}`)
         .expect(HttpStatus.OK);
 
-      expect(res.body.data).toHaveLength(1);
-      expect(res.body.data[0].id).toBe(createdUserOrder.body.data.id);
+      expect(res.body.items).toHaveLength(1);
+      expect(res.body.items[0].id).toBe(createdUserOrder.body.data.id);
 
       process.env.TEST_ENV = originalTestEnv;
     });

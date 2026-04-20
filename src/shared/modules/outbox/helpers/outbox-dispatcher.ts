@@ -2,12 +2,11 @@ import { Outbox } from '../entities/outbox.entity';
 import { OutboxType } from '../enums/outbox-type.enum';
 import { QueueJob } from '@/shared/interfaces/queue-job.interface';
 import { BaseOutboxJobPayload } from '../payloads/outbox.payload';
-import { EventBusJob } from '../../events/interfaces/event-bus-job.interface';
 
 type OutboxDispatchPlan = {
   orderQueueMsg: QueueJob<BaseOutboxJobPayload>[];
   paymentQueueMsg: QueueJob<BaseOutboxJobPayload>[];
-  eventBusMsg: EventBusJob<BaseOutboxJobPayload>[];
+  sideEffectQueueMsg: QueueJob<BaseOutboxJobPayload>[];
 };
 
 export class OutboxDispatcher {
@@ -23,8 +22,8 @@ export class OutboxDispatcher {
     OutboxType.PAYMENT_DELETE_CUSTOMER,
   ]);
 
-  private static readonly EVENT_TYPES = new Set<OutboxType>([
-    OutboxType.EVENTS_NOTIFY_USER,
+  private static readonly SIDE_EFFECTS_TYPES = new Set<OutboxType>([
+    OutboxType.SIDE_EFFECTS_NOTIFY_USER,
   ]);
 
   static partition(messages: Outbox[]): OutboxDispatchPlan {
@@ -35,9 +34,9 @@ export class OutboxDispatcher {
       paymentQueueMsg: messages
         .filter((message) => OutboxDispatcher.PAYMENT_TYPES.has(message.type))
         .map((message) => OutboxDispatcher.toQueueJob(message)),
-      eventBusMsg: messages
-        .filter((message) => OutboxDispatcher.EVENT_TYPES.has(message.type))
-        .map((message) => OutboxDispatcher.toEventBusJob(message)),
+      sideEffectQueueMsg: messages
+        .filter((message) => OutboxDispatcher.SIDE_EFFECTS_TYPES.has(message.type))
+        .map((message) => OutboxDispatcher.toQueueJob(message)),
     };
   }
 
@@ -48,12 +47,6 @@ export class OutboxDispatcher {
       opts: {
         jobId: message.id,
       },
-    };
-  }
-
-  private static toEventBusJob(message: Outbox): EventBusJob<BaseOutboxJobPayload> {
-    return {
-      job: OutboxDispatcher.toQueueJob(message),
     };
   }
 }

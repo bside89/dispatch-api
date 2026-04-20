@@ -1,4 +1,4 @@
-import { PaginatedResultDto } from '@/shared/dto/paginated-result.dto';
+import { PagOffsetResultDto } from '@/shared/dto/pag-offset-result.dto';
 import { CreateUserDto, PublicCreateUserDto } from '../dto/create-user.dto';
 import { PublicUpdateUserDto, UpdateUserDto } from '../dto/update-user.dto';
 import { PublicUserQueryDto, UserQueryDto } from '../dto/user-query.dto';
@@ -22,7 +22,7 @@ export interface IUsersService extends IBaseService {
 
   publicFindAll(
     query: PublicUserQueryDto,
-  ): Promise<PaginatedResultDto<PublicUserResponseDto>>;
+  ): Promise<PagOffsetResultDto<PublicUserResponseDto>>;
 
   publicUpdate(
     dto: PublicUpdateUserDto,
@@ -37,7 +37,7 @@ export interface IUsersService extends IBaseService {
     requestUser: RequestUser,
   ): Promise<UserResponseDto>;
 
-  adminFindAll(query: UserQueryDto): Promise<PaginatedResultDto<UserResponseDto>>;
+  adminFindAll(query: UserQueryDto): Promise<PagOffsetResultDto<UserResponseDto>>;
 
   adminFindOne(id: string): Promise<UserResponseDto>;
 

@@ -1,4 +1,4 @@
-import { PaginatedResultDto } from '@/shared/dto/paginated-result.dto';
+import { PagOffsetResultDto } from '@/shared/dto/pag-offset-result.dto';
 import { CreateOrderDto } from '../dto/create-order.dto';
 import { UpdateOrderDto } from '../dto/update-order.dto';
 import { OrderQueryDto } from '../dto/order-query.dto';
@@ -18,7 +18,7 @@ export interface IOrdersService extends IBaseService {
   publicFindByUser(
     queryDto: OrderByUserQueryDto,
     userId: string,
-  ): Promise<PaginatedResultDto<PublicOrderResponseDto>>;
+  ): Promise<PagOffsetResultDto<PublicOrderResponseDto>>;
 
   publicFindOne(
     id: string,
@@ -27,7 +27,7 @@ export interface IOrdersService extends IBaseService {
 
   adminFindAll(
     queryDto: OrderQueryDto,
-  ): Promise<PaginatedResultDto<OrderResponseDto>>;
+  ): Promise<PagOffsetResultDto<OrderResponseDto>>;
 
   adminFindOne(id: string): Promise<OrderResponseDto>;
 

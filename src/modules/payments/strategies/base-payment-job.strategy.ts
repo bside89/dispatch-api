@@ -3,7 +3,7 @@ import { BaseJobStrategy } from '@/shared/strategies/base-job.strategy';
 import { Order } from '@/modules/orders/entities/order.entity';
 import { User } from '@/modules/users/entities/user.entity';
 import { LOCK_KEY } from '@/shared/constants/lock.key';
-import { PaymentJobPayload } from '@/shared/payloads/payment-job.payload';
+import { PaymentJobPayload } from '@/shared/payloads/payments-job.payload';
 import type { IOrderRepository } from '@/modules/orders/interfaces/order-repository.interface';
 import type { IUserRepository } from '@/modules/users/interfaces/user-repository.interface';
 import type { IPaymentsGatewayService } from '@/modules/payments-gateway/interfaces/payments-gateway-service.interface';

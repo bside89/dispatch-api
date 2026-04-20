@@ -1,6 +1,9 @@
 import { SuccessResponseDto } from '../dto/success-response.dto';
-import { PaginatedResponseDto } from '../dto/paginated-response.dto';
+import { PagOffsetResponseDto } from '../dto/pag-offset-response.dto';
 import { AppLogger } from '../utils/app-logger';
+import { PagOffsetResultDto } from '../dto/pag-offset-result.dto';
+import { PagCursorResponseDto } from '../dto/pag-cursor-response.dto';
+import { PagCursorResultDto } from '../dto/pag-cursor-result.dto';
 
 export abstract class BaseController {
   protected readonly logger: AppLogger;
@@ -21,22 +24,23 @@ export abstract class BaseController {
     };
   }
 
-  protected paginate<T>(
-    data: T[],
-    total: number,
-    page: number,
-    limit: number,
-  ): PaginatedResponseDto<T> {
+  protected paginateOffset<T>(
+    resultDto: PagOffsetResultDto<T>,
+  ): PagOffsetResponseDto<T> {
     return {
       success: true,
-      data,
-      meta: {
-        total,
-        page,
-        limit,
-        totalPages: Math.ceil(total / limit),
-      },
       timestamp: new Date().toISOString(),
+      ...resultDto,
+    };
+  }
+
+  protected paginateCursor<T>(
+    resultDto: PagCursorResultDto<T>,
+  ): PagCursorResponseDto<T> {
+    return {
+      success: true,
+      timestamp: new Date().toISOString(),
+      ...resultDto,
     };
   }
 }

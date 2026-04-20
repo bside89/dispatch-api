@@ -29,7 +29,7 @@ import { ShipOrderDto } from './dto/ship-order.dto';
 import { OrderQueryDto } from './dto/order-query.dto';
 import { UserRole } from '../../shared/enums/user-role.enum';
 import { Roles } from '../auth/decorators/roles.decorator';
-import { PaginatedResultDto } from '@/shared/dto/paginated-result.dto';
+import { PagOffsetResultDto } from '@/shared/dto/pag-offset-result.dto';
 import { GetUser } from '@/shared/decorators/get-user.decorator';
 import { OrderResponseDto } from './dto/order-response.dto';
 import { BaseController } from '@/shared/controllers/base.controller';
@@ -56,12 +56,12 @@ export class AdminOrdersController extends BaseController {
   })
   @ApiOkResponse({
     description: 'Orders successfully retrieved',
-    type: PaginatedResultDto<OrderResponseDto>,
+    type: PagOffsetResultDto<OrderResponseDto>,
   })
   async findAll(@Query() queryDto: OrderQueryDto) {
     const result = await this.ordersService.adminFindAll(queryDto);
 
-    return this.paginate(result.data, result.total, result.page, result.limit);
+    return this.paginateOffset(result);
   }
 
   @Get(':id')
