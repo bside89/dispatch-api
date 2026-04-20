@@ -25,10 +25,7 @@ export abstract class BaseOrderJobStrategy<
    * @param orderId The ID of the order to update.
    * @param updateData The data to update the order with.
    */
-  async updateOrderWithLock(
-    orderId: string,
-    updateData: Partial<Order>,
-  ): Promise<void> {
+  updateOrderWithLock(orderId: string, updateData: Partial<Order>): Promise<void> {
     return this.guard.lock(LOCK_KEY.ORDER.UPDATE(orderId), async () => {
       await this.orderRepository.update(orderId, updateData);
     });

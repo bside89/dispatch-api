@@ -55,7 +55,7 @@ export abstract class BaseProcessor
     return this.executeJob(job, 'failed', factory, idempotencyKey, error);
   }
 
-  private async executeJob<T extends BaseJobHandlerFactory>(
+  private executeJob<T extends BaseJobHandlerFactory>(
     job: Job,
     event: 'process' | 'failed',
     factory: T,

@@ -32,7 +32,7 @@ export class ProcessOrderJobStrategy extends BaseOrderJobStrategy<ProcessOrderJo
     super(ProcessOrderJobStrategy.name, cacheService, orderRepository, guard);
   }
 
-  async execute(job: Job<ProcessOrderJobPayload>): Promise<void> {
+  execute(job: Job<ProcessOrderJobPayload>): Promise<void> {
     return this.guard.transaction(() => this._execute(job));
   }
 
@@ -53,10 +53,7 @@ export class ProcessOrderJobStrategy extends BaseOrderJobStrategy<ProcessOrderJo
     await this.finish(order);
   }
 
-  async executeAfterFail(
-    job: Job<ProcessOrderJobPayload>,
-    error: Error,
-  ): Promise<void> {
+  executeAfterFail(job: Job<ProcessOrderJobPayload>, error: Error): Promise<void> {
     return this.guard.transaction(() => this._executeAfterFail(job, error));
   }
 

@@ -28,10 +28,7 @@ export abstract class BasePaymentJobStrategy<
    * @param orderId The ID of the order to update.
    * @param updateData The data to update the order with.
    */
-  async updateOrderWithLock(
-    orderId: string,
-    updateData: Partial<Order>,
-  ): Promise<void> {
+  updateOrderWithLock(orderId: string, updateData: Partial<Order>): Promise<void> {
     return this.guard.lock(LOCK_KEY.ORDER.UPDATE(orderId), async () => {
       await this.orderRepository.update(orderId, updateData);
     });
@@ -42,10 +39,7 @@ export abstract class BasePaymentJobStrategy<
    * @param userId The ID of the user to update.
    * @param updateData The data to update the user with.
    */
-  async updateUserWithLock(
-    userId: string,
-    updateData: Partial<User>,
-  ): Promise<void> {
+  updateUserWithLock(userId: string, updateData: Partial<User>): Promise<void> {
     return this.guard.lock(LOCK_KEY.USER.UPDATE(userId), async () => {
       await this.userRepository.update(userId, updateData);
     });

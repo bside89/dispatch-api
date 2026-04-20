@@ -96,10 +96,7 @@ export class ItemsService extends BaseService implements IItemsService {
 
   // #region Admin endpoints
 
-  async adminCreate(
-    dto: CreateItemDto,
-    idempotencyKey: string,
-  ): Promise<ItemResponseDto> {
+  adminCreate(dto: CreateItemDto, idempotencyKey: string): Promise<ItemResponseDto> {
     return this.guard.lockAndTransaction(
       LOCK_KEY.ITEM.CREATE(idempotencyKey),
       async () => this._adminCreate(dto, idempotencyKey),
@@ -215,7 +212,7 @@ export class ItemsService extends BaseService implements IItemsService {
     return itemMapped;
   }
 
-  async adminUpdate(id: string, dto: UpdateItemDto): Promise<ItemResponseDto> {
+  adminUpdate(id: string, dto: UpdateItemDto): Promise<ItemResponseDto> {
     return this.guard.lockAndTransaction(LOCK_KEY.ITEM.UPDATE(id), async () =>
       this._adminUpdate(id, dto),
     );
@@ -243,7 +240,7 @@ export class ItemsService extends BaseService implements IItemsService {
     return EntityMapper.map(savedItem, ItemResponseDto);
   }
 
-  async adminRemove(id: string): Promise<void> {
+  adminRemove(id: string): Promise<void> {
     return this.guard.lockAndTransaction(LOCK_KEY.ITEM.REMOVE(id), async () =>
       this._adminRemove(id),
     );
@@ -273,13 +270,13 @@ export class ItemsService extends BaseService implements IItemsService {
     return this.itemRepository.findManyByIds(ids);
   }
 
-  async decrementItemStock(item: Item, quantity: number): Promise<void> {
+  decrementItemStock(item: Item, quantity: number): Promise<void> {
     return this.guard.lockAndTransaction(LOCK_KEY.ITEM.UPDATE(item.id), async () =>
       this.itemRepository.decrementStock(item, quantity),
     );
   }
 
-  async incrementItemStock(item: Item, quantity: number): Promise<void> {
+  incrementItemStock(item: Item, quantity: number): Promise<void> {
     return this.guard.lockAndTransaction(LOCK_KEY.ITEM.UPDATE(item.id), async () =>
       this.itemRepository.incrementStock(item, quantity),
     );

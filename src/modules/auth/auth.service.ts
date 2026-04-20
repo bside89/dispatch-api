@@ -38,8 +38,8 @@ export class AuthService extends BaseService implements IAuthService {
     super(AuthService.name);
   }
 
-  async login(email: string, password: string): Promise<LoginResponseDto> {
-    return await this.guard.lockAndTransaction<LoginResponseDto>(
+  login(email: string, password: string): Promise<LoginResponseDto> {
+    return this.guard.lockAndTransaction<LoginResponseDto>(
       LOCK_KEY.AUTH.LOGIN(email),
       () => this._login(email, password),
     );
@@ -105,8 +105,8 @@ export class AuthService extends BaseService implements IAuthService {
     return result;
   }
 
-  async logout(reqUser: RequestUser): Promise<void> {
-    await this.guard.lockAndTransaction<void>(
+  logout(reqUser: RequestUser): Promise<void> {
+    return this.guard.lockAndTransaction<void>(
       LOCK_KEY.AUTH.LOGOUT(reqUser.email),
       () => this._logout(reqUser),
     );
@@ -155,13 +155,10 @@ export class AuthService extends BaseService implements IAuthService {
     return result;
   }
 
-  private async updateRefreshToken(
-    userId: string,
-    refreshToken?: string,
-  ): Promise<void> {
+  updateRefreshToken(userId: string, refreshToken?: string): Promise<void> {
     return this.guard.lock(LOCK_KEY.USER.UPDATE(userId), async () => {
       const hash = refreshToken ? await HashUtils.hash(refreshToken) : null;
-      await this.userRepository.update(userId, { refreshToken: hash });
+      this.userRepository.update(userId, { refreshToken: hash });
     });
   }
 }

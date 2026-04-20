@@ -63,7 +63,7 @@ export class UsersService extends BaseService implements IUsersService {
 
   //#region Public endpoints
 
-  async publicCreate(
+  publicCreate(
     dto: PublicCreateUserDto,
     idempotencyKey: string,
   ): Promise<UserSelfResponseDto> {
@@ -190,7 +190,7 @@ export class UsersService extends BaseService implements IUsersService {
     return resultMapped;
   }
 
-  async publicUpdate(
+  publicUpdate(
     dto: PublicUpdateUserDto,
     requestUser: RequestUser,
   ): Promise<UserSelfResponseDto> {
@@ -240,7 +240,7 @@ export class UsersService extends BaseService implements IUsersService {
     return EntityMapper.map(updatedUser, UserSelfResponseDto);
   }
 
-  async publicRemove(requestUser: RequestUser): Promise<void> {
+  publicRemove(requestUser: RequestUser): Promise<void> {
     return this.guard.lockAndTransaction(LOCK_KEY.USER.REMOVE(requestUser.id), () =>
       this._publicRemove(requestUser),
     );
@@ -270,7 +270,7 @@ export class UsersService extends BaseService implements IUsersService {
 
   //#region Admin endpoints
 
-  async adminCreate(
+  adminCreate(
     dto: CreateUserDto,
     idempotencyKey: string,
     requestUser: RequestUser,
@@ -383,7 +383,7 @@ export class UsersService extends BaseService implements IUsersService {
     return userMapped;
   }
 
-  async adminUpdate(
+  adminUpdate(
     id: string,
     dto: UpdateUserDto,
     requestUser: RequestUser,
@@ -436,7 +436,7 @@ export class UsersService extends BaseService implements IUsersService {
     return EntityMapper.map(updatedUser, UserResponseDto);
   }
 
-  async adminRemove(id: string, requestUser: RequestUser): Promise<void> {
+  adminRemove(id: string, requestUser: RequestUser): Promise<void> {
     return this.guard.lockAndTransaction(LOCK_KEY.USER.REMOVE(id), () =>
       this._adminRemove(id, requestUser),
     );

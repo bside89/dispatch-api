@@ -27,7 +27,7 @@ export class RefundOrderJobStrategy extends BaseOrderJobStrategy<RefundOrderJobP
     super(RefundOrderJobStrategy.name, cacheService, orderRepository, guard);
   }
 
-  async execute(job: Job<RefundOrderJobPayload>): Promise<void> {
+  execute(job: Job<RefundOrderJobPayload>): Promise<void> {
     return this.guard.transaction(() => this._execute(job));
   }
 
@@ -47,10 +47,7 @@ export class RefundOrderJobStrategy extends BaseOrderJobStrategy<RefundOrderJobP
     await this.finish(order);
   }
 
-  async executeAfterFail(
-    job: Job<RefundOrderJobPayload>,
-    error: Error,
-  ): Promise<void> {
+  executeAfterFail(job: Job<RefundOrderJobPayload>, error: Error): Promise<void> {
     return this.guard.transaction(() => this._executeAfterFail(job, error));
   }
 

@@ -15,7 +15,21 @@ export class NotifyUserJobStrategy extends BaseSideEffectJobStrategy<NotifyUserJ
   }
 
   async execute(job: Job<NotifyUserJobPayload>): Promise<void> {
-    await this.notifyUser(job.data);
+    const { userId } = job.data;
+    try {
+      await this.notifyUser(job.data);
+    } catch (e: unknown) {
+      // User was deleted before notification could be delivered — skip gracefully
+      if (
+        typeof e === 'object' &&
+        e !== null &&
+        (e as Record<string, unknown>)['code'] === '23503'
+      ) {
+        this.logger.warn(`Skipping notification: user ${userId} no longer exists.`);
+        return;
+      }
+      throw e;
+    }
   }
 
   async executeAfterFail(

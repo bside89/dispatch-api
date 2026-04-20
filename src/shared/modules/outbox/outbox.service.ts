@@ -44,7 +44,7 @@ export class OutboxService
   }
 
   @Cron(CronExpression.EVERY_5_SECONDS)
-  async process(): Promise<void> {
+  process(): Promise<void> {
     return this.guard.transaction(() => this._process());
   }
 

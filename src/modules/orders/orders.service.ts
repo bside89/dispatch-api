@@ -73,7 +73,7 @@ export class OrdersService extends BaseService implements IOrdersService {
 
   //#region Public endpoints
 
-  async publicCreate(
+  publicCreate(
     dto: CreateOrderDto,
     userId: string,
     idempotencyKey: string,
@@ -305,7 +305,7 @@ export class OrdersService extends BaseService implements IOrdersService {
     return orderMapped;
   }
 
-  async adminUpdate(id: string, dto: UpdateOrderDto): Promise<OrderResponseDto> {
+  adminUpdate(id: string, dto: UpdateOrderDto): Promise<OrderResponseDto> {
     return this.guard.lockAndTransaction(LOCK_KEY.ORDER.UPDATE(id), async () =>
       this._adminUpdate(id, dto),
     );
@@ -315,8 +315,6 @@ export class OrdersService extends BaseService implements IOrdersService {
     id: string,
     dto: UpdateOrderDto,
   ): Promise<OrderResponseDto> {
-    this.logger.debug('Updating order', { orderId: id });
-
     const order = await this.orderRepository.findOne({
       where: { id },
       relations: ['items', 'user'],
@@ -341,15 +339,13 @@ export class OrdersService extends BaseService implements IOrdersService {
     return EntityMapper.map(order, OrderResponseDto);
   }
 
-  async adminRemove(id: string): Promise<void> {
+  adminRemove(id: string): Promise<void> {
     return this.guard.lockAndTransaction(LOCK_KEY.ORDER.REMOVE(id), async () =>
       this._adminRemove(id),
     );
   }
 
   private async _adminRemove(id: string): Promise<void> {
-    this.logger.debug('Deleting order', { orderId: id });
-
     const order = await this.orderRepository.findById(id);
     if (!order) {
       throw new NotFoundException(template(I18N_ORDERS.ERRORS.ORDER_NOT_FOUND));
@@ -364,7 +360,7 @@ export class OrdersService extends BaseService implements IOrdersService {
 
   //#region Internal / webhook methods
 
-  async markPaymentAsSucceeded(
+  markPaymentAsSucceeded(
     orderId: string,
     paymentIntentId: string,
     paymentIntentStatus: string,
@@ -399,7 +395,7 @@ export class OrdersService extends BaseService implements IOrdersService {
     return EntityMapper.map(order, OrderResponseDto);
   }
 
-  async markPaymentAsFailed(
+  markPaymentAsFailed(
     orderId: string,
     paymentIntentId: string,
     paymentIntentStatus: string,
@@ -437,7 +433,7 @@ export class OrdersService extends BaseService implements IOrdersService {
 
   //#region Operational admin methods
 
-  async ship(id: string, dto: ShipOrderDto): Promise<OrderResponseDto> {
+  ship(id: string, dto: ShipOrderDto): Promise<OrderResponseDto> {
     return this.guard.lockAndTransaction(LOCK_KEY.ORDER.UPDATE(id), async () =>
       this._ship(id, dto),
     );
@@ -484,7 +480,7 @@ export class OrdersService extends BaseService implements IOrdersService {
     return EntityMapper.map(order, OrderResponseDto);
   }
 
-  async deliver(id: string): Promise<OrderResponseDto> {
+  deliver(id: string): Promise<OrderResponseDto> {
     return this.guard.lockAndTransaction(LOCK_KEY.ORDER.UPDATE(id), async () =>
       this._deliver(id),
     );
@@ -528,7 +524,7 @@ export class OrdersService extends BaseService implements IOrdersService {
     return EntityMapper.map(order, OrderResponseDto);
   }
 
-  async cancel(id: string): Promise<void> {
+  cancel(id: string): Promise<void> {
     return this.guard.lockAndTransaction(LOCK_KEY.ORDER.UPDATE(id), async () =>
       this._cancel(id),
     );
@@ -562,7 +558,7 @@ export class OrdersService extends BaseService implements IOrdersService {
     this.logger.debug('Order cancel enqueued', { orderId: id });
   }
 
-  async refund(id: string): Promise<void> {
+  refund(id: string): Promise<void> {
     return this.guard.lockAndTransaction(LOCK_KEY.ORDER.UPDATE(id), async () =>
       this._refund(id),
     );

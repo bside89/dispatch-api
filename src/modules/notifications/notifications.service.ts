@@ -43,8 +43,8 @@ export class NotificationsService
     return EntityMapper.map(result, NotificationResponseDto);
   }
 
-  async markAsRead(id: string, userId: string): Promise<void> {
-    await this.guard.lockAndTransaction(
+  markAsRead(id: string, userId: string): Promise<void> {
+    return this.guard.lockAndTransaction(
       LOCK_KEY.NOTIFICATIONS.UPDATE(id),
       async () => this._markAsRead(id, userId),
     );

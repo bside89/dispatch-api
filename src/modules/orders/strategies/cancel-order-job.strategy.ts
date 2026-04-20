@@ -29,7 +29,7 @@ export class CancelOrderJobStrategy extends BaseOrderJobStrategy<CancelOrderJobP
     super(CancelOrderJobStrategy.name, cacheService, orderRepository, guard);
   }
 
-  async execute(job: Job<CancelOrderJobPayload>): Promise<void> {
+  execute(job: Job<CancelOrderJobPayload>): Promise<void> {
     return this.guard.transaction(() => this._execute(job));
   }
 
@@ -49,10 +49,7 @@ export class CancelOrderJobStrategy extends BaseOrderJobStrategy<CancelOrderJobP
     await this.finish(order);
   }
 
-  async executeAfterFail(
-    job: Job<CancelOrderJobPayload>,
-    error: Error,
-  ): Promise<void> {
+  executeAfterFail(job: Job<CancelOrderJobPayload>, error: Error): Promise<void> {
     return this.guard.transaction(() => this._executeAfterFail(job, error));
   }
 
