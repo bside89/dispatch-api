@@ -9,7 +9,7 @@ import { CACHE_SERVICE } from '@/shared/modules/cache/constants/cache.token';
 import type { ICacheService } from '@/shared/modules/cache/interfaces/cache-service.interface';
 import { I18N_AUTH } from '@/shared/constants/i18n';
 import { template } from '@/shared/helpers/functions';
-import { jwtToRequestUser } from '../helper/auth-functions';
+import { jwtToRequestUser } from '../helpers/auth-functions';
 import { JWT_REFRESH } from '../constants/jwt-name.token';
 
 @Injectable()

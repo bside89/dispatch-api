@@ -1,22 +1,20 @@
-import { AppModule } from '@/app.module';
-import { HttpStatus, INestApplication, ValidationPipe } from '@nestjs/common';
-import { Test, TestingModule } from '@nestjs/testing';
+import { HttpStatus, INestApplication } from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
 import request from 'supertest';
 import { ADMIN_USER } from './constants/admin-user.constant';
 import { cleanDatabase, cleanRedis } from './utils/database-cleaner';
 import { DataSource } from 'typeorm';
 import Redis from 'ioredis';
-import { REDIS_CLIENT } from '@/shared/modules/cache/constants/redis-client.token';
-import { paymentsGatewayServiceMock } from './utils/mock-payments-gateway-service';
-import { PAYMENTS_GATEWAY_SERVICE } from '@/modules/payments-gateway/constants/payments-gateway.token';
 import { OrderStatus } from '@/modules/orders/enums/order-status.enum';
-import { JwtService } from '@nestjs/jwt';
 import {
   createAccessToken,
   createFixtureItem,
   createFixtureUser,
   getAdminFixture,
 } from './utils/e2e-fixtures';
+import { createTestApp } from './utils/e2e-setup';
+import { withRolesEnabled } from './utils/with-roles-enabled';
+import { paymentsGatewayServiceMock } from './utils/mock-payments-gateway-service';
 
 describe('Orders (E2E)', () => {
   let app: INestApplication;
@@ -29,28 +27,7 @@ describe('Orders (E2E)', () => {
   let testItemId: string;
 
   beforeAll(async () => {
-    const module: TestingModule = await Test.createTestingModule({
-      imports: [AppModule],
-    })
-      .overrideProvider(PAYMENTS_GATEWAY_SERVICE)
-      .useValue(paymentsGatewayServiceMock)
-      .compile();
-
-    app = module.createNestApplication();
-
-    app.useGlobalPipes(
-      new ValidationPipe({
-        transform: true,
-        whitelist: true,
-        forbidNonWhitelisted: true,
-      }),
-    );
-
-    await app.init();
-
-    dataSource = app.get<DataSource>(DataSource);
-    redisClient = app.get<Redis>(REDIS_CLIENT);
-    jwtService = app.get<JwtService>(JwtService);
+    ({ app, dataSource, redisClient, jwtService } = await createTestApp());
   });
 
   afterAll(async () => {
@@ -175,58 +152,52 @@ describe('Orders (E2E)', () => {
     });
 
     it('GET /v1/admin/orders - should be restricted to privileged users', async () => {
-      const originalTestEnv = process.env.TEST_ENV;
-      process.env.TEST_ENV = 'false';
+      await withRolesEnabled(async () => {
+        await request(app.getHttpServer())
+          .get('/v1/admin/orders')
+          .set('Authorization', `Bearer ${userToken}`)
+          .expect(HttpStatus.FORBIDDEN);
 
-      await request(app.getHttpServer())
-        .get('/v1/admin/orders')
-        .set('Authorization', `Bearer ${userToken}`)
-        .expect(HttpStatus.FORBIDDEN);
+        const res = await request(app.getHttpServer())
+          .get('/v1/admin/orders')
+          .set('Authorization', `Bearer ${adminToken}`)
+          .expect(HttpStatus.OK);
 
-      const res = await request(app.getHttpServer())
-        .get('/v1/admin/orders')
-        .set('Authorization', `Bearer ${adminToken}`)
-        .expect(HttpStatus.OK);
-
-      expect(res.body.items).toBeInstanceOf(Array);
-
-      process.env.TEST_ENV = originalTestEnv;
+        expect(res.body.items).toBeInstanceOf(Array);
+      });
     });
 
     it('GET /v1/orders/me - should return only the authenticated user orders', async () => {
-      const originalTestEnv = process.env.TEST_ENV;
-      process.env.TEST_ENV = 'false';
+      await withRolesEnabled(async () => {
+        const userPayload = {
+          items: [{ itemId: testItemId, quantity: 1 }],
+        };
+        const adminPayload = {
+          items: [{ itemId: testItemId, quantity: 2 }],
+        };
 
-      const userPayload = {
-        items: [{ itemId: testItemId, quantity: 1 }],
-      };
-      const adminPayload = {
-        items: [{ itemId: testItemId, quantity: 2 }],
-      };
+        const createdUserOrder = await request(app.getHttpServer())
+          .post('/v1/orders')
+          .set('idempotency-key', 'order-me-user-key')
+          .set('Authorization', `Bearer ${userToken}`)
+          .send(userPayload)
+          .expect(HttpStatus.CREATED);
 
-      const createdUserOrder = await request(app.getHttpServer())
-        .post('/v1/orders')
-        .set('idempotency-key', 'order-me-user-key')
-        .set('Authorization', `Bearer ${userToken}`)
-        .send(userPayload)
-        .expect(HttpStatus.CREATED);
+        await request(app.getHttpServer())
+          .post('/v1/orders')
+          .set('idempotency-key', 'order-me-admin-key')
+          .set('Authorization', `Bearer ${adminToken}`)
+          .send(adminPayload)
+          .expect(HttpStatus.CREATED);
 
-      await request(app.getHttpServer())
-        .post('/v1/orders')
-        .set('idempotency-key', 'order-me-admin-key')
-        .set('Authorization', `Bearer ${adminToken}`)
-        .send(adminPayload)
-        .expect(HttpStatus.CREATED);
+        const res = await request(app.getHttpServer())
+          .get('/v1/orders/me')
+          .set('Authorization', `Bearer ${userToken}`)
+          .expect(HttpStatus.OK);
 
-      const res = await request(app.getHttpServer())
-        .get('/v1/orders/me')
-        .set('Authorization', `Bearer ${userToken}`)
-        .expect(HttpStatus.OK);
-
-      expect(res.body.items).toHaveLength(1);
-      expect(res.body.items[0].id).toBe(createdUserOrder.body.data.id);
-
-      process.env.TEST_ENV = originalTestEnv;
+        expect(res.body.items).toHaveLength(1);
+        expect(res.body.items[0].id).toBe(createdUserOrder.body.data.id);
+      });
     });
 
     it('GET /v1/orders/:id - should get own order', async () => {
@@ -268,271 +239,235 @@ describe('Orders (E2E)', () => {
     });
 
     it('PATCH /v1/admin/orders/:id - should block normal user (403 Forbidden)', async () => {
-      // Temporarily set TEST_ENV to false so RolesGuard won't bypass the check
-      const originalTestEnv = process.env.TEST_ENV;
-      process.env.TEST_ENV = 'false';
-
-      await request(app.getHttpServer())
-        .patch('/v1/admin/orders/123e4567-e89b-12d3-a456-426614174000')
-        .set('Authorization', `Bearer ${userToken}`)
-        .send({ status: OrderStatus.REFUNDED })
-        .expect(HttpStatus.FORBIDDEN);
-
-      process.env.TEST_ENV = originalTestEnv;
+      await withRolesEnabled(async () => {
+        await request(app.getHttpServer())
+          .patch('/v1/admin/orders/123e4567-e89b-12d3-a456-426614174000')
+          .set('Authorization', `Bearer ${userToken}`)
+          .send({ status: OrderStatus.REFUNDED })
+          .expect(HttpStatus.FORBIDDEN);
+      });
     });
 
     it('PATCH /v1/admin/orders/:id - should allow admin user', async () => {
-      // Temporarily set TEST_ENV to false so RolesGuard won't bypass the check
-      const originalTestEnv = process.env.TEST_ENV;
-      process.env.TEST_ENV = 'false';
+      await withRolesEnabled(async () => {
+        const payload = {
+          items: [{ itemId: testItemId, quantity: 2 }],
+        };
+        const created = await request(app.getHttpServer())
+          .post('/v1/orders')
+          .set('idempotency-key', 'order-update-key')
+          .set('Authorization', `Bearer ${adminToken}`)
+          .send(payload)
+          .expect(HttpStatus.CREATED);
+        const orderId = created.body.data.id;
 
-      const payload = {
-        items: [{ itemId: testItemId, quantity: 2 }],
-      };
-      const created = await request(app.getHttpServer())
-        .post('/v1/orders')
-        .set('idempotency-key', 'order-update-key')
-        .set('Authorization', `Bearer ${adminToken}`)
-        .send(payload)
-        .expect(HttpStatus.CREATED);
-      const orderId = created.body.data.id;
-
-      await request(app.getHttpServer())
-        .patch(`/v1/admin/orders/${orderId}`)
-        .set('Authorization', `Bearer ${adminToken}`)
-        .send({ status: OrderStatus.REFUNDED })
-        .expect(HttpStatus.OK);
-
-      process.env.TEST_ENV = originalTestEnv;
+        await request(app.getHttpServer())
+          .patch(`/v1/admin/orders/${orderId}`)
+          .set('Authorization', `Bearer ${adminToken}`)
+          .send({ status: OrderStatus.REFUNDED })
+          .expect(HttpStatus.OK);
+      });
     });
 
     it('DELETE /v1/admin/orders/:id - should block normal user (403 Forbidden)', async () => {
-      const originalTestEnv = process.env.TEST_ENV;
-      process.env.TEST_ENV = 'false';
-
-      await request(app.getHttpServer())
-        .delete('/v1/admin/orders/123e4567-e89b-12d3-a456-426614174000')
-        .set('Authorization', `Bearer ${userToken}`)
-        .expect(HttpStatus.FORBIDDEN);
-
-      process.env.TEST_ENV = originalTestEnv;
+      await withRolesEnabled(async () => {
+        await request(app.getHttpServer())
+          .delete('/v1/admin/orders/123e4567-e89b-12d3-a456-426614174000')
+          .set('Authorization', `Bearer ${userToken}`)
+          .expect(HttpStatus.FORBIDDEN);
+      });
     });
 
     it('DELETE /v1/admin/orders/:id - should allow admin user', async () => {
-      const originalTestEnv = process.env.TEST_ENV;
-      process.env.TEST_ENV = 'false';
+      await withRolesEnabled(async () => {
+        const payload = { items: [{ itemId: testItemId, quantity: 1 }] };
+        const created = await request(app.getHttpServer())
+          .post('/v1/orders')
+          .set('idempotency-key', 'order-delete-key')
+          .set('Authorization', `Bearer ${adminToken}`)
+          .send(payload)
+          .expect(HttpStatus.CREATED);
+        const orderId = created.body.data.id;
 
-      const payload = { items: [{ itemId: testItemId, quantity: 1 }] };
-      const created = await request(app.getHttpServer())
-        .post('/v1/orders')
-        .set('idempotency-key', 'order-delete-key')
-        .set('Authorization', `Bearer ${adminToken}`)
-        .send(payload)
-        .expect(HttpStatus.CREATED);
-      const orderId = created.body.data.id;
-
-      await request(app.getHttpServer())
-        .delete(`/v1/admin/orders/${orderId}`)
-        .set('Authorization', `Bearer ${adminToken}`)
-        .expect(HttpStatus.NO_CONTENT);
-
-      process.env.TEST_ENV = originalTestEnv;
+        await request(app.getHttpServer())
+          .delete(`/v1/admin/orders/${orderId}`)
+          .set('Authorization', `Bearer ${adminToken}`)
+          .expect(HttpStatus.NO_CONTENT);
+      });
     });
 
     it('PATCH /v1/admin/orders/:id/ship - should block normal user (403 Forbidden)', async () => {
-      const originalTestEnv = process.env.TEST_ENV;
-      process.env.TEST_ENV = 'false';
-
-      await request(app.getHttpServer())
-        .patch('/v1/admin/orders/123e4567-e89b-12d3-a456-426614174000/ship')
-        .set('Authorization', `Bearer ${userToken}`)
-        .send({})
-        .expect(HttpStatus.FORBIDDEN);
-
-      process.env.TEST_ENV = originalTestEnv;
+      await withRolesEnabled(async () => {
+        await request(app.getHttpServer())
+          .patch('/v1/admin/orders/123e4567-e89b-12d3-a456-426614174000/ship')
+          .set('Authorization', `Bearer ${userToken}`)
+          .send({})
+          .expect(HttpStatus.FORBIDDEN);
+      });
     });
 
     it('PATCH /v1/admin/orders/:id/ship - should ship order and return tracking info', async () => {
-      const originalTestEnv = process.env.TEST_ENV;
-      process.env.TEST_ENV = 'false';
+      await withRolesEnabled(async () => {
+        const payload = { items: [{ itemId: testItemId, quantity: 1 }] };
+        const created = await request(app.getHttpServer())
+          .post('/v1/orders')
+          .set('idempotency-key', 'order-ship-key')
+          .set('Authorization', `Bearer ${adminToken}`)
+          .send(payload)
+          .expect(HttpStatus.CREATED);
+        const orderId = created.body.data.id;
 
-      const payload = { items: [{ itemId: testItemId, quantity: 1 }] };
-      const created = await request(app.getHttpServer())
-        .post('/v1/orders')
-        .set('idempotency-key', 'order-ship-key')
-        .set('Authorization', `Bearer ${adminToken}`)
-        .send(payload)
-        .expect(HttpStatus.CREATED);
-      const orderId = created.body.data.id;
+        // Advance order to PROCESSED status directly in DB
+        await dataSource.query(
+          `UPDATE orders SET status = 'PROCESSED' WHERE id = $1`,
+          [orderId],
+        );
 
-      // Advance order to PROCESSED status directly in DB
-      await dataSource.query(
-        `UPDATE orders SET status = 'PROCESSED' WHERE id = $1`,
-        [orderId],
-      );
+        const res = await request(app.getHttpServer())
+          .patch(`/v1/admin/orders/${orderId}/ship`)
+          .set('Authorization', `Bearer ${adminToken}`)
+          .send({ trackingNumber: 'BR123456789', carrier: 'Correios' })
+          .expect(HttpStatus.OK);
 
-      const res = await request(app.getHttpServer())
-        .patch(`/v1/admin/orders/${orderId}/ship`)
-        .set('Authorization', `Bearer ${adminToken}`)
-        .send({ trackingNumber: 'BR123456789', carrier: 'Correios' })
-        .expect(HttpStatus.OK);
-
-      expect(res.body.data.status).toBe('SHIPPED');
-      expect(res.body.data.trackingNumber).toBe('BR123456789');
-      expect(res.body.data.carrier).toBe('Correios');
-      expect(res.body.data.shippedAt).toBeDefined();
-
-      process.env.TEST_ENV = originalTestEnv;
+        expect(res.body.data.status).toBe('SHIPPED');
+        expect(res.body.data.trackingNumber).toBe('BR123456789');
+        expect(res.body.data.carrier).toBe('Correios');
+        expect(res.body.data.shippedAt).toBeDefined();
+      });
     });
 
     it('PATCH /v1/admin/orders/:id/ship - should return 400 if order is not PROCESSED', async () => {
-      const originalTestEnv = process.env.TEST_ENV;
-      process.env.TEST_ENV = 'false';
+      await withRolesEnabled(async () => {
+        const payload = { items: [{ itemId: testItemId, quantity: 1 }] };
+        const created = await request(app.getHttpServer())
+          .post('/v1/orders')
+          .set('idempotency-key', 'order-ship-invalid-status-key')
+          .set('Authorization', `Bearer ${adminToken}`)
+          .send(payload)
+          .expect(HttpStatus.CREATED);
+        const orderId = created.body.data.id;
 
-      const payload = { items: [{ itemId: testItemId, quantity: 1 }] };
-      const created = await request(app.getHttpServer())
-        .post('/v1/orders')
-        .set('idempotency-key', 'order-ship-invalid-status-key')
-        .set('Authorization', `Bearer ${adminToken}`)
-        .send(payload)
-        .expect(HttpStatus.CREATED);
-      const orderId = created.body.data.id;
-
-      // Order is still PENDING — should not be shippable
-      await request(app.getHttpServer())
-        .patch(`/v1/admin/orders/${orderId}/ship`)
-        .set('Authorization', `Bearer ${adminToken}`)
-        .send({})
-        .expect(HttpStatus.BAD_REQUEST);
-
-      process.env.TEST_ENV = originalTestEnv;
+        // Order is still PENDING — should not be shippable
+        await request(app.getHttpServer())
+          .patch(`/v1/admin/orders/${orderId}/ship`)
+          .set('Authorization', `Bearer ${adminToken}`)
+          .send({})
+          .expect(HttpStatus.BAD_REQUEST);
+      });
     });
 
     it('PATCH /v1/admin/orders/:id/deliver - should deliver order', async () => {
-      const originalTestEnv = process.env.TEST_ENV;
-      process.env.TEST_ENV = 'false';
+      await withRolesEnabled(async () => {
+        const payload = { items: [{ itemId: testItemId, quantity: 1 }] };
+        const created = await request(app.getHttpServer())
+          .post('/v1/orders')
+          .set('idempotency-key', 'order-deliver-key')
+          .set('Authorization', `Bearer ${adminToken}`)
+          .send(payload)
+          .expect(HttpStatus.CREATED);
+        const orderId = created.body.data.id;
 
-      const payload = { items: [{ itemId: testItemId, quantity: 1 }] };
-      const created = await request(app.getHttpServer())
-        .post('/v1/orders')
-        .set('idempotency-key', 'order-deliver-key')
-        .set('Authorization', `Bearer ${adminToken}`)
-        .send(payload)
-        .expect(HttpStatus.CREATED);
-      const orderId = created.body.data.id;
+        // Advance order to SHIPPED status directly in DB
+        await dataSource.query(
+          `UPDATE orders SET status = 'SHIPPED' WHERE id = $1`,
+          [orderId],
+        );
 
-      // Advance order to SHIPPED status directly in DB
-      await dataSource.query(`UPDATE orders SET status = 'SHIPPED' WHERE id = $1`, [
-        orderId,
-      ]);
+        const res = await request(app.getHttpServer())
+          .patch(`/v1/admin/orders/${orderId}/deliver`)
+          .set('Authorization', `Bearer ${adminToken}`)
+          .expect(HttpStatus.OK);
 
-      const res = await request(app.getHttpServer())
-        .patch(`/v1/admin/orders/${orderId}/deliver`)
-        .set('Authorization', `Bearer ${adminToken}`)
-        .expect(HttpStatus.OK);
-
-      expect(res.body.data.status).toBe('DELIVERED');
-      expect(res.body.data.deliveredAt).toBeDefined();
-
-      process.env.TEST_ENV = originalTestEnv;
+        expect(res.body.data.status).toBe('DELIVERED');
+        expect(res.body.data.deliveredAt).toBeDefined();
+      });
     });
 
     it('PATCH /v1/admin/orders/:id/cancel - should cancel a PENDING order', async () => {
-      const originalTestEnv = process.env.TEST_ENV;
-      process.env.TEST_ENV = 'false';
+      await withRolesEnabled(async () => {
+        const payload = { items: [{ itemId: testItemId, quantity: 1 }] };
+        const created = await request(app.getHttpServer())
+          .post('/v1/orders')
+          .set('idempotency-key', 'order-cancel-key')
+          .set('Authorization', `Bearer ${adminToken}`)
+          .send(payload)
+          .expect(HttpStatus.CREATED);
+        const orderId = created.body.data.id;
 
-      const payload = { items: [{ itemId: testItemId, quantity: 1 }] };
-      const created = await request(app.getHttpServer())
-        .post('/v1/orders')
-        .set('idempotency-key', 'order-cancel-key')
-        .set('Authorization', `Bearer ${adminToken}`)
-        .send(payload)
-        .expect(HttpStatus.CREATED);
-      const orderId = created.body.data.id;
+        const res = await request(app.getHttpServer())
+          .patch(`/v1/admin/orders/${orderId}/cancel`)
+          .set('Authorization', `Bearer ${adminToken}`)
+          .expect(HttpStatus.OK);
 
-      const res = await request(app.getHttpServer())
-        .patch(`/v1/admin/orders/${orderId}/cancel`)
-        .set('Authorization', `Bearer ${adminToken}`)
-        .expect(HttpStatus.OK);
-
-      expect(res.body.message).toMatch(/cancel/i);
-
-      process.env.TEST_ENV = originalTestEnv;
+        expect(res.body.message).toMatch(/cancel/i);
+      });
     });
 
     it('PATCH /v1/admin/orders/:id/cancel - should return 400 if order is SHIPPED', async () => {
-      const originalTestEnv = process.env.TEST_ENV;
-      process.env.TEST_ENV = 'false';
+      await withRolesEnabled(async () => {
+        const payload = { items: [{ itemId: testItemId, quantity: 1 }] };
+        const created = await request(app.getHttpServer())
+          .post('/v1/orders')
+          .set('idempotency-key', 'order-cancel-shipped-key')
+          .set('Authorization', `Bearer ${adminToken}`)
+          .send(payload)
+          .expect(HttpStatus.CREATED);
+        const orderId = created.body.data.id;
 
-      const payload = { items: [{ itemId: testItemId, quantity: 1 }] };
-      const created = await request(app.getHttpServer())
-        .post('/v1/orders')
-        .set('idempotency-key', 'order-cancel-shipped-key')
-        .set('Authorization', `Bearer ${adminToken}`)
-        .send(payload)
-        .expect(HttpStatus.CREATED);
-      const orderId = created.body.data.id;
+        await dataSource.query(
+          `UPDATE orders SET status = 'SHIPPED' WHERE id = $1`,
+          [orderId],
+        );
 
-      await dataSource.query(`UPDATE orders SET status = 'SHIPPED' WHERE id = $1`, [
-        orderId,
-      ]);
-
-      await request(app.getHttpServer())
-        .patch(`/v1/admin/orders/${orderId}/cancel`)
-        .set('Authorization', `Bearer ${adminToken}`)
-        .expect(HttpStatus.BAD_REQUEST);
-
-      process.env.TEST_ENV = originalTestEnv;
+        await request(app.getHttpServer())
+          .patch(`/v1/admin/orders/${orderId}/cancel`)
+          .set('Authorization', `Bearer ${adminToken}`)
+          .expect(HttpStatus.BAD_REQUEST);
+      });
     });
 
     it('PATCH /v1/admin/orders/:id/refund - should enqueue refund for a PAID order', async () => {
-      const originalTestEnv = process.env.TEST_ENV;
-      process.env.TEST_ENV = 'false';
+      await withRolesEnabled(async () => {
+        const payload = { items: [{ itemId: testItemId, quantity: 1 }] };
+        const created = await request(app.getHttpServer())
+          .post('/v1/orders')
+          .set('idempotency-key', 'order-refund-key')
+          .set('Authorization', `Bearer ${adminToken}`)
+          .send(payload)
+          .expect(HttpStatus.CREATED);
+        const orderId = created.body.data.id;
 
-      const payload = { items: [{ itemId: testItemId, quantity: 1 }] };
-      const created = await request(app.getHttpServer())
-        .post('/v1/orders')
-        .set('idempotency-key', 'order-refund-key')
-        .set('Authorization', `Bearer ${adminToken}`)
-        .send(payload)
-        .expect(HttpStatus.CREATED);
-      const orderId = created.body.data.id;
+        // Advance order to PAID status directly in DB
+        await dataSource.query(`UPDATE orders SET status = 'PAID' WHERE id = $1`, [
+          orderId,
+        ]);
 
-      // Advance order to PAID status directly in DB
-      await dataSource.query(`UPDATE orders SET status = 'PAID' WHERE id = $1`, [
-        orderId,
-      ]);
+        const res = await request(app.getHttpServer())
+          .patch(`/v1/admin/orders/${orderId}/refund`)
+          .set('Authorization', `Bearer ${adminToken}`)
+          .expect(HttpStatus.OK);
 
-      const res = await request(app.getHttpServer())
-        .patch(`/v1/admin/orders/${orderId}/refund`)
-        .set('Authorization', `Bearer ${adminToken}`)
-        .expect(HttpStatus.OK);
-
-      expect(res.body.message).toMatch(/refund/i);
-
-      process.env.TEST_ENV = originalTestEnv;
+        expect(res.body.message).toMatch(/refund/i);
+      });
     });
 
     it('PATCH /v1/admin/orders/:id/refund - should return 400 if order is PENDING', async () => {
-      const originalTestEnv = process.env.TEST_ENV;
-      process.env.TEST_ENV = 'false';
+      await withRolesEnabled(async () => {
+        const payload = { items: [{ itemId: testItemId, quantity: 1 }] };
+        const created = await request(app.getHttpServer())
+          .post('/v1/orders')
+          .set('idempotency-key', 'order-refund-pending-key')
+          .set('Authorization', `Bearer ${adminToken}`)
+          .send(payload)
+          .expect(HttpStatus.CREATED);
+        const orderId = created.body.data.id;
 
-      const payload = { items: [{ itemId: testItemId, quantity: 1 }] };
-      const created = await request(app.getHttpServer())
-        .post('/v1/orders')
-        .set('idempotency-key', 'order-refund-pending-key')
-        .set('Authorization', `Bearer ${adminToken}`)
-        .send(payload)
-        .expect(HttpStatus.CREATED);
-      const orderId = created.body.data.id;
-
-      // Order is still PENDING — not eligible for refund
-      await request(app.getHttpServer())
-        .patch(`/v1/admin/orders/${orderId}/refund`)
-        .set('Authorization', `Bearer ${adminToken}`)
-        .expect(HttpStatus.BAD_REQUEST);
-
-      process.env.TEST_ENV = originalTestEnv;
+        // Order is still PENDING — not eligible for refund
+        await request(app.getHttpServer())
+          .patch(`/v1/admin/orders/${orderId}/refund`)
+          .set('Authorization', `Bearer ${adminToken}`)
+          .expect(HttpStatus.BAD_REQUEST);
+      });
     });
   });
 });

@@ -14,6 +14,9 @@ const ALIAS_ORDER_ITEM = 'orderItem';
 const order = col<Order>(ALIAS_ORDER);
 const orderItem = col<OrderItem>(ALIAS_ORDER_ITEM);
 
+const DEFAULT_PAGE_SIZE = 20;
+const MAX_PAGE_SIZE = 100;
+
 @Injectable()
 export class OrderRepository
   extends BaseRepository<Order>
@@ -52,7 +55,9 @@ export class OrderRepository
     }
 
     // Apply pagination
-    const limit = query.limit ? Math.min(query.limit, 100) : 20;
+    const limit = query.limit
+      ? Math.min(query.limit, MAX_PAGE_SIZE)
+      : DEFAULT_PAGE_SIZE;
     const skip = (query.page - 1) * limit;
 
     return queryBuilder

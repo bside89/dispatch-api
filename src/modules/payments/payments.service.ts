@@ -6,6 +6,7 @@ import type { IOrdersService } from '../orders/interfaces/orders-service.interfa
 import { ORDERS_SERVICE } from '../orders/constants/orders.token';
 import { IPaymentsService } from './interfaces/payments-service.interface';
 import { ConfigService } from '@nestjs/config';
+import { PaymentIntentUpdateDto } from '../orders/dto/payment-intent-update.dto';
 
 @Injectable()
 export class PaymentsService
@@ -41,11 +42,12 @@ export class PaymentsService
       };
       const orderId = paymentIntent.metadata?.orderId;
       if (orderId) {
-        await this.ordersService.markPaymentAsSucceeded(
+        const dto: PaymentIntentUpdateDto = {
           orderId,
-          paymentIntent.id,
-          paymentIntent.status,
-        );
+          paymentIntentId: paymentIntent.id,
+          paymentIntentStatus: paymentIntent.status,
+        };
+        await this.ordersService.markPaymentAsSucceeded(dto);
       }
     }
 
@@ -57,11 +59,12 @@ export class PaymentsService
       };
       const orderId = paymentIntent.metadata?.orderId;
       if (orderId) {
-        await this.ordersService.markPaymentAsFailed(
+        const dto: PaymentIntentUpdateDto = {
           orderId,
-          paymentIntent.id,
-          paymentIntent.status,
-        );
+          paymentIntentId: paymentIntent.id,
+          paymentIntentStatus: paymentIntent.status,
+        };
+        await this.ordersService.markPaymentAsFailed(dto);
       }
     }
   }

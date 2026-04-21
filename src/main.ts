@@ -1,6 +1,6 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
-import { ValidationPipe } from '@nestjs/common';
+import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { ConfigService } from '@nestjs/config';
 import { BasicAuthMiddleware } from './middleware/basic-auth.middleware';
@@ -11,22 +11,10 @@ import { DataSource } from 'typeorm';
 import { seedMockAdminUser } from './shared/helpers/seed-mock-admin-user.helper';
 import { seedMockItems } from './shared/helpers/seed-mock-items.helper';
 
-async function bootstrap() {
-  const app = await NestFactory.create(AppModule, {
-    bufferLogs: true,
-    rawBody: true,
-  });
-  const configService = app.get(ConfigService);
-  const dataSource = app.get(DataSource);
-  const logger = app.get(Logger);
-
-  // Global exception filter
-  app.useGlobalFilters(new AllExceptionsFilter());
-
-  // Use the Pino logger from the app context BEFORE any other configuration
-  app.useLogger(app.get(Logger));
-
-  // Security middleware — disable CSP for Bull Board (it uses inline scripts/styles)
+function configureSecurity(
+  app: INestApplication,
+  configService: ConfigService,
+): void {
   app.use('/bull-board', helmet({ contentSecurityPolicy: false }));
   app.use(
     helmet({
@@ -41,16 +29,6 @@ async function bootstrap() {
     }),
   );
 
-  // Global validation pipe
-  app.useGlobalPipes(
-    new ValidationPipe({
-      transform: true,
-      whitelist: true,
-      forbidNonWhitelisted: true,
-    }),
-  );
-
-  // CORS configuration
   app.enableCors({
     origin: configService.get('TEST_ENV') === 'true' ? '*' : 'http://localhost:5173',
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
@@ -61,8 +39,12 @@ async function bootstrap() {
       'stripe-signature',
     ],
   });
+}
 
-  // Swagger configuration
+function configureSwagger(
+  app: INestApplication,
+  configService: ConfigService,
+): void {
   const config = new DocumentBuilder()
     .setTitle(configService.get('API_TITLE') || 'Dispatch API')
     .setDescription(
@@ -85,22 +67,39 @@ async function bootstrap() {
 
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api/docs', app, document);
+}
 
-  // Apply the middleware manually for the protected routes
+async function bootstrap() {
+  const app = await NestFactory.create(AppModule, {
+    bufferLogs: true,
+    rawBody: true,
+  });
+  const configService = app.get(ConfigService);
+  const dataSource = app.get(DataSource);
+  const logger = app.get(Logger);
+
+  app.useLogger(logger);
+  app.useGlobalFilters(new AllExceptionsFilter());
+  app.useGlobalPipes(
+    new ValidationPipe({
+      transform: true,
+      whitelist: true,
+      forbidNonWhitelisted: true,
+    }),
+  );
+
+  configureSecurity(app, configService);
+  configureSwagger(app, configService);
+
   const authMiddleware = new BasicAuthMiddleware(configService);
-
-  // Seed mock data before the application starts accepting requests
   await seedMockAdminUser(configService, dataSource, logger);
   await seedMockItems(configService, dataSource, logger);
-
-  // Protect Bull Board
   app.use('/bull-board', (req, res, next) => authMiddleware.use(req, res, next));
 
   const port = configService.get('APP_PORT') || 3000;
   const grafanaPort = configService.get('GRAFANA_PORT') || 3001;
 
   app.enableShutdownHooks();
-
   await app.listen(port);
 
   logger.log(`Application is running on: http://localhost:${port}`, 'Bootstrap');
@@ -120,22 +119,6 @@ async function bootstrap() {
     logger.warn(
       'TEST_ENV is set to true. Rate limiting is disabled, so the application may be vulnerable to abuse. Make sure to set TEST_ENV to false in production!',
       'Bootstrap',
-    );
-  }
-
-  console.log(`Application is running on: http://localhost:${port}`);
-  console.log(
-    `Swagger documentation available at: http://localhost:${port}/api/docs`,
-  );
-  console.log(
-    `Bull Board dashboard available at: http://localhost:${port}/bull-board (requires authentication)`,
-  );
-  console.log(
-    `Grafana dashboard available at: http://localhost:${grafanaPort} (requires authentication)`,
-  );
-  if (configService.get('TEST_ENV') === 'true') {
-    console.warn(
-      'TEST_ENV is set to true. Rate limiting is disabled, so the application may be vulnerable to abuse. Make sure to set TEST_ENV to false in production!',
     );
   }
 }

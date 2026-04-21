@@ -60,12 +60,12 @@ describe('Orders (Integration)', () => {
     app = module.createNestApplication();
     await app.init();
 
-    usersService = module.get<IUsersService>(USERS_SERVICE);
-    ordersService = module.get<IOrdersService>(ORDERS_SERVICE);
-    itemsService = module.get<IItemsService>(ITEMS_SERVICE);
-    outboxRepository = module.get<IOutboxRepository>(OUTBOX_REPOSITORY);
-    dataSource = module.get<DataSource>(DataSource);
-    redisClient = module.get<Redis>(REDIS_CLIENT);
+    usersService = app.get<IUsersService>(USERS_SERVICE);
+    ordersService = app.get<IOrdersService>(ORDERS_SERVICE);
+    itemsService = app.get<IItemsService>(ITEMS_SERVICE);
+    outboxRepository = app.get<IOutboxRepository>(OUTBOX_REPOSITORY);
+    dataSource = app.get<DataSource>(DataSource);
+    redisClient = app.get<Redis>(REDIS_CLIENT);
   });
 
   afterAll(async () => {
@@ -246,7 +246,11 @@ describe('Orders (Integration)', () => {
 
       // Act: simulate the Stripe webhook callback — should fail due to Outbox error
       await expect(
-        ordersService.markPaymentAsSucceeded(orderId, 'pi_test', 'succeeded'),
+        ordersService.markPaymentAsSucceeded({
+          orderId,
+          paymentIntentId: 'pi_test',
+          paymentIntentStatus: 'succeeded',
+        }),
       ).rejects.toThrow('Simulated Outbox insertion failure');
 
       // Assert: the status update (PENDING → PAID) was rolled back
@@ -318,11 +322,11 @@ describe('Orders (Integration)', () => {
       const orderId = createdOrder.id;
 
       // Simulate the Stripe payment success webhook — sets PAID and enqueues ORDER_PROCESS.
-      await ordersService.markPaymentAsSucceeded(
+      await ordersService.markPaymentAsSucceeded({
         orderId,
-        'pi_test_full_flow',
-        'succeeded',
-      );
+        paymentIntentId: 'pi_test_full_flow',
+        paymentIntentStatus: 'succeeded',
+      });
 
       // Wait for the async BullMQ pipeline to advance the order to PROCESSED.
       //   webhook → markPaymentAsSucceeded → PAID + Outbox → ORDER_PROCESS
@@ -431,11 +435,11 @@ describe('Orders (Integration)', () => {
         const orderId = createdOrder.id;
 
         // Simulate the Stripe payment success webhook.
-        await ordersService.markPaymentAsSucceeded(
+        await ordersService.markPaymentAsSucceeded({
           orderId,
-          'pi_comp_delivery_fail',
-          'succeeded',
-        );
+          paymentIntentId: 'pi_comp_delivery_fail',
+          paymentIntentStatus: 'succeeded',
+        });
 
         // Wait for the compensation pipeline to complete:
         //   webhook → markPaymentAsSucceeded → PAID + Outbox → ORDER_PROCESS
@@ -522,11 +526,11 @@ describe('Orders (Integration)', () => {
 
       // Act: simulate the Stripe payment failure webhook.
       // This enqueues ORDER_CANCEL (without touching the order status directly).
-      await ordersService.markPaymentAsFailed(
+      await ordersService.markPaymentAsFailed({
         orderId,
-        'pi_test_failed',
-        'payment_failed',
-      );
+        paymentIntentId: 'pi_test_failed',
+        paymentIntentStatus: 'payment_failed',
+      });
 
       // Wait for the cancellation pipeline to complete:
       //   webhook → markPaymentAsFailed → Outbox → ORDER_CANCEL

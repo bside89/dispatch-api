@@ -6,8 +6,10 @@ import Redis from 'ioredis';
 import Redlock from 'redlock';
 import { cacheConfig, redisClient } from '../../../config/redis.config';
 import { CacheService } from './cache.service';
+import { IdempotencyService } from './idempotency.service';
 import { REDIS_CLIENT } from '@/shared/modules/cache/constants/redis-client.token';
 import { CACHE_SERVICE } from './constants/cache.token';
+import { IDEMPOTENCY_SERVICE } from './constants/idempotency.token';
 
 @Global()
 @Module({
@@ -20,6 +22,7 @@ import { CACHE_SERVICE } from './constants/cache.token';
   ],
   providers: [
     { provide: CACHE_SERVICE, useClass: CacheService },
+    { provide: IDEMPOTENCY_SERVICE, useClass: IdempotencyService },
     {
       provide: REDIS_CLIENT,
       useFactory: redisClient,
@@ -31,6 +34,6 @@ import { CACHE_SERVICE } from './constants/cache.token';
       inject: [REDIS_CLIENT],
     },
   ],
-  exports: [CACHE_SERVICE, REDIS_CLIENT, Redlock],
+  exports: [CACHE_SERVICE, IDEMPOTENCY_SERVICE, REDIS_CLIENT, Redlock],
 })
 export class CacheModule {}

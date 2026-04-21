@@ -7,5 +7,6 @@ export const I18N_ITEMS = {
   } as const,
   ERRORS: {
     NOT_FOUND: 'items.errors.notFound',
+    INSUFFICIENT_STOCK: 'items.errors.insufficientStock',
   } as const,
 } as const;

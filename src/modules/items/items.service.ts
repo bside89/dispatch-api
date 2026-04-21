@@ -1,4 +1,9 @@
-import { Injectable, Inject, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  Inject,
+  NotFoundException,
+  ForbiddenException,
+} from '@nestjs/common';
 import type { IItemRepository } from './interfaces/item-repository.interface';
 import { ITEM_REPOSITORY } from './constants/items.token';
 import { CreateItemDto } from './dto/create-item.dto';
@@ -10,6 +15,8 @@ import { EntityMapper } from '@/shared/utils/entity-mapper';
 import { Item } from './entities/item.entity';
 import type { ICacheService } from '@/shared/modules/cache/interfaces/cache-service.interface';
 import { CACHE_SERVICE } from '@/shared/modules/cache/constants/cache.token';
+import { IDEMPOTENCY_SERVICE } from '@/shared/modules/cache/constants/idempotency.token';
+import type { IIdempotencyService } from '@/shared/modules/cache/interfaces/idempotency-service.interface';
 import { ITEM_KEY } from '@/shared/modules/cache/constants/item.key';
 import { CACHE_TTL } from '@/shared/constants/cache-ttl.constant';
 import { runAndIgnoreError, template } from '@/shared/helpers/functions';
@@ -24,6 +31,8 @@ export class ItemsService extends BaseService implements IItemsService {
   constructor(
     @Inject(ITEM_REPOSITORY) private readonly itemRepository: IItemRepository,
     @Inject(CACHE_SERVICE) private readonly cacheService: ICacheService,
+    @Inject(IDEMPOTENCY_SERVICE)
+    private readonly idempotencyService: IIdempotencyService,
     private readonly guard: DbGuardService,
   ) {
     super(ItemsService.name);
@@ -113,41 +122,30 @@ export class ItemsService extends BaseService implements IItemsService {
       this.adminCreate.name,
       idempotencyKey,
     );
-    const existingItem = await this.cacheService.get<ItemResponseDto>(
+
+    return this.idempotencyService.getOrExecute(
       idempotencyKeyFormatted,
+      async () => {
+        /** 2. CREATE ITEM */
+
+        const item = this.itemRepository.createEntity(dto);
+        const savedItem = await this.itemRepository.save(item);
+        const itemResponse = EntityMapper.map(savedItem, ItemResponseDto);
+
+        /** 3. CACHE ITEM */
+
+        await this.cacheService.deleteBulk({
+          patterns: [ITEM_KEY.CACHE_FIND_ALL_PATTERN()],
+        });
+
+        this.logger.debug('Item created', {
+          itemId: savedItem.id,
+          idempotencyKey: idempotencyKeyFormatted,
+        });
+
+        return itemResponse;
+      },
     );
-    if (existingItem) {
-      this.logger.debug('Returning existing item for idempotency key', {
-        idempotencyKey: idempotencyKeyFormatted,
-        itemId: existingItem.id,
-      });
-      return existingItem;
-    }
-
-    /** 2. CREATE ITEM */
-
-    const item = this.itemRepository.createEntity(dto);
-    const savedItem = await this.itemRepository.save(item);
-    const itemResponse = EntityMapper.map(savedItem, ItemResponseDto);
-
-    /** 3. CACHE ITEM */
-
-    await this.cacheService.set(
-      idempotencyKeyFormatted,
-      itemResponse,
-      CACHE_TTL.IDEMPOTENCY,
-    );
-
-    await this.cacheService.deleteBulk({
-      patterns: [ITEM_KEY.CACHE_FIND_ALL_PATTERN()],
-    });
-
-    this.logger.debug('Item created and cached', {
-      itemId: savedItem.id,
-      idempotencyKey: idempotencyKeyFormatted,
-    });
-
-    return itemResponse;
   }
 
   async adminFindAll(
@@ -271,6 +269,11 @@ export class ItemsService extends BaseService implements IItemsService {
   }
 
   decrementItemStock(item: Item, quantity: number): Promise<void> {
+    if (item.stock < quantity) {
+      throw new ForbiddenException(
+        template(I18N_ITEMS.ERRORS.INSUFFICIENT_STOCK, { itemName: item.name }),
+      );
+    }
     return this.guard.lockAndTransaction(LOCK_KEY.ITEM.UPDATE(item.id), async () =>
       this.itemRepository.decrementStock(item, quantity),
     );
@@ -280,6 +283,17 @@ export class ItemsService extends BaseService implements IItemsService {
     return this.guard.lockAndTransaction(LOCK_KEY.ITEM.UPDATE(item.id), async () =>
       this.itemRepository.incrementStock(item, quantity),
     );
+  }
+
+  async validateAndGetCatalogItems(ids: string[]): Promise<Item[]> {
+    const catalogItems = await this.findManyByIds(ids);
+    // Validate all items exist in catalog
+    for (const id of ids) {
+      if (!catalogItems.find((ci) => ci.id === id)) {
+        throw new NotFoundException(template(I18N_ITEMS.ERRORS.NOT_FOUND));
+      }
+    }
+    return catalogItems;
   }
 
   // #endregion

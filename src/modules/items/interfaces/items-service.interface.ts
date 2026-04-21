@@ -28,4 +28,6 @@ export interface IItemsService extends IBaseService {
   decrementItemStock(item: Item, quantity: number): Promise<void>;
 
   incrementItemStock(item: Item, quantity: number): Promise<void>;
+
+  validateAndGetCatalogItems(ids: string[]): Promise<Item[]>;
 }

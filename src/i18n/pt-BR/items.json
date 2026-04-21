@@ -6,6 +6,7 @@
     "delete": "Item excluído com sucesso."
   },
   "errors": {
-    "notFound": "Item não encontrado."
+    "notFound": "Item não encontrado.",
+    "insufficientStock": "Estoque insuficiente para o item: {itemName}."
   }
 }

@@ -27,8 +27,8 @@ import { ORDERS_SERVICE } from './constants/orders.token';
 import { UpdateOrderDto } from './dto/update-order.dto';
 import { ShipOrderDto } from './dto/ship-order.dto';
 import { OrderQueryDto } from './dto/order-query.dto';
-import { UserRole } from '../../shared/enums/user-role.enum';
 import { Roles } from '../auth/decorators/roles.decorator';
+import { ROLE_GROUPS } from '@/shared/constants/role-groups.constant';
 import { PagOffsetResultDto } from '@/shared/dto/pag-offset-result.dto';
 import { GetUser } from '@/shared/decorators/get-user.decorator';
 import { OrderResponseDto } from './dto/order-response.dto';
@@ -49,7 +49,7 @@ export class AdminOrdersController extends BaseController {
   }
 
   @Get()
-  @Roles(UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.FINANCIAL)
+  @Roles(...ROLE_GROUPS.ORDER_FINANCIAL)
   @ApiOperation({
     summary: 'Get all orders',
     description: 'Retrieve a paginated list of orders with optional filtering',
@@ -65,7 +65,7 @@ export class AdminOrdersController extends BaseController {
   }
 
   @Get(':id')
-  @Roles(UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.FINANCIAL)
+  @Roles(...ROLE_GROUPS.ORDER_FINANCIAL)
   @ApiOperation({
     summary: 'Get order by ID',
     description: 'Retrieve a specific order by its unique identifier',
@@ -92,7 +92,7 @@ export class AdminOrdersController extends BaseController {
   }
 
   @Patch(':id')
-  @Roles(UserRole.SUPERADMIN, UserRole.ADMIN)
+  @Roles(...ROLE_GROUPS.ORDER_MANAGEMENT)
   @ApiOperation({
     summary: 'Update an order',
     description: 'Update order details including status',
@@ -130,7 +130,7 @@ export class AdminOrdersController extends BaseController {
   }
 
   @Delete(':id')
-  @Roles(UserRole.SUPERADMIN, UserRole.ADMIN)
+  @Roles(...ROLE_GROUPS.ORDER_MANAGEMENT)
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({
     summary: 'Delete an order',
@@ -163,7 +163,7 @@ export class AdminOrdersController extends BaseController {
   }
 
   @Patch(':id/ship')
-  @Roles(UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.SHIPPER)
+  @Roles(...ROLE_GROUPS.ORDER_SHIPPING)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Mark order as shipped',
@@ -193,7 +193,7 @@ export class AdminOrdersController extends BaseController {
   }
 
   @Patch(':id/deliver')
-  @Roles(UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.DELIVERY)
+  @Roles(...ROLE_GROUPS.ORDER_DELIVERY)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Mark order as delivered',
@@ -219,7 +219,7 @@ export class AdminOrdersController extends BaseController {
   }
 
   @Patch(':id/cancel')
-  @Roles(UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.FINANCIAL)
+  @Roles(...ROLE_GROUPS.ORDER_FINANCIAL)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Cancel an order',
@@ -244,7 +244,7 @@ export class AdminOrdersController extends BaseController {
   }
 
   @Patch(':id/refund')
-  @Roles(UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.FINANCIAL)
+  @Roles(...ROLE_GROUPS.ORDER_FINANCIAL)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Refund an order',

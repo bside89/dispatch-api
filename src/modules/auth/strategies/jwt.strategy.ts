@@ -10,7 +10,7 @@ import { Request } from 'express';
 import { AUTH_KEY } from '../../../shared/modules/cache/constants/auth.key';
 import { template } from '@/shared/helpers/functions';
 import { I18N_AUTH } from '@/shared/constants/i18n';
-import { jwtToRequestUser } from '../helper/auth-functions';
+import { jwtToRequestUser } from '../helpers/auth-functions';
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy, JWT_ACCESS) {

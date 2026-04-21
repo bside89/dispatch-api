@@ -1,20 +1,16 @@
-import { AppModule } from '@/app.module';
-import { HttpStatus, INestApplication, ValidationPipe } from '@nestjs/common';
+import { HttpStatus, INestApplication } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import { Test, TestingModule } from '@nestjs/testing';
 import Redis from 'ioredis';
 import request from 'supertest';
-import { PAYMENTS_GATEWAY_SERVICE } from '@/modules/payments-gateway/constants/payments-gateway.token';
-import { REDIS_CLIENT } from '@/shared/modules/cache/constants/redis-client.token';
 import { DataSource } from 'typeorm';
 import { cleanDatabase, cleanRedis } from './utils/database-cleaner';
-import { paymentsGatewayServiceMock } from './utils/mock-payments-gateway-service';
 import {
   createAccessToken,
   createFixtureItem,
   createFixtureUser,
   getAdminFixture,
 } from './utils/e2e-fixtures';
+import { createTestApp } from './utils/e2e-setup';
 
 describe('Items (E2E)', () => {
   let app: INestApplication;
@@ -27,28 +23,7 @@ describe('Items (E2E)', () => {
   let testItemId: string;
 
   beforeAll(async () => {
-    const module: TestingModule = await Test.createTestingModule({
-      imports: [AppModule],
-    })
-      .overrideProvider(PAYMENTS_GATEWAY_SERVICE)
-      .useValue(paymentsGatewayServiceMock)
-      .compile();
-
-    app = module.createNestApplication();
-
-    app.useGlobalPipes(
-      new ValidationPipe({
-        transform: true,
-        whitelist: true,
-        forbidNonWhitelisted: true,
-      }),
-    );
-
-    await app.init();
-
-    dataSource = app.get<DataSource>(DataSource);
-    redisClient = app.get<Redis>(REDIS_CLIENT);
-    jwtService = app.get<JwtService>(JwtService);
+    ({ app, dataSource, redisClient, jwtService } = await createTestApp());
   });
 
   afterAll(async () => {
