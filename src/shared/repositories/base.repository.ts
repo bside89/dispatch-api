@@ -8,7 +8,7 @@ import {
   FindOptionsWhere,
   QueryDeepPartialEntity,
 } from 'typeorm';
-import { TransactionContext } from '../utils/transaction-context';
+import { TransactionContext } from '../utils/transaction-context.utils';
 import { BaseEntity } from '../entities/base.entity';
 import { IBaseRepository, QueryOptions } from './base-repository.interface';
 

@@ -23,7 +23,7 @@ import {
   OrderResponseDto,
   PublicOrderResponseDto,
 } from './dto/order-response.dto';
-import { EntityMapper } from '@/shared/utils/entity-mapper';
+import { EntityMapper } from '@/shared/utils/entity-mapper.utils';
 import type { IOutboxService } from '@/shared/modules/outbox/interfaces/outbox-service.interface';
 import { OUTBOX_SERVICE } from '@/shared/modules/outbox/constants/outbox.token';
 import {
@@ -33,7 +33,7 @@ import {
 } from '@/shared/payloads/orders-job.payload';
 import { ShipOrderDto } from './dto/ship-order.dto';
 import { PaymentIntentUpdateDto } from './dto/payment-intent-update.dto';
-import { template } from '@/shared/helpers/functions';
+import { template } from '@/shared/utils/functions.utils';
 import { ORDER_KEY } from '../../shared/modules/cache/constants/order.key';
 import type { RequestUser } from '../auth/interfaces/request-user.interface';
 import { LOCK_KEY } from '@/shared/constants/lock.key';

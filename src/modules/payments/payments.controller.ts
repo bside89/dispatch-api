@@ -24,7 +24,7 @@ import {
 import { PaymentWebhookDto } from './dto/payment-webhook.dto';
 import { PaymentWebhookResponseDto } from './dto/payment-webhook-response.dto';
 import { I18N_PAYMENTS } from '@/shared/constants/i18n';
-import { template } from '@/shared/helpers/functions';
+import { template } from '@/shared/utils/functions.utils';
 
 @Controller({ path: 'v1/payments', version: '1' })
 @ApiTags('payments')

@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import Redlock from 'redlock';
 import { DataSource, EntityManager } from 'typeorm';
-import { TransactionContext } from '@/shared/utils/transaction-context';
+import { TransactionContext } from '@/shared/utils/transaction-context.utils';
 import { CACHE_TTL } from '@/shared/constants/cache-ttl.constant';
 
 @Injectable()

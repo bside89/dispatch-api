@@ -8,14 +8,14 @@ import { BaseService } from '@/shared/services/base.service';
 import { NOTIFICATION_REPOSITORY } from './constants/notifications.token';
 import { CreateNotificationDto } from './dto/create-notification.dto';
 import { NotificationResponseDto } from './dto/notification-response.dto';
-import { EntityMapper } from '@/shared/utils/entity-mapper';
+import { EntityMapper } from '@/shared/utils/entity-mapper.utils';
 import { DbGuardService } from '@/shared/modules/db-guard/db-guard.service';
 import { LOCK_KEY } from '@/shared/constants/lock.key';
 import { INotificationsService } from './interfaces/notifications-service.interface';
 import type { INotificationRepository } from './interfaces/notification-repository.interface';
 import { CursorParams } from '@/shared/types/cursor-params.type';
 import { I18N_NOTIFICATIONS } from '@/shared/constants/i18n/i18n-notifications.constant';
-import { template } from '@/shared/helpers/functions';
+import { template } from '@/shared/utils/functions.utils';
 
 @Injectable()
 export class NotificationsService

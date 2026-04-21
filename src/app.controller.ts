@@ -1,7 +1,7 @@
 import { Controller, Get, VERSION_NEUTRAL, Inject } from '@nestjs/common';
 import { Public } from './modules/auth/decorators/public.decorator';
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
-import { ensureError } from '@/shared/helpers/functions';
+import { ensureError } from '@/shared/utils/functions.utils';
 import {
   HealthCheck,
   HealthCheckService,

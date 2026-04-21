@@ -40,7 +40,7 @@ import { GetUser } from '@/shared/decorators/get-user.decorator';
 import type { RequestUser } from '../auth/interfaces/request-user.interface';
 import { UserMessageFactory } from './factories/user-message.factory';
 import { I18N_COMMON } from '@/shared/constants/i18n';
-import { template } from '@/shared/helpers/functions';
+import { template } from '@/shared/utils/functions.utils';
 import { PagOffsetResultDto } from '@/shared/dto/pag-offset-result.dto';
 
 @Controller({ path: 'v1/users', version: '1' })

@@ -5,7 +5,7 @@ import { Item } from '../entities/item.entity';
 import { BaseRepository } from '@/shared/repositories/base.repository';
 import { Injectable } from '@nestjs/common';
 import { PagOffsetResultDto } from '@/shared/dto/pag-offset-result.dto';
-import { col } from '@/shared/helpers/functions';
+import { col } from '@/shared/utils/functions.utils';
 import { ItemQueryDto } from '../dto/item-query.dto';
 import { IItemRepository } from '../interfaces/item-repository.interface';
 

@@ -8,7 +8,7 @@ import type { ICacheService } from '../../shared/modules/cache/interfaces/cache-
 import { CACHE_SERVICE } from '../../shared/modules/cache/constants/cache.token';
 import type { IUserRepository } from '../users/interfaces/user-repository.interface';
 import { USER_REPOSITORY } from '../users/constants/users.token';
-import { HashUtils } from '@/shared/utils/hash.utils';
+import { HashAdapter } from '@/shared/utils/hash-adapter.utils';
 import { CACHE_TTL } from '@/shared/constants/cache-ttl.constant';
 import type { IOutboxService } from '@/shared/modules/outbox/interfaces/outbox-service.interface';
 import { OUTBOX_SERVICE } from '@/shared/modules/outbox/constants/outbox.token';
@@ -17,7 +17,7 @@ import type { RequestUser } from './interfaces/request-user.interface';
 import { AUTH_KEY } from '../../shared/modules/cache/constants/auth.key';
 import type ms from 'ms';
 import { AuthMessageFactory } from './factories/auth-message.factory';
-import { template } from '@/shared/helpers/functions';
+import { template } from '@/shared/utils/functions.utils';
 import { I18N_AUTH, I18N_COMMON } from '@/shared/constants/i18n';
 import { IAuthService } from './interfaces/auth-service.interface';
 import { BaseService } from '@/shared/services/base.service';
@@ -52,7 +52,7 @@ export class AuthService extends BaseService implements IAuthService {
         template(I18N_COMMON.ERRORS.USER_NOT_FOUND, { email }),
       );
 
-    const isValid = await HashUtils.compare(user.password, password);
+    const isValid = await HashAdapter.compare(user.password, password);
     if (!isValid)
       throw new UnauthorizedException(template(I18N_AUTH.ERRORS.INVALID_PASSWORD));
 
@@ -91,7 +91,7 @@ export class AuthService extends BaseService implements IAuthService {
         }),
       );
 
-    const isValid = await HashUtils.compare(user.refreshToken, refreshToken);
+    const isValid = await HashAdapter.compare(user.refreshToken, refreshToken);
     if (!isValid) {
       await this.logout(reqUser);
       throw new UnauthorizedException(
@@ -157,7 +157,7 @@ export class AuthService extends BaseService implements IAuthService {
 
   updateRefreshToken(userId: string, refreshToken?: string): Promise<void> {
     return this.guard.lock(LOCK_KEY.USER.UPDATE(userId), async () => {
-      const hash = refreshToken ? await HashUtils.hash(refreshToken) : null;
+      const hash = refreshToken ? await HashAdapter.hash(refreshToken) : null;
       this.userRepository.update(userId, { refreshToken: hash });
     });
   }

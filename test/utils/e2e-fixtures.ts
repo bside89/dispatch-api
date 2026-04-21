@@ -3,7 +3,7 @@ import { JwtService } from '@nestjs/jwt';
 import { DataSource } from 'typeorm';
 import { ADMIN_USER } from '../constants/admin-user.constant';
 import { UserRole } from '@/shared/enums/user-role.enum';
-import { HashUtils } from '@/shared/utils/hash.utils';
+import { HashAdapter } from '@/shared/utils/hash-adapter.utils';
 import type ms from 'ms';
 
 const ADMIN_PASSWORD_HASH =
@@ -45,7 +45,7 @@ export async function persistRefreshToken(
   userId: string,
   refreshToken: string,
 ) {
-  const refreshTokenHash = await HashUtils.hash(refreshToken);
+  const refreshTokenHash = await HashAdapter.hash(refreshToken);
 
   await dataSource.query(
     `UPDATE "users"
@@ -144,7 +144,7 @@ export function getAdminFixture() {
 
 async function getTestUserPasswordHash(): Promise<string> {
   if (!testUserPasswordHashPromise) {
-    testUserPasswordHashPromise = HashUtils.hash(TEST_USER_PASSWORD);
+    testUserPasswordHashPromise = HashAdapter.hash(TEST_USER_PASSWORD);
   }
 
   return testUserPasswordHashPromise;

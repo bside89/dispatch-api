@@ -1,4 +1,10 @@
-import { delay, col, runAndIgnoreError, ensureError, template } from './functions';
+import {
+  delay,
+  col,
+  runAndIgnoreError,
+  ensureError,
+  template,
+} from './functions.utils';
 
 describe('functions.ts', () => {
   describe('delay', () => {

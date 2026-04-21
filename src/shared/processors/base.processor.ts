@@ -1,13 +1,13 @@
 import { WorkerHost } from '@nestjs/bullmq';
 import * as os from 'os';
-import { AppLogger } from '../utils/app-logger';
+import { AppLogger } from '../utils/app-logger.utils';
 import type { ICacheService } from '../modules/cache/interfaces/cache-service.interface';
 import { Job } from 'bullmq';
 import { randomUUID } from 'crypto';
-import { RequestContext } from '../utils/request-context';
+import { RequestContext } from '../utils/request-context.utils';
 import { BaseJobHandlerFactory } from '../factories/base-job-handler.factory';
 import { JobStatus } from '../enums/job-status.enum';
-import { ensureError } from '../helpers/functions';
+import { ensureError } from '../utils/functions.utils';
 import { BeforeApplicationShutdown, OnApplicationBootstrap } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { LOCK_KEY } from '../constants/lock.key';

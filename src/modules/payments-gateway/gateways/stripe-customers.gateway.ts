@@ -10,7 +10,7 @@ import { STRIPE_CLIENT } from '../constants/stripe-client.token';
 import { CreateCustomerDto } from '@/modules/payments-gateway/dto/create-customer.dto';
 import { UpdateCustomerDto } from '@/modules/payments-gateway/dto/update-customer.dto';
 import { StripeCustomerMapper } from '../utils/stripe-customer-mapper';
-import { template } from '@/shared/helpers/functions';
+import { template } from '@/shared/utils/functions.utils';
 import { I18N_PAYMENTS } from '@/shared/constants/i18n';
 
 @Injectable()

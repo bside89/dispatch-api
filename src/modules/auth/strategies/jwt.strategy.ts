@@ -8,7 +8,7 @@ import { CACHE_SERVICE } from '../../../shared/modules/cache/constants/cache.tok
 import type { ICacheService } from '../../../shared/modules/cache/interfaces/cache-service.interface';
 import { Request } from 'express';
 import { AUTH_KEY } from '../../../shared/modules/cache/constants/auth.key';
-import { template } from '@/shared/helpers/functions';
+import { template } from '@/shared/utils/functions.utils';
 import { I18N_AUTH } from '@/shared/constants/i18n';
 import { jwtToRequestUser } from '../helpers/auth-functions';
 

@@ -18,7 +18,7 @@ import {
   CreateCustomerDto,
 } from '@/modules/payments-gateway/dto/create-customer.dto';
 import { PAYMENT_KEY } from '@/shared/modules/cache/constants/payment.key';
-import { template } from '@/shared/helpers/functions';
+import { template } from '@/shared/utils/functions.utils';
 import { I18N_PAYMENTS } from '@/shared/constants/i18n';
 import { DbGuardService } from '@/shared/modules/db-guard/db-guard.service';
 

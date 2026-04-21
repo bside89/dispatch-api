@@ -4,7 +4,7 @@ import { Notification } from '../entities/notification.entity';
 import { Brackets, Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
 import { PagCursorResultDto } from '@/shared/dto/pag-cursor-result.dto';
-import { col } from '@/shared/helpers/functions';
+import { col } from '@/shared/utils/functions.utils';
 import { CursorParams } from '@/shared/types/cursor-params.type';
 
 const ALIAS_NOTIFICATION = 'notification';

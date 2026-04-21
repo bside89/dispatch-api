@@ -41,7 +41,7 @@ import { UserRole } from '@/shared/enums/user-role.enum';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { CreateUserDto } from './dto/create-user.dto';
 import { I18N_COMMON } from '@/shared/constants/i18n/i18n-common.constant';
-import { template } from '@/shared/helpers/functions';
+import { template } from '@/shared/utils/functions.utils';
 import { PagOffsetResultDto } from '@/shared/dto/pag-offset-result.dto';
 
 @Controller({ path: 'v1/admin/users', version: '1' })

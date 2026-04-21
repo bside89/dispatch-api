@@ -5,7 +5,7 @@ import { StripePaymentIntentsGateway } from './gateways/stripe-payment-intents.g
 import { CreateCustomerDto } from './dto/create-customer.dto';
 import { IPaymentsGatewayService } from './interfaces/payments-gateway-service.interface';
 import { CustomerResponseDto } from './dto/customer-response.dto';
-import { EntityMapper } from '@/shared/utils/entity-mapper';
+import { EntityMapper } from '@/shared/utils/entity-mapper.utils';
 import { UpdateCustomerDto } from './dto/update-customer.dto';
 import { PaymentIntentResponseDto } from './dto/payment-intent-response.dto';
 import {

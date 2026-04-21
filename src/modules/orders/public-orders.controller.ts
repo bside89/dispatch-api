@@ -35,7 +35,7 @@ import { PublicOrderResponseDto } from './dto/order-response.dto';
 import { BaseController } from '@/shared/controllers/base.controller';
 import type { RequestUser } from '../auth/interfaces/request-user.interface';
 import { OrderMessageFactory } from './factories/order-message.factory';
-import { template } from '@/shared/helpers/functions';
+import { template } from '@/shared/utils/functions.utils';
 import { I18N_COMMON } from '@/shared/constants/i18n';
 
 @Controller({ path: 'v1/orders', version: '1' })

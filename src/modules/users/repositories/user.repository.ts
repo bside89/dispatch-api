@@ -5,7 +5,7 @@ import { User } from '../entities/user.entity';
 import { BaseRepository } from '@/shared/repositories/base.repository';
 import { Injectable } from '@nestjs/common';
 import { PagOffsetResultDto } from '@/shared/dto/pag-offset-result.dto';
-import { col } from '@/shared/helpers/functions';
+import { col } from '@/shared/utils/functions.utils';
 import { IUserRepository } from '../interfaces/user-repository.interface';
 
 const ALIAS_USER = 'user';

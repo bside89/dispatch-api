@@ -8,7 +8,7 @@ import { AUTH_KEY } from '@/shared/modules/cache/constants/auth.key';
 import { CACHE_SERVICE } from '@/shared/modules/cache/constants/cache.token';
 import type { ICacheService } from '@/shared/modules/cache/interfaces/cache-service.interface';
 import { I18N_AUTH } from '@/shared/constants/i18n';
-import { template } from '@/shared/helpers/functions';
+import { template } from '@/shared/utils/functions.utils';
 import { jwtToRequestUser } from '../helpers/auth-functions';
 import { JWT_REFRESH } from '../constants/jwt-name.token';
 

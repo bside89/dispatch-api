@@ -1,7 +1,7 @@
 import { BadRequestException, Injectable, PipeTransform } from '@nestjs/common';
 import { CursorParams } from '@/shared/types/cursor-params.type';
 import { I18N_COMMON } from '@/shared/constants/i18n';
-import { template } from '@/shared/helpers/functions';
+import { template } from '@/shared/utils/functions.utils';
 
 @Injectable()
 export class CursorParamsPipe implements PipeTransform<

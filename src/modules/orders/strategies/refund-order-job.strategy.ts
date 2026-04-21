@@ -10,7 +10,7 @@ import type { IOutboxService } from '@/shared/modules/outbox/interfaces/outbox-s
 import { ORDER_REPOSITORY } from '../constants/orders.token';
 import type { IOrderRepository } from '../interfaces/order-repository.interface';
 import { BaseOrderJobStrategy } from './base-order-job.strategy';
-import { delay } from '@/shared/helpers/functions';
+import { delay } from '@/shared/utils/functions.utils';
 import { OrderMessageFactory } from '../factories/order-message.factory';
 import { Order } from '../entities/order.entity';
 import { DbGuardService } from '@/shared/modules/db-guard/db-guard.service';

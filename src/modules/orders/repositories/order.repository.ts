@@ -5,7 +5,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { OrderQueryDto } from '../dto/order-query.dto';
 import { PagOffsetResultDto } from '@/shared/dto/pag-offset-result.dto';
-import { col } from '@/shared/helpers/functions';
+import { col } from '@/shared/utils/functions.utils';
 import { OrderItem } from '../entities/order-item.entity';
 import { IOrderRepository } from '../interfaces/order-repository.interface';
 

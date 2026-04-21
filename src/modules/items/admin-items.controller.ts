@@ -42,7 +42,7 @@ import { GetUser } from '@/shared/decorators/get-user.decorator';
 import { ItemMessageFactory } from './factories/item-message.factory';
 import type { RequestUser } from '../auth/interfaces/request-user.interface';
 import { I18N_COMMON } from '@/shared/constants/i18n';
-import { template } from '@/shared/helpers/functions';
+import { template } from '@/shared/utils/functions.utils';
 
 @Controller({ path: 'v1/admin/items', version: '1' })
 @ApiTags('items-admin')

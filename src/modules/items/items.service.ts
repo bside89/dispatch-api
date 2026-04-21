@@ -11,7 +11,7 @@ import { UpdateItemDto } from './dto/update-item.dto';
 import { ItemQueryDto, PublicItemQueryDto } from './dto/item-query.dto';
 import { ItemResponseDto, PublicItemResponseDto } from './dto/item-response.dto';
 import { PagOffsetResultDto } from '@/shared/dto/pag-offset-result.dto';
-import { EntityMapper } from '@/shared/utils/entity-mapper';
+import { EntityMapper } from '@/shared/utils/entity-mapper.utils';
 import { Item } from './entities/item.entity';
 import type { ICacheService } from '@/shared/modules/cache/interfaces/cache-service.interface';
 import { CACHE_SERVICE } from '@/shared/modules/cache/constants/cache.token';
@@ -19,7 +19,7 @@ import { IDEMPOTENCY_SERVICE } from '@/shared/modules/cache/constants/idempotenc
 import type { IIdempotencyService } from '@/shared/modules/cache/interfaces/idempotency-service.interface';
 import { ITEM_KEY } from '@/shared/modules/cache/constants/item.key';
 import { CACHE_TTL } from '@/shared/constants/cache-ttl.constant';
-import { runAndIgnoreError, template } from '@/shared/helpers/functions';
+import { runAndIgnoreError, template } from '@/shared/utils/functions.utils';
 import { LOCK_KEY } from '@/shared/constants/lock.key';
 import { I18N_ITEMS } from '@/shared/constants/i18n';
 import { IItemsService } from './interfaces/items-service.interface';

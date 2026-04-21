@@ -1,7 +1,7 @@
 import { ConfigService } from '@nestjs/config';
 import { DataSource } from 'typeorm';
 import { seedMockAdminUser } from './seed-mock-admin-user.helper';
-import { HashUtils } from '../utils/hash.utils';
+import { HashAdapter } from '../utils/hash-adapter.utils';
 
 describe('seedMockAdminUser', () => {
   const configService = {
@@ -24,7 +24,7 @@ describe('seedMockAdminUser', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    jest.spyOn(HashUtils, 'hash').mockResolvedValue('hashed-password');
+    jest.spyOn(HashAdapter, 'hash').mockResolvedValue('hashed-password');
   });
 
   afterEach(() => {

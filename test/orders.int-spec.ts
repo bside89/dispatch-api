@@ -24,8 +24,8 @@ import { PAYMENTS_GATEWAY_SERVICE } from '@/modules/payments-gateway/constants/p
 // Mock the delay function to resolve almost instantly.
 // This eliminates the simulated processing delays (1s-3s) used by
 // Job Strategies, making the pipeline tests much faster.
-jest.mock('@/shared/helpers/functions', () => ({
-  ...jest.requireActual('@/shared/helpers/functions'),
+jest.mock('@/shared/utils/functions.utils', () => ({
+  ...jest.requireActual('@/shared/utils/functions.utils'),
   delay: () => Promise.resolve(),
 }));
 

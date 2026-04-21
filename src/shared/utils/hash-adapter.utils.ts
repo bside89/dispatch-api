@@ -1,6 +1,6 @@
 import * as argon2 from 'argon2';
 
-export class HashUtils {
+export class HashAdapter {
   static async hash(data: string): Promise<string> {
     return argon2.hash(data, {
       type: argon2.argon2id,

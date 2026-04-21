@@ -1,4 +1,4 @@
-import { RequestContext } from '@/shared/utils/request-context';
+import { RequestContext } from '@/shared/utils/request-context.utils';
 import { randomUUID } from 'crypto';
 
 export abstract class BaseJobPayload {

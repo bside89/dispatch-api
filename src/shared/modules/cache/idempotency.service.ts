@@ -1,6 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { CACHE_TTL } from '@/shared/constants/cache-ttl.constant';
-import { AppLogger } from '@/shared/utils/app-logger';
+import { AppLogger } from '@/shared/utils/app-logger.utils';
 import { CACHE_SERVICE } from './constants/cache.token';
 import type { ICacheService } from './interfaces/cache-service.interface';
 import type { IIdempotencyService } from './interfaces/idempotency-service.interface';

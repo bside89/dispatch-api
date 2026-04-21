@@ -1,7 +1,7 @@
 import { Injectable, NestMiddleware } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { IncomingMessage, ServerResponse } from 'http';
-import { RequestContext } from '@/shared/utils/request-context';
+import { RequestContext } from '@/shared/utils/request-context.utils';
 
 @Injectable()
 export class CorrelationIdMiddleware implements NestMiddleware {

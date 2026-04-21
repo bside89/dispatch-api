@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { AppLogger } from '../utils/app-logger';
+import { AppLogger } from './app-logger.utils';
 
 /**
  * Delays the execution for a specified amount of time.
@@ -69,6 +69,14 @@ export function ensureError(value: unknown): Error {
   return new Error(`Unexpected error: ${stringified}`);
 }
 
+/**
+ * Creates a template object with a key and optional arguments. This is useful for
+ * internationalization (i18n) where the key can be used to look up a localized
+ * string and the arguments can be used to replace placeholders in the string.
+ * @param key The key for the template.
+ * @param args Optional arguments to replace placeholders in the template.
+ * @returns An object containing the key and arguments.
+ */
 export const template = (key: string, args?: Record<string, any>) => ({
   key,
   args,

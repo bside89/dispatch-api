@@ -1,4 +1,4 @@
-import { AppLogger } from '../utils/app-logger';
+import { AppLogger } from '../utils/app-logger.utils';
 import { IBaseService } from './base-service.interface';
 
 export abstract class BaseService implements IBaseService {

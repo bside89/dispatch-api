@@ -2,7 +2,7 @@ import { ConfigService } from '@nestjs/config';
 import { DataSource } from 'typeorm';
 import { User } from '@/modules/users/entities/user.entity';
 import { UserRole } from '@/shared/enums/user-role.enum';
-import { HashUtils } from '../utils/hash.utils';
+import { HashAdapter } from '../utils/hash-adapter.utils';
 
 type SeedLogger = {
   debug(message: string, data?: Record<string, unknown>): void;
@@ -45,7 +45,7 @@ export async function seedMockAdminUser(
     id: MOCK_ADMIN_USER.id,
     name: MOCK_ADMIN_USER.name,
     email: MOCK_ADMIN_USER.email,
-    password: await HashUtils.hash(MOCK_ADMIN_USER.password),
+    password: await HashAdapter.hash(MOCK_ADMIN_USER.password),
     role: MOCK_ADMIN_USER.role,
   });
 

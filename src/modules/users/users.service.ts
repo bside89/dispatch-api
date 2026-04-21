@@ -19,9 +19,9 @@ import {
   UserResponseDto,
   UserSelfResponseDto,
 } from './dto/user-response.dto';
-import { EntityMapper } from '@/shared/utils/entity-mapper';
-import { HashUtils } from '@/shared/utils/hash.utils';
-import { ensureError, template } from '@/shared/helpers/functions';
+import { EntityMapper } from '@/shared/utils/entity-mapper.utils';
+import { HashAdapter } from '@/shared/utils/hash-adapter.utils';
+import { ensureError, template } from '@/shared/utils/functions.utils';
 import { USER_KEY } from '../../shared/modules/cache/constants/user.key';
 import type { IOutboxService } from '@/shared/modules/outbox/interfaces/outbox-service.interface';
 import { OUTBOX_SERVICE } from '@/shared/modules/outbox/constants/outbox.token';
@@ -102,7 +102,7 @@ export class UsersService extends BaseService implements IUsersService {
     const user = this.userRepository.createEntity({
       name: dto.name,
       email: dto.email,
-      password: await HashUtils.hash(dto.password),
+      password: await HashAdapter.hash(dto.password),
     });
     const savedUser = await this.userRepository.save(user);
     const userMapped = EntityMapper.map(savedUser, UserSelfResponseDto);
@@ -276,7 +276,7 @@ export class UsersService extends BaseService implements IUsersService {
     const user = this.userRepository.createEntity({
       name: dto.name,
       email: dto.email,
-      password: await HashUtils.hash(dto.password),
+      password: await HashAdapter.hash(dto.password),
       language: dto.language || 'en',
       role: dto.role || UserRole.USER,
     });

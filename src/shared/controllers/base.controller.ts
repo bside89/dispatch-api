@@ -1,6 +1,6 @@
 import { SuccessResponseDto } from '../dto/success-response.dto';
 import { PagOffsetResponseDto } from '../dto/pag-offset-response.dto';
-import { AppLogger } from '../utils/app-logger';
+import { AppLogger } from '../utils/app-logger.utils';
 import { PagOffsetResultDto } from '../dto/pag-offset-result.dto';
 import { PagCursorResponseDto } from '../dto/pag-cursor-response.dto';
 import { PagCursorResultDto } from '../dto/pag-cursor-result.dto';

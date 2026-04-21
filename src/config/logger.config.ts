@@ -2,7 +2,7 @@ import { ConfigService } from '@nestjs/config';
 import { randomUUID } from 'crypto';
 import { IncomingMessage, ServerResponse } from 'http';
 import { Params } from 'nestjs-pino';
-import { RequestContext } from '@/shared/utils/request-context';
+import { RequestContext } from '@/shared/utils/request-context.utils';
 
 export const loggerConfig = (configService: ConfigService): Params => {
   const isProduction = configService.get('APP_ENV') === 'production';
