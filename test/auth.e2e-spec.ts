@@ -1,15 +1,4 @@
 import { HttpStatus, INestApplication } from '@nestjs/common';
-
-jest.mock('@/config/bullmq.config', () => ({
-  ...jest.requireActual('@/config/bullmq.config'),
-  bullmqDefaultJobOptions: {
-    attempts: 1,
-    removeOnFail: { age: 24 * 3600 },
-  },
-}));
-
-jest.setTimeout(30_000);
-
 import request from 'supertest';
 import { ADMIN_USER } from './constants/admin-user.constant';
 import { cleanDatabase, cleanRedis } from './utils/database-cleaner';
@@ -24,6 +13,16 @@ import {
 } from './utils/e2e-fixtures';
 import { createTestApp } from './utils/e2e-setup';
 
+jest.mock('@/config/bullmq.config', () => ({
+  ...jest.requireActual('@/config/bullmq.config'),
+  bullmqDefaultJobOptions: {
+    attempts: 1,
+    removeOnFail: { age: 24 * 3600 },
+  },
+}));
+
+jest.setTimeout(30_000);
+
 describe('Auth (E2E)', () => {
   let app: INestApplication;
   let dataSource: DataSource;
@@ -36,7 +35,7 @@ describe('Auth (E2E)', () => {
 
   afterAll(async () => {
     await app.close();
-  }, 30000);
+  });
 
   beforeEach(async () => {
     await cleanDatabase(dataSource);

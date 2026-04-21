@@ -1,15 +1,4 @@
 import { HttpStatus, INestApplication } from '@nestjs/common';
-
-jest.mock('@/config/bullmq.config', () => ({
-  ...jest.requireActual('@/config/bullmq.config'),
-  bullmqDefaultJobOptions: {
-    attempts: 1,
-    removeOnFail: { age: 24 * 3600 },
-  },
-}));
-
-jest.setTimeout(30_000);
-
 import { JwtService } from '@nestjs/jwt';
 import request from 'supertest';
 import { ADMIN_USER } from './constants/admin-user.constant';
@@ -26,6 +15,16 @@ import {
 import { createTestApp } from './utils/e2e-setup';
 import { withRolesEnabled } from './utils/with-roles-enabled';
 import { paymentsGatewayServiceMock } from './utils/mock-payments-gateway-service';
+
+jest.mock('@/config/bullmq.config', () => ({
+  ...jest.requireActual('@/config/bullmq.config'),
+  bullmqDefaultJobOptions: {
+    attempts: 1,
+    removeOnFail: { age: 24 * 3600 },
+  },
+}));
+
+jest.setTimeout(30_000);
 
 describe('Orders (E2E)', () => {
   let app: INestApplication;
