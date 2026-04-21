@@ -248,8 +248,8 @@ describe('Orders (Integration)', () => {
       await expect(
         ordersService.markPaymentAsSucceeded({
           orderId,
-          paymentIntentId: 'pi_test',
-          paymentIntentStatus: 'succeeded',
+          paymentId: 'pi_test',
+          paymentStatus: 'succeeded',
         }),
       ).rejects.toThrow('Simulated Outbox insertion failure');
 
@@ -324,8 +324,8 @@ describe('Orders (Integration)', () => {
       // Simulate the Stripe payment success webhook — sets PAID and enqueues ORDER_PROCESS.
       await ordersService.markPaymentAsSucceeded({
         orderId,
-        paymentIntentId: 'pi_test_full_flow',
-        paymentIntentStatus: 'succeeded',
+        paymentId: 'pi_test_full_flow',
+        paymentStatus: 'succeeded',
       });
 
       // Wait for the async BullMQ pipeline to advance the order to PROCESSED.
@@ -437,8 +437,8 @@ describe('Orders (Integration)', () => {
         // Simulate the Stripe payment success webhook.
         await ordersService.markPaymentAsSucceeded({
           orderId,
-          paymentIntentId: 'pi_comp_delivery_fail',
-          paymentIntentStatus: 'succeeded',
+          paymentId: 'pi_comp_delivery_fail',
+          paymentStatus: 'succeeded',
         });
 
         // Wait for the compensation pipeline to complete:
@@ -528,8 +528,8 @@ describe('Orders (Integration)', () => {
       // This enqueues ORDER_CANCEL (without touching the order status directly).
       await ordersService.markPaymentAsFailed({
         orderId,
-        paymentIntentId: 'pi_test_failed',
-        paymentIntentStatus: 'payment_failed',
+        paymentId: 'pi_test_failed',
+        paymentStatus: 'payment_failed',
       });
 
       // Wait for the cancellation pipeline to complete:

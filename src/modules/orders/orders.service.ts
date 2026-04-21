@@ -19,7 +19,7 @@ import type { IOrderItemRepository } from './interfaces/order-item-repository.in
 import { ORDER_ITEM_REPOSITORY } from './constants/orders.token';
 import { PagOffsetResultDto } from '@/shared/dto/pag-offset-result.dto';
 import {
-  OrderPaymentIntentDto,
+  OrderPaymentDto,
   OrderResponseDto,
   PublicOrderResponseDto,
 } from './dto/order-response.dto';
@@ -32,7 +32,7 @@ import {
   RefundOrderJobPayload,
 } from '@/shared/payloads/orders-job.payload';
 import { ShipOrderDto } from './dto/ship-order.dto';
-import { PaymentIntentUpdateDto } from './dto/payment-intent-update.dto';
+import { UpdateOrderPaymentDto } from './dto/order-payment.dto';
 import { template } from '@/shared/utils/functions.utils';
 import { ORDER_KEY } from '../../shared/modules/cache/constants/order.key';
 import type { RequestUser } from '../auth/interfaces/request-user.interface';
@@ -41,7 +41,7 @@ import type { IItemsService } from '../items/interfaces/items-service.interface'
 import { ITEMS_SERVICE } from '../items/constants/items.token';
 import type { IPaymentsGatewayService } from '../payments-gateway/interfaces/payments-gateway-service.interface';
 import { PAYMENTS_GATEWAY_SERVICE } from '../payments-gateway/constants/payments-gateway.token';
-import { StripePaymentIntentCreateParams } from '../payments-gateway/types/payment-intent.types';
+import { GatewayPaymentIntentParams } from '../payments-gateway/types/payment-intent.types';
 import { OrderMessageFactory } from './factories/order-message.factory';
 import { I18N_ORDERS } from '@/shared/constants/i18n';
 import {
@@ -119,8 +119,8 @@ export class OrdersService extends BaseService implements IOrdersService {
       idempotencyKey,
     );
 
-    completeOrder.paymentIntentId = paymentIntent.id;
-    completeOrder.paymentIntentStatus = paymentIntent.status;
+    completeOrder.paymentId = paymentIntent.id;
+    completeOrder.paymentStatus = paymentIntent.status;
     await this.orderRepository.save(completeOrder);
 
     await this.dispatchOrderCreatedNotification(
@@ -129,10 +129,7 @@ export class OrdersService extends BaseService implements IOrdersService {
     );
 
     const orderMapped = EntityMapper.map(completeOrder, PublicOrderResponseDto);
-    orderMapped.paymentIntent = EntityMapper.map(
-      paymentIntent,
-      OrderPaymentIntentDto,
-    );
+    orderMapped.paymentData = EntityMapper.map(paymentIntent, OrderPaymentDto);
 
     this.logger.debug('Order created', {
       idempotencyKey: idempotencyKey,
@@ -172,14 +169,11 @@ export class OrdersService extends BaseService implements IOrdersService {
     }
 
     const paymentIntent = await this.paymentsGatewayService.paymentIntentsRetrieve(
-      order.paymentIntentId,
+      order.paymentId,
     );
 
     const orderMapped = EntityMapper.map(order, PublicOrderResponseDto);
-    orderMapped.paymentIntent = EntityMapper.map(
-      paymentIntent,
-      OrderPaymentIntentDto,
-    );
+    orderMapped.paymentData = EntityMapper.map(paymentIntent, OrderPaymentDto);
 
     this.logger.debug('Found order', { orderId: id });
 
@@ -212,14 +206,11 @@ export class OrdersService extends BaseService implements IOrdersService {
     const order = await this.getOrderOrThrow(id);
 
     const paymentIntent = await this.paymentsGatewayService.paymentIntentsRetrieve(
-      order.paymentIntentId,
+      order.paymentId,
     );
 
     const orderMapped = EntityMapper.map(order, OrderResponseDto);
-    orderMapped.paymentIntent = EntityMapper.map(
-      paymentIntent,
-      OrderPaymentIntentDto,
-    );
+    orderMapped.paymentData = EntityMapper.map(paymentIntent, OrderPaymentDto);
 
     this.logger.debug('Found order', { orderId: id });
 
@@ -383,7 +374,7 @@ export class OrdersService extends BaseService implements IOrdersService {
 
   //#region Webhook methods
 
-  markPaymentAsSucceeded(dto: PaymentIntentUpdateDto): Promise<OrderResponseDto> {
+  markPaymentAsSucceeded(dto: UpdateOrderPaymentDto): Promise<OrderResponseDto> {
     return this.guard.lockAndTransaction(
       LOCK_KEY.ORDER.UPDATE(dto.orderId),
       async () => this._markPaymentAsSucceeded(dto),
@@ -391,12 +382,12 @@ export class OrdersService extends BaseService implements IOrdersService {
   }
 
   private async _markPaymentAsSucceeded(
-    dto: PaymentIntentUpdateDto,
+    dto: UpdateOrderPaymentDto,
   ): Promise<OrderResponseDto> {
     const order = await this.getOrderOrThrow(dto.orderId);
 
-    order.paymentIntentId = dto.paymentIntentId;
-    order.paymentIntentStatus = dto.paymentIntentStatus;
+    order.paymentId = dto.paymentId;
+    order.paymentStatus = dto.paymentStatus;
     order.status = OrderStatus.PAID;
 
     await this.orderRepository.save(order);
@@ -407,7 +398,7 @@ export class OrdersService extends BaseService implements IOrdersService {
     return EntityMapper.map(order, OrderResponseDto);
   }
 
-  markPaymentAsFailed(dto: PaymentIntentUpdateDto): Promise<OrderResponseDto> {
+  markPaymentAsFailed(dto: UpdateOrderPaymentDto): Promise<OrderResponseDto> {
     return this.guard.lockAndTransaction(
       LOCK_KEY.ORDER.UPDATE(dto.orderId),
       async () => this._markPaymentAsFailed(dto),
@@ -415,12 +406,12 @@ export class OrdersService extends BaseService implements IOrdersService {
   }
 
   private async _markPaymentAsFailed(
-    dto: PaymentIntentUpdateDto,
+    dto: UpdateOrderPaymentDto,
   ): Promise<OrderResponseDto> {
     const order = await this.getOrderOrThrow(dto.orderId);
 
-    order.paymentIntentId = dto.paymentIntentId;
-    order.paymentIntentStatus = dto.paymentIntentStatus;
+    order.paymentId = dto.paymentId;
+    order.paymentStatus = dto.paymentStatus;
 
     await this.orderRepository.save(order);
 
@@ -491,14 +482,12 @@ export class OrdersService extends BaseService implements IOrdersService {
       id: string;
     },
     userId: string,
-  ): StripePaymentIntentCreateParams {
+  ): GatewayPaymentIntentParams {
     return {
       amount: order.total,
       currency: 'brl',
-      customer: order.user?.customerId,
-      receipt_email: order.user?.email,
-      confirmation_method: 'automatic',
-      automatic_payment_methods: { enabled: true },
+      customerId: order.user?.customerId,
+      receiptEmail: order.user?.email,
       metadata: { orderId: order.id, userId },
     };
   }

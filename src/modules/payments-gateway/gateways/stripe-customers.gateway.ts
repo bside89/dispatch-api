@@ -5,10 +5,12 @@ import {
   StripeCustomerResponse,
   DeletedStripeCustomer,
 } from '../types/customer.types';
-import { PaymentCustomer } from '../types/customer.types';
+import { StripePaymentCustomer } from '../types/customer.types';
 import { STRIPE_CLIENT } from '../constants/stripe-client.token';
-import { CreateCustomerDto } from '@/modules/payments-gateway/dto/create-customer.dto';
-import { UpdateCustomerDto } from '@/modules/payments-gateway/dto/update-customer.dto';
+import {
+  StripeCreateCustomerDto,
+  StripeUpdateCustomerDto,
+} from '@/modules/payments-gateway/dto/stripe-customer.dto';
 import { StripeCustomerMapper } from '../utils/stripe-customer-mapper';
 import { template } from '@/shared/utils/functions.utils';
 import { I18N_PAYMENTS } from '@/shared/constants/i18n';
@@ -20,9 +22,9 @@ export class StripeCustomersGateway extends BaseService {
   }
 
   async create(
-    createCustomerDto: CreateCustomerDto,
+    createCustomerDto: StripeCreateCustomerDto,
     idempotencyKey: string,
-  ): Promise<PaymentCustomer> {
+  ): Promise<StripePaymentCustomer> {
     const customer = await this.stripe.customers.create(
       StripeCustomerMapper.mapToStripeCustomerCreateParams(createCustomerDto),
       { idempotencyKey },
@@ -30,12 +32,12 @@ export class StripeCustomersGateway extends BaseService {
     return StripeCustomerMapper.mapToPaymentCustomer(customer);
   }
 
-  async list(): Promise<PaymentCustomer[]> {
+  async list(): Promise<StripePaymentCustomer[]> {
     const customers = await this.stripe.customers.list();
     return StripeCustomerMapper.mapToPaymentCustomerList(customers.data);
   }
 
-  async retrieve(customerId: string): Promise<PaymentCustomer> {
+  async retrieve(customerId: string): Promise<StripePaymentCustomer> {
     const customer = await this.stripe.customers.retrieve(customerId);
 
     if (this.isDeletedCustomer(customer)) {
@@ -49,13 +51,13 @@ export class StripeCustomersGateway extends BaseService {
 
   async update(
     customerId: string,
-    updateParams: Partial<UpdateCustomerDto>,
+    updateParams: Partial<StripeUpdateCustomerDto>,
     idempotencyKey: string,
-  ): Promise<PaymentCustomer> {
+  ): Promise<StripePaymentCustomer> {
     const customer = await this.stripe.customers.update(
       customerId,
       StripeCustomerMapper.mapToStripeCustomerCreateParams(
-        updateParams as CreateCustomerDto,
+        updateParams as StripeCreateCustomerDto,
       ),
       { idempotencyKey },
     );

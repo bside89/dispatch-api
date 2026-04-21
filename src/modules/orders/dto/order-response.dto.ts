@@ -1,20 +1,25 @@
-import {
-  ApiProperty,
-  ApiPropertyOptional,
-  OmitType,
-  PickType,
-} from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional, OmitType } from '@nestjs/swagger';
 import { Exclude, Expose, Type } from 'class-transformer';
 import { OrderStatus } from '../enums/order-status.enum';
 import { UserResponseDto } from '@/modules/users/dto/user-response.dto';
 import { OrderItemResponseDto } from './order-item-response.dto';
-import { PaymentIntentResponseDto } from '@/modules/payments-gateway/dto/payment-intent-response.dto';
 
 @Exclude()
-export class OrderPaymentIntentDto extends PickType(PaymentIntentResponseDto, [
-  'id',
-  'status',
-] as const) {
+export class OrderPaymentDto {
+  @Expose()
+  @ApiProperty({
+    description: 'Payment identifier',
+    example: 'pi_123456789',
+  })
+  id: string;
+
+  @Expose()
+  @ApiProperty({
+    description: 'Payment status',
+    example: 'requires_confirmation',
+  })
+  status: string;
+
   @Expose()
   @ApiPropertyOptional({
     description: 'Client secret used by the frontend to confirm payment',
@@ -78,12 +83,12 @@ export class OrderResponseDto {
   items?: OrderItemResponseDto[];
 
   @Expose()
-  @Type(() => OrderPaymentIntentDto)
+  @Type(() => OrderPaymentDto)
   @ApiProperty({
-    description: 'Payment intent associated with the order',
-    type: () => OrderPaymentIntentDto,
+    description: 'Payment data associated with the order',
+    type: () => OrderPaymentDto,
   })
-  paymentIntent: OrderPaymentIntentDto;
+  paymentData: OrderPaymentDto;
 
   @Expose()
   @ApiPropertyOptional({

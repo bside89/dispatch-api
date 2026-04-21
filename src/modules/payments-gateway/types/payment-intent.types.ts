@@ -6,6 +6,18 @@ import Stripe from 'stripe';
  * explicitly
  * */
 
+//#region Gateway-agnostic Payment Intent Types
+
+export interface GatewayPaymentIntentParams {
+  amount: number;
+  currency: string;
+  customerId?: string;
+  receiptEmail?: string;
+  metadata?: Record<string, string>;
+}
+
+//#endregion
+
 //#region Stripe Payment Intent Types
 
 export type StripePaymentIntentCreateParams = Parameters<

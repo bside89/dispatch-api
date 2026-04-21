@@ -26,10 +26,10 @@ export class Order extends DeactivatableEntity {
   total: number;
 
   @Column({ nullable: true, default: null })
-  paymentIntentId?: string;
+  paymentId?: string;
 
   @Column({ nullable: true, default: null })
-  paymentIntentStatus?: string;
+  paymentStatus?: string;
 
   @Column({ nullable: true, default: null })
   trackingNumber?: string;

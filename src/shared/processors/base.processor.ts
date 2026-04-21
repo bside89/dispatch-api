@@ -30,7 +30,7 @@ export abstract class BaseProcessor
     this.logger = new AppLogger(processorName);
   }
 
-  onApplicationBootstrap() {
+  onApplicationBootstrap(): void {
     this.setupConcurrency();
   }
 
@@ -42,7 +42,7 @@ export abstract class BaseProcessor
     job: Job,
     factory: T,
     idempotencyKey: string,
-  ) {
+  ): Promise<void> {
     return this.executeJob(job, 'process', factory, idempotencyKey);
   }
 
@@ -51,7 +51,7 @@ export abstract class BaseProcessor
     factory: T,
     idempotencyKey: string,
     error: Error,
-  ) {
+  ): Promise<void> {
     return this.executeJob(job, 'failed', factory, idempotencyKey, error);
   }
 
@@ -61,7 +61,7 @@ export abstract class BaseProcessor
     factory: T,
     idempotencyKey: string,
     error?: Error,
-  ) {
+  ): Promise<void> {
     return this.guard.lock(
       LOCK_KEY.JOB.EXECUTE(job.id),
       () => this._executeJob(job, event, factory, idempotencyKey, error),
@@ -75,7 +75,7 @@ export abstract class BaseProcessor
     factory: T,
     idempotencyKey: string,
     error?: Error,
-  ) {
+  ): Promise<void> {
     const correlationId = job.data?.correlationId ?? randomUUID();
 
     return RequestContext.run(correlationId, async () => {
@@ -117,13 +117,12 @@ export abstract class BaseProcessor
    * Sets up the concurrency for the worker.
    * The concurrency level is determined by the processor's `concurrency` property.
    */
-  protected setupConcurrency() {
-    const multiplier = this.concurrencyMultiplier;
+  protected setupConcurrency(): void {
     const cpuCount = os.cpus().length || 1;
     const resolved =
       Number.isFinite(this.concurrency) && this.concurrency > 0
         ? this.concurrency
-        : cpuCount * multiplier;
+        : cpuCount * this.concurrencyMultiplier;
     this.worker.concurrency = resolved;
   }
 

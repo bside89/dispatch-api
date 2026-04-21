@@ -2,8 +2,6 @@ import { Injectable, InternalServerErrorException, Inject } from '@nestjs/common
 import { CreateCustomerJobPayload } from '@/shared/payloads/payments-job.payload';
 import { BasePaymentJobStrategy } from './base-payment-job.strategy';
 import { Job } from 'bullmq';
-import { plainToInstance } from 'class-transformer';
-import { BaseAddressDto } from '@/shared/dto/base-address.dto';
 import { CACHE_SERVICE } from '@/shared/modules/cache/constants/cache.token';
 import type { ICacheService } from '@/shared/modules/cache/interfaces/cache-service.interface';
 import { PAYMENTS_GATEWAY_SERVICE } from '@/modules/payments-gateway/constants/payments-gateway.token';
@@ -12,11 +10,12 @@ import { ORDER_REPOSITORY } from '@/modules/orders/constants/orders.token';
 import type { IOrderRepository } from '@/modules/orders/interfaces/order-repository.interface';
 import { USER_REPOSITORY } from '@/modules/users/constants/users.token';
 import type { IUserRepository } from '@/modules/users/interfaces/user-repository.interface';
-import { CustomerResponseDto } from '@/modules/payments-gateway/dto/customer-response.dto';
+import { GatewayCustomerResponseDto } from '@/modules/payments-gateway/dto/gateway-customer-response.dto';
 import {
-  CreateCustomerAddressDto,
-  CreateCustomerDto,
-} from '@/modules/payments-gateway/dto/create-customer.dto';
+  GatewayCreateCustomerDto,
+  GatewayAddressDto,
+} from '@/modules/payments-gateway/dto/gateway-customer.dto';
+import { BaseAddressDto } from '@/shared/dto/base-address.dto';
 import { PAYMENT_KEY } from '@/shared/modules/cache/constants/payment.key';
 import { template } from '@/shared/utils/functions.utils';
 import { I18N_PAYMENTS } from '@/shared/constants/i18n';
@@ -77,30 +76,34 @@ export class CreateCustomerJobStrategy extends BasePaymentJobStrategy<CreateCust
 
   private async createCustomer(
     data: CreateCustomerJobPayload,
-  ): Promise<CustomerResponseDto> {
+  ): Promise<GatewayCustomerResponseDto> {
     const dto = this.toCreateCustomerDto(data);
     const idempotencyKey = this.idempotencyKey(data.correlationId);
 
     return this.paymentsGatewayService.customersCreate(dto, idempotencyKey);
   }
 
-  private toCreateCustomerDto(data: CreateCustomerJobPayload): CreateCustomerDto {
-    const address = this.toCreateCustomerAddressDto(data.userDto.address);
-    return plainToInstance(CreateCustomerDto, {
-      email: data.userDto.email,
-      name: data.userDto.name,
-      address,
-      metadata: { userId: data.userDto.id },
-    });
+  private toCreateCustomerDto(
+    data: CreateCustomerJobPayload,
+  ): GatewayCreateCustomerDto {
+    const address = this.toGatewayAddressDto(data.userDto.address);
+    const dto = new GatewayCreateCustomerDto();
+    dto.email = data.userDto.email;
+    dto.name = data.userDto.name;
+    dto.address = address;
+    dto.metadata = { userId: data.userDto.id };
+    return dto;
   }
 
-  private toCreateCustomerAddressDto(
+  private toGatewayAddressDto(
     address?: BaseAddressDto,
-  ): CreateCustomerAddressDto | undefined {
+  ): GatewayAddressDto | undefined {
     if (!address) {
       return undefined;
     }
-    return plainToInstance(CreateCustomerAddressDto, address);
+    const dto = new GatewayAddressDto();
+    Object.assign(dto, address);
+    return dto;
   }
 
   idempotencyKey(id: string): string {

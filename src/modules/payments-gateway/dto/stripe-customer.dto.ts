@@ -15,39 +15,40 @@ import {
   Min,
   ValidateNested,
 } from 'class-validator';
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional, PartialType } from '@nestjs/swagger';
 import { BaseAddressDto } from '@/shared/dto/base-address.dto';
 import {
-  CustomerCashBalanceReconciliationMode,
-  CustomerInvoiceAmountTaxDisplay,
-  CustomerTaxExempt,
-  CustomerTaxValidateLocation,
+  StripeCustomerCashBalanceReconciliationMode,
+  StripeCustomerInvoiceAmountTaxDisplay,
+  StripeCustomerTaxExempt as StripeCustomerTaxExempt,
+  StripeCustomerTaxValidateLocation as StripeCustomerTaxValidateLocation,
 } from '../types/customer.types';
 
-const CUSTOMER_TAX_EXEMPT_VALUES: CustomerTaxExempt[] = [
+const STRIPE_CUSTOMER_TAX_EXEMPT_VALUES: StripeCustomerTaxExempt[] = [
   'exempt',
   'none',
   'reverse',
 ];
 
-const CUSTOMER_TAX_VALIDATE_LOCATION_VALUES: CustomerTaxValidateLocation[] = [
-  'deferred',
-  'immediately',
-];
+const STRIPE_CUSTOMER_TAX_VALIDATE_LOCATION_VALUES: StripeCustomerTaxValidateLocation[] =
+  ['deferred', 'immediately'];
 
-const CUSTOMER_CASH_BALANCE_RECONCILIATION_MODE_VALUES: CustomerCashBalanceReconciliationMode[] =
+const STRIPE_CUSTOMER_CASH_BALANCE_RECONCILIATION_MODE_VALUES: StripeCustomerCashBalanceReconciliationMode[] =
   ['automatic', 'manual', 'merchant_default'];
 
-const CUSTOMER_INVOICE_AMOUNT_TAX_DISPLAY_VALUES: CustomerInvoiceAmountTaxDisplay[] =
+const STRIPE_CUSTOMER_INVOICE_AMOUNT_TAX_DISPLAY_VALUES: StripeCustomerInvoiceAmountTaxDisplay[] =
   ['exclude_tax', 'include_inclusive_tax'];
 
-export class CreateCustomerAddressDto extends BaseAddressDto {}
+export class StripeCreateCustomerAddressDto extends BaseAddressDto {}
 
-export class CreateCustomerShippingDto {
-  @ApiProperty({ description: 'Shipping address', type: CreateCustomerAddressDto })
+export class StripeCreateCustomerShippingDto {
+  @ApiProperty({
+    description: 'Shipping address',
+    type: StripeCreateCustomerAddressDto,
+  })
   @ValidateNested()
-  @Type(() => CreateCustomerAddressDto)
-  address: CreateCustomerAddressDto;
+  @Type(() => StripeCreateCustomerAddressDto)
+  address: StripeCreateCustomerAddressDto;
 
   @ApiProperty({ description: 'Recipient name', example: 'Joao Silva' })
   @IsString()
@@ -65,7 +66,7 @@ export class CreateCustomerShippingDto {
   phone?: string;
 }
 
-export class CreateCustomerInvoiceCustomFieldDto {
+export class StripeCreateCustomerInvoiceCustomFieldDto {
   @ApiProperty({ description: 'Invoice custom field name', example: 'CPF' })
   @IsString()
   @IsNotEmpty()
@@ -82,10 +83,10 @@ export class CreateCustomerInvoiceCustomFieldDto {
   value: string;
 }
 
-export class CreateCustomerInvoiceRenderingOptionsDto {
+export class StripeCreateCustomerInvoiceRenderingOptionsDto {
   @ApiPropertyOptional({
     description: 'How tax amounts are displayed in invoice PDFs',
-    enum: CUSTOMER_INVOICE_AMOUNT_TAX_DISPLAY_VALUES,
+    enum: STRIPE_CUSTOMER_INVOICE_AMOUNT_TAX_DISPLAY_VALUES,
     example: 'exclude_tax',
   })
   @IsOptional()
@@ -101,17 +102,17 @@ export class CreateCustomerInvoiceRenderingOptionsDto {
   template?: string;
 }
 
-export class CreateCustomerInvoiceSettingsDto {
+export class StripeCreateCustomerInvoiceSettingsDto {
   @ApiPropertyOptional({
     description: 'Default custom fields shown on invoices',
-    type: [CreateCustomerInvoiceCustomFieldDto],
+    type: [StripeCreateCustomerInvoiceCustomFieldDto],
   })
   @IsOptional()
   @IsArray()
   @ArrayMaxSize(4)
   @ValidateNested({ each: true })
-  @Type(() => CreateCustomerInvoiceCustomFieldDto)
-  customFields?: CreateCustomerInvoiceCustomFieldDto[];
+  @Type(() => StripeCreateCustomerInvoiceCustomFieldDto)
+  customFields?: StripeCreateCustomerInvoiceCustomFieldDto[];
 
   @ApiPropertyOptional({
     description: 'Default payment method attached to the Stripe customer',
@@ -132,15 +133,15 @@ export class CreateCustomerInvoiceSettingsDto {
 
   @ApiPropertyOptional({
     description: 'Default invoice PDF rendering options',
-    type: CreateCustomerInvoiceRenderingOptionsDto,
+    type: StripeCreateCustomerInvoiceRenderingOptionsDto,
   })
   @IsOptional()
   @ValidateNested()
-  @Type(() => CreateCustomerInvoiceRenderingOptionsDto)
-  renderingOptions?: CreateCustomerInvoiceRenderingOptionsDto;
+  @Type(() => StripeCreateCustomerInvoiceRenderingOptionsDto)
+  renderingOptions?: StripeCreateCustomerInvoiceRenderingOptionsDto;
 }
 
-export class CreateCustomerTaxDto {
+export class StripeCreateCustomerTaxDto {
   @ApiPropertyOptional({
     description: 'Customer IP address for tax location inference',
     example: '187.11.22.33',
@@ -151,7 +152,7 @@ export class CreateCustomerTaxDto {
 
   @ApiPropertyOptional({
     description: 'When Stripe should validate the customer tax location',
-    enum: CUSTOMER_TAX_VALIDATE_LOCATION_VALUES,
+    enum: STRIPE_CUSTOMER_TAX_VALIDATE_LOCATION_VALUES,
     example: 'deferred',
   })
   @IsOptional()
@@ -159,7 +160,7 @@ export class CreateCustomerTaxDto {
   validateLocation?: 'deferred' | 'immediately';
 }
 
-export class CreateCustomerTaxIdDto {
+export class StripeCreateCustomerTaxIdDto {
   @ApiProperty({
     description: 'Stripe tax ID type',
     example: 'br_cpf',
@@ -175,10 +176,10 @@ export class CreateCustomerTaxIdDto {
   value: string;
 }
 
-export class CreateCustomerCashBalanceSettingsDto {
+export class StripeCreateCustomerCashBalanceSettingsDto {
   @ApiPropertyOptional({
     description: 'How Stripe should reconcile customer balance funds',
-    enum: CUSTOMER_CASH_BALANCE_RECONCILIATION_MODE_VALUES,
+    enum: STRIPE_CUSTOMER_CASH_BALANCE_RECONCILIATION_MODE_VALUES,
     example: 'automatic',
   })
   @IsOptional()
@@ -186,18 +187,18 @@ export class CreateCustomerCashBalanceSettingsDto {
   reconciliationMode?: 'automatic' | 'manual' | 'merchant_default';
 }
 
-export class CreateCustomerCashBalanceDto {
+export class StripeCreateCustomerCashBalanceDto {
   @ApiPropertyOptional({
     description: 'Cash balance behavior settings for the customer',
-    type: CreateCustomerCashBalanceSettingsDto,
+    type: StripeCreateCustomerCashBalanceSettingsDto,
   })
   @IsOptional()
   @ValidateNested()
-  @Type(() => CreateCustomerCashBalanceSettingsDto)
-  settings?: CreateCustomerCashBalanceSettingsDto;
+  @Type(() => StripeCreateCustomerCashBalanceSettingsDto)
+  settings?: StripeCreateCustomerCashBalanceSettingsDto;
 }
 
-export class CreateCustomerDto {
+export class StripeCreateCustomerDto {
   @ApiProperty({
     description:
       'Primary customer email used for receipts and payment identification',
@@ -219,12 +220,12 @@ export class CreateCustomerDto {
 
   @ApiPropertyOptional({
     description: 'Customer billing address',
-    type: CreateCustomerAddressDto,
+    type: StripeCreateCustomerAddressDto,
   })
   @IsOptional()
   @ValidateNested()
-  @Type(() => CreateCustomerAddressDto)
-  address?: CreateCustomerAddressDto;
+  @Type(() => StripeCreateCustomerAddressDto)
+  address?: StripeCreateCustomerAddressDto;
 
   @ApiPropertyOptional({
     description: 'Current customer balance in cents for future invoices',
@@ -245,12 +246,12 @@ export class CreateCustomerDto {
 
   @ApiPropertyOptional({
     description: 'Cash balance settings',
-    type: CreateCustomerCashBalanceDto,
+    type: StripeCreateCustomerCashBalanceDto,
   })
   @IsOptional()
   @ValidateNested()
-  @Type(() => CreateCustomerCashBalanceDto)
-  cashBalance?: CreateCustomerCashBalanceDto;
+  @Type(() => StripeCreateCustomerCashBalanceDto)
+  cashBalance?: StripeCreateCustomerCashBalanceDto;
 
   @ApiPropertyOptional({
     description: 'Internal description for dashboard operators',
@@ -281,12 +282,12 @@ export class CreateCustomerDto {
 
   @ApiPropertyOptional({
     description: 'Default invoice settings',
-    type: CreateCustomerInvoiceSettingsDto,
+    type: StripeCreateCustomerInvoiceSettingsDto,
   })
   @IsOptional()
   @ValidateNested()
-  @Type(() => CreateCustomerInvoiceSettingsDto)
-  invoiceSettings?: CreateCustomerInvoiceSettingsDto;
+  @Type(() => StripeCreateCustomerInvoiceSettingsDto)
+  invoiceSettings?: StripeCreateCustomerInvoiceSettingsDto;
 
   @ApiPropertyOptional({
     description: 'Free-form metadata stored on Stripe',
@@ -336,12 +337,12 @@ export class CreateCustomerDto {
 
   @ApiPropertyOptional({
     description: 'Shipping information for invoices and physical deliveries',
-    type: CreateCustomerShippingDto,
+    type: StripeCreateCustomerShippingDto,
   })
   @IsOptional()
   @ValidateNested()
-  @Type(() => CreateCustomerShippingDto)
-  shipping?: CreateCustomerShippingDto;
+  @Type(() => StripeCreateCustomerShippingDto)
+  shipping?: StripeCreateCustomerShippingDto;
 
   @ApiPropertyOptional({
     description: 'Legacy card or source token to attach',
@@ -353,16 +354,16 @@ export class CreateCustomerDto {
 
   @ApiPropertyOptional({
     description: 'Tax inference data for the customer',
-    type: CreateCustomerTaxDto,
+    type: StripeCreateCustomerTaxDto,
   })
   @IsOptional()
   @ValidateNested()
-  @Type(() => CreateCustomerTaxDto)
-  tax?: CreateCustomerTaxDto;
+  @Type(() => StripeCreateCustomerTaxDto)
+  tax?: StripeCreateCustomerTaxDto;
 
   @ApiPropertyOptional({
     description: 'Customer tax exemption status',
-    enum: CUSTOMER_TAX_EXEMPT_VALUES,
+    enum: STRIPE_CUSTOMER_TAX_EXEMPT_VALUES,
     example: 'none',
   })
   @IsOptional()
@@ -371,13 +372,13 @@ export class CreateCustomerDto {
 
   @ApiPropertyOptional({
     description: 'Tax IDs associated with the customer',
-    type: [CreateCustomerTaxIdDto],
+    type: [StripeCreateCustomerTaxIdDto],
   })
   @IsOptional()
   @IsArray()
   @ValidateNested({ each: true })
-  @Type(() => CreateCustomerTaxIdDto)
-  taxIdData?: CreateCustomerTaxIdDto[];
+  @Type(() => StripeCreateCustomerTaxIdDto)
+  taxIdData?: StripeCreateCustomerTaxIdDto[];
 
   @ApiPropertyOptional({
     description: 'Stripe test clock identifier for test environments',
@@ -395,3 +396,9 @@ export class CreateCustomerDto {
   @IsBoolean()
   validate?: boolean;
 }
+
+export class StripeUpdateCustomerAddressDto extends PartialType(
+  StripeCreateCustomerAddressDto,
+) {}
+
+export class StripeUpdateCustomerDto extends PartialType(StripeCreateCustomerDto) {}

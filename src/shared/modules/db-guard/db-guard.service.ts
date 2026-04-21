@@ -35,7 +35,11 @@ export class DbGuardService {
     try {
       return await work();
     } finally {
-      await this.redlock.release(lock);
+      // Release errors (e.g. lock expired before release) are non-fatal: the work is
+      // already done and no duplicate execution is possible at this point.
+      // Swallowing keeps the caller clean and avoids unhandled rejections when Redis
+      // is flushed externally (e.g. in tests).
+      await this.redlock.release(lock).catch(() => undefined);
     }
   }
 

@@ -14,7 +14,7 @@ import { LOCK_KEY } from '@/shared/constants/lock.key';
 import { INotificationsService } from './interfaces/notifications-service.interface';
 import type { INotificationRepository } from './interfaces/notification-repository.interface';
 import { CursorParams } from '@/shared/types/cursor-params.type';
-import { I18N_NOTIFICATIONS } from '@/shared/constants/i18n/i18n-notifications.constant';
+import { I18N_NOTIFICATIONS } from '@/shared/constants/i18n';
 import { template } from '@/shared/utils/functions.utils';
 
 @Injectable()

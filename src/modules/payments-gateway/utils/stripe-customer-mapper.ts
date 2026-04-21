@@ -1,8 +1,8 @@
 import {
-  CreateCustomerDto,
-  CreateCustomerShippingDto,
-} from '@/modules/payments-gateway/dto/create-customer.dto';
-import { PaymentCustomer } from '../types/customer.types';
+  StripeCreateCustomerDto,
+  StripeCreateCustomerShippingDto,
+} from '@/modules/payments-gateway/dto/stripe-customer.dto';
+import { StripePaymentCustomer } from '../types/customer.types';
 import {
   StripeCustomer,
   StripeCustomerCreateParams,
@@ -19,7 +19,7 @@ import {
  */
 export class StripeCustomerMapper {
   static mapToStripeCustomerCreateParams(
-    createCustomerDto: CreateCustomerDto,
+    createCustomerDto: StripeCreateCustomerDto,
   ): StripeCustomerCreateParams {
     return {
       address: this.mapToStripeAddress(createCustomerDto.address),
@@ -91,7 +91,7 @@ export class StripeCustomerMapper {
   }
 
   static mapToStripeAddress(
-    address?: CreateCustomerDto['address'],
+    address?: StripeCreateCustomerDto['address'],
   ): StripeCustomerCreateParams['address'] {
     if (!address) {
       return undefined;
@@ -108,7 +108,7 @@ export class StripeCustomerMapper {
   }
 
   static mapToStripeShippingAddress(
-    address: CreateCustomerShippingDto['address'],
+    address: StripeCreateCustomerShippingDto['address'],
   ): Exclude<NonNullable<StripeCustomerCreateParams['shipping']>, ''>['address'] {
     return {
       city: address.city,
@@ -120,13 +120,15 @@ export class StripeCustomerMapper {
     };
   }
 
-  static mapToPaymentCustomerList(customers: StripeCustomerList): PaymentCustomer[] {
+  static mapToPaymentCustomerList(
+    customers: StripeCustomerList,
+  ): StripePaymentCustomer[] {
     return customers.map((customer) => this.mapToPaymentCustomer(customer));
   }
 
   static mapToPaymentCustomer(
     customer: StripeCustomer | StripeCustomerListItem,
-  ): PaymentCustomer {
+  ): StripePaymentCustomer {
     return {
       id: customer.id,
       email: customer.email,

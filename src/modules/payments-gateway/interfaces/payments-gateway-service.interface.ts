@@ -1,41 +1,42 @@
-import { CreateCustomerDto } from '../dto/create-customer.dto';
-import { CustomerResponseDto } from '../dto/customer-response.dto';
-import { UpdateCustomerDto } from '../dto/update-customer.dto';
-import { PaymentIntentResponseDto } from '../dto/payment-intent-response.dto';
 import {
-  StripePaymentIntentCreateParams,
-  StripeWebhookEvent,
-} from '../types/payment-intent.types';
+  GatewayCreateCustomerDto,
+  GatewayUpdateCustomerDto,
+} from '../dto/gateway-customer.dto';
+import { GatewayCustomerResponseDto } from '../dto/gateway-customer-response.dto';
+import { GatewayPaymentResponseDto } from '../dto/gateway-payment-response.dto';
+import { GatewayPaymentIntentParams } from '../types/payment-intent.types';
 import { IBaseService } from '@/shared/services/base-service.interface';
+import { PaymentWebhookEvent } from '../types/payment-webhook-event.types';
 
 export interface IPaymentsGatewayService extends IBaseService {
   customersCreate(
-    dto: CreateCustomerDto,
+    dto: GatewayCreateCustomerDto,
     idempotencyKey: string,
-  ): Promise<CustomerResponseDto>;
+  ): Promise<GatewayCustomerResponseDto>;
 
-  customersList(): Promise<CustomerResponseDto[]>;
+  customersList(): Promise<GatewayCustomerResponseDto[]>;
 
-  customersRetrieve(customerId: string): Promise<CustomerResponseDto>;
+  customersRetrieve(customerId: string): Promise<GatewayCustomerResponseDto>;
 
   customersUpdate(
     customerId: string,
-    dto: UpdateCustomerDto,
+    dto: GatewayUpdateCustomerDto,
     idempotencyKey: string,
-  ): Promise<CustomerResponseDto>;
+  ): Promise<GatewayCustomerResponseDto>;
 
   customersDelete(customerId: string, idempotencyKey: string): Promise<void>;
 
   paymentIntentsCreate(
-    params: StripePaymentIntentCreateParams,
+    params: GatewayPaymentIntentParams,
     idempotencyKey: string,
-  ): Promise<PaymentIntentResponseDto>;
+  ): Promise<GatewayPaymentResponseDto>;
 
-  paymentIntentsRetrieve(paymentIntentId: string): Promise<PaymentIntentResponseDto>;
+  paymentIntentsRetrieve(
+    paymentIntentId: string,
+  ): Promise<GatewayPaymentResponseDto>;
 
   constructWebhookEvent(
     payload: Buffer | string,
     signature: string,
-    secret: string,
-  ): StripeWebhookEvent;
+  ): PaymentWebhookEvent;
 }

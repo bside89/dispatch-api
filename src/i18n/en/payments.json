@@ -1,6 +1,6 @@
 {
   "errors": {
-    "stripeSignatureRequired": "The 'stripe-signature' header is required.",
+    "webhookSignatureRequired": "The 'webhook-signature' header is required.",
     "webhookSecretRequired": "STRIPE_WEBHOOK_SECRET is not configured.",
     "createCustomerFailed": "Failed to create customer: No customer ID returned.",
     "updateCustomerFailed": "Failed to update customer: No customer ID returned.",

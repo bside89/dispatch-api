@@ -1,4 +1,15 @@
 import { HttpStatus, INestApplication } from '@nestjs/common';
+
+jest.mock('@/config/bullmq.config', () => ({
+  ...jest.requireActual('@/config/bullmq.config'),
+  bullmqDefaultJobOptions: {
+    attempts: 1,
+    removeOnFail: { age: 24 * 3600 },
+  },
+}));
+
+jest.setTimeout(30_000);
+
 import { JwtService } from '@nestjs/jwt';
 import request from 'supertest';
 import { cleanDatabase, cleanRedis } from './utils/database-cleaner';
@@ -10,6 +21,7 @@ import {
   getAdminFixture,
 } from './utils/e2e-fixtures';
 import { createTestApp } from './utils/e2e-setup';
+import { withRolesEnabled } from './utils/with-roles-enabled';
 
 describe('Users (E2E)', () => {
   let app: INestApplication;
@@ -108,60 +120,50 @@ describe('Users (E2E)', () => {
     });
 
     it('DELETE /v1/admin/users/:id - should forbid a regular user from deleting', async () => {
-      const originalTestEnv = process.env.TEST_ENV;
-      process.env.TEST_ENV = 'false';
-
-      await request(app.getHttpServer())
-        .delete(`/v1/admin/users/${createdUserId}`)
-        .set('Authorization', `Bearer ${userToken}`)
-        .expect(HttpStatus.FORBIDDEN);
-
-      process.env.TEST_ENV = originalTestEnv;
+      await withRolesEnabled(async () => {
+        await request(app.getHttpServer())
+          .delete(`/v1/admin/users/${createdUserId}`)
+          .set('Authorization', `Bearer ${userToken}`)
+          .expect(HttpStatus.FORBIDDEN);
+      });
     });
 
     it('DELETE /v1/admin/users/:id - should block a regular user from deleting another user', async () => {
-      const originalTestEnv = process.env.TEST_ENV;
-      process.env.TEST_ENV = 'false';
+      await withRolesEnabled(async () => {
+        const randomSuffix = Math.random().toString(36).substring(7);
+        const otherUserPayload = {
+          name: 'Other User',
+          email: `other-${randomSuffix}@test.com`,
+          password: 'StrongPassword123!',
+        };
 
-      const randomSuffix = Math.random().toString(36).substring(7);
-      const otherUserPayload = {
-        name: 'Other User',
-        email: `other-${randomSuffix}@test.com`,
-        password: 'StrongPassword123!',
-      };
+        const { body: otherUserCreated } = await request(app.getHttpServer())
+          .post('/v1/users')
+          .set('idempotency-key', `other-${randomSuffix}`)
+          .send(otherUserPayload)
+          .expect(HttpStatus.CREATED);
 
-      const { body: otherUserCreated } = await request(app.getHttpServer())
-        .post('/v1/users')
-        .set('idempotency-key', `other-${randomSuffix}`)
-        .send(otherUserPayload)
-        .expect(HttpStatus.CREATED);
-
-      await request(app.getHttpServer())
-        .delete(`/v1/admin/users/${otherUserCreated.data.id}`)
-        .set('Authorization', `Bearer ${userToken}`)
-        .expect(HttpStatus.FORBIDDEN);
-
-      process.env.TEST_ENV = originalTestEnv;
+        await request(app.getHttpServer())
+          .delete(`/v1/admin/users/${otherUserCreated.data.id}`)
+          .set('Authorization', `Bearer ${userToken}`)
+          .expect(HttpStatus.FORBIDDEN);
+      });
     });
 
     it('DELETE /v1/admin/users/:id - should allow admin user', async () => {
-      // Temporarily set TEST_ENV to false so RolesGuard won't bypass the check
-      const originalTestEnv = process.env.TEST_ENV;
-      process.env.TEST_ENV = 'false';
+      await withRolesEnabled(async () => {
+        // The Admin user has ADMIN role and should succeed
+        await request(app.getHttpServer())
+          .delete(`/v1/admin/users/${createdUserId}`)
+          .set('Authorization', `Bearer ${adminToken}`)
+          .expect(HttpStatus.NO_CONTENT);
 
-      // The Admin user has ADMIN role and should succeed
-      await request(app.getHttpServer())
-        .delete(`/v1/admin/users/${createdUserId}`)
-        .set('Authorization', `Bearer ${adminToken}`)
-        .expect(HttpStatus.NO_CONTENT);
-
-      // Verify user is soft-deleted (public endpoint returns 404)
-      await request(app.getHttpServer())
-        .get(`/v1/users/${createdUserId}`)
-        .set('Authorization', `Bearer ${adminToken}`)
-        .expect(HttpStatus.NOT_FOUND);
-
-      process.env.TEST_ENV = originalTestEnv;
+        // Verify user is soft-deleted (public endpoint returns 404)
+        await request(app.getHttpServer())
+          .get(`/v1/users/${createdUserId}`)
+          .set('Authorization', `Bearer ${adminToken}`)
+          .expect(HttpStatus.NOT_FOUND);
+      });
     });
   });
 });

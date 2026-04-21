@@ -1,23 +1,21 @@
 import Stripe from 'stripe';
 
-//#region General Customer Types
+export type StripeCustomerTaxExempt = 'exempt' | 'none' | 'reverse';
 
-export type CustomerTaxExempt = 'exempt' | 'none' | 'reverse';
+export type StripeCustomerTaxValidateLocation = 'deferred' | 'immediately';
 
-export type CustomerTaxValidateLocation = 'deferred' | 'immediately';
-
-export type CustomerCashBalanceReconciliationMode =
+export type StripeCustomerCashBalanceReconciliationMode =
   | 'automatic'
   | 'manual'
   | 'merchant_default';
 
-export type CustomerInvoiceAmountTaxDisplay =
+export type StripeCustomerInvoiceAmountTaxDisplay =
   | 'exclude_tax'
   | 'include_inclusive_tax';
 
-export type CustomerTaxIdType = string;
+export type StripeCustomerTaxIdType = string;
 
-export interface PaymentCustomerAddress {
+export interface StripePaymentCustomerAddress {
   city?: string | null;
   country?: string | null;
   line1?: string | null;
@@ -26,19 +24,19 @@ export interface PaymentCustomerAddress {
   state?: string | null;
 }
 
-export interface PaymentCustomerShipping {
-  address?: PaymentCustomerAddress | null;
+export interface StripePaymentCustomerShipping {
+  address?: StripePaymentCustomerAddress | null;
   name: string;
   phone?: string | null;
 }
 
-export interface PaymentCustomerTaxId {
+export interface StripePaymentCustomerTaxId {
   id: string;
-  type: string;
+  type: StripeCustomerTaxIdType;
   value: string;
 }
 
-export interface PaymentCustomer {
+export interface StripePaymentCustomer {
   id: string;
   email: string | null;
   name: string | null;
@@ -51,23 +49,13 @@ export interface PaymentCustomer {
   defaultPaymentMethodId?: string | null;
   preferredLocales: string[];
   metadata: Record<string, string>;
-  taxExempt?: CustomerTaxExempt | null;
-  address?: PaymentCustomerAddress | null;
-  shipping?: PaymentCustomerShipping | null;
-  taxIds: PaymentCustomerTaxId[];
+  taxExempt?: StripeCustomerTaxExempt | null;
+  address?: StripePaymentCustomerAddress | null;
+  shipping?: StripePaymentCustomerShipping | null;
+  taxIds: StripePaymentCustomerTaxId[];
   createdAt: Date;
   livemode: boolean;
 }
-
-//#endregion
-
-//#region Stripe Customer Types
-
-/**
- * Derive Stripe types from the public client API to avoid leaking internal SDK
- * paths. For new methods, prefer Awaited<ReturnType<...>> and narrow union responses
- * explicitly
- * */
 
 export type StripeCustomerCreateParams = Parameters<
   Stripe.Stripe['customers']['create']
@@ -93,5 +81,3 @@ export type StripeCustomer = Exclude<StripeCustomerResponse, DeletedStripeCustom
 export type StripeCustomerCreateTaxIdType = NonNullable<
   StripeCustomerCreateParams['tax_id_data']
 >[number]['type'];
-
-//#endregion

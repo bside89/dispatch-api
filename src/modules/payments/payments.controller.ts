@@ -36,22 +36,22 @@ export class PaymentsController extends BaseController {
     super(PaymentsController.name);
   }
 
-  @Post('webhooks/stripe')
+  @Post('webhooks/payment')
   @Public()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
-    summary: 'Stripe webhook endpoint',
+    summary: 'Payment webhook endpoint',
     description:
-      'Receives Stripe payment intent events and updates the corresponding order.',
+      'Receives payment gateway events and updates the corresponding order.',
   })
   @ApiHeader({
-    name: 'stripe-signature',
-    description: 'Stripe webhook signature header',
+    name: 'webhook-signature',
+    description: 'Payment gateway webhook signature header',
     required: true,
   })
   @ApiBody({
     type: PaymentWebhookDto,
-    description: 'Stripe event payload',
+    description: 'Payment gateway event payload',
   })
   @ApiOkResponse({
     description: 'Webhook processed successfully',
@@ -60,17 +60,20 @@ export class PaymentsController extends BaseController {
   @ApiBadRequestResponse({
     description: 'Invalid webhook signature or payload',
   })
-  async handleStripeWebhook(
+  async handlePaymentWebhook(
     @Req() request: Request & { rawBody?: Buffer },
-    @Headers('stripe-signature') stripeSignature: string,
+    @Headers('webhook-signature') webhookSignature: string,
   ): Promise<PaymentWebhookResponseDto> {
-    if (!stripeSignature) {
+    if (!webhookSignature) {
       throw new BadRequestException(
-        template(I18N_PAYMENTS.ERRORS.STRIPE_SIGNATURE_REQUIRED),
+        template(I18N_PAYMENTS.ERRORS.WEBHOOK_SIGNATURE_REQUIRED),
       );
     }
 
-    await this.paymentsService.processWebhookEvent(request.rawBody, stripeSignature);
+    await this.paymentsService.processWebhookEvent(
+      request.rawBody,
+      webhookSignature,
+    );
 
     return { received: true };
   }

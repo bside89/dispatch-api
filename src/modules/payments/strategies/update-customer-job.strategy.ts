@@ -10,12 +10,12 @@ import { USER_REPOSITORY } from '@/modules/users/constants/users.token';
 import type { IUserRepository } from '@/modules/users/interfaces/user-repository.interface';
 import { CACHE_SERVICE } from '@/shared/modules/cache/constants/cache.token';
 import type { ICacheService } from '@/shared/modules/cache/interfaces/cache-service.interface';
-import { plainToInstance } from 'class-transformer';
-import { CustomerResponseDto } from '@/modules/payments-gateway/dto/customer-response.dto';
+import { GatewayCustomerResponseDto } from '@/modules/payments-gateway/dto/gateway-customer-response.dto';
 import {
-  UpdateCustomerAddressDto,
-  UpdateCustomerDto,
-} from '@/modules/payments-gateway/dto/update-customer.dto';
+  GatewayUpdateCustomerDto,
+  GatewayAddressDto,
+} from '@/modules/payments-gateway/dto/gateway-customer.dto';
+import { BaseAddressDto } from '@/shared/dto/base-address.dto';
 import { PAYMENT_KEY } from '@/shared/modules/cache/constants/payment.key';
 import { template } from '@/shared/utils/functions.utils';
 import { I18N_PAYMENTS } from '@/shared/constants/i18n';
@@ -74,7 +74,7 @@ export class UpdateCustomerJobStrategy extends BasePaymentJobStrategy<UpdateCust
 
   private async updateCustomer(
     data: UpdateCustomerJobPayload,
-  ): Promise<CustomerResponseDto> {
+  ): Promise<GatewayCustomerResponseDto> {
     const { userDto } = data;
 
     const updateCustomerDto = this.toUpdateCustomerDto(data);
@@ -87,25 +87,28 @@ export class UpdateCustomerJobStrategy extends BasePaymentJobStrategy<UpdateCust
     );
   }
 
-  private toUpdateCustomerDto(data: UpdateCustomerJobPayload): UpdateCustomerDto {
+  private toUpdateCustomerDto(
+    data: UpdateCustomerJobPayload,
+  ): GatewayUpdateCustomerDto {
     const { userDto } = data;
-
-    const address = this.toUpdateCustomerAddressDto(userDto.address);
-    return plainToInstance(UpdateCustomerDto, {
-      email: userDto.email,
-      name: userDto.name,
-      address,
-      metadata: { userId: userDto.id },
-    });
+    const address = this.toGatewayAddressDto(userDto.address);
+    const dto = new GatewayUpdateCustomerDto();
+    dto.email = userDto.email;
+    dto.name = userDto.name;
+    dto.address = address;
+    dto.metadata = { userId: userDto.id };
+    return dto;
   }
 
-  private toUpdateCustomerAddressDto(
-    address?: UpdateCustomerAddressDto,
-  ): UpdateCustomerAddressDto | undefined {
+  private toGatewayAddressDto(
+    address?: BaseAddressDto,
+  ): GatewayAddressDto | undefined {
     if (!address) {
       return undefined;
     }
-    return plainToInstance(UpdateCustomerAddressDto, address);
+    const dto = new GatewayAddressDto();
+    Object.assign(dto, address);
+    return dto;
   }
 
   idempotencyKey(id: string): string {

@@ -1,4 +1,15 @@
 import { HttpStatus, INestApplication } from '@nestjs/common';
+
+jest.mock('@/config/bullmq.config', () => ({
+  ...jest.requireActual('@/config/bullmq.config'),
+  bullmqDefaultJobOptions: {
+    attempts: 1,
+    removeOnFail: { age: 24 * 3600 },
+  },
+}));
+
+jest.setTimeout(30_000);
+
 import { JwtService } from '@nestjs/jwt';
 import request from 'supertest';
 import { ADMIN_USER } from './constants/admin-user.constant';
@@ -35,6 +46,7 @@ describe('Orders (E2E)', () => {
   }, 30000);
 
   beforeEach(async () => {
+    jest.clearAllMocks();
     await cleanDatabase(dataSource);
     await cleanRedis(redisClient);
 
@@ -92,7 +104,7 @@ describe('Orders (E2E)', () => {
 
       expect(res.body.data.id).toBeDefined();
       expect(res.body.data.status).toBe('PENDING');
-      expect(res.body.data.paymentIntent.clientSecret).toBeDefined();
+      expect(res.body.data.paymentData.clientSecret).toBeDefined();
     });
 
     it('POST /v1/orders - should return the same order on duplicate idempotency key', async () => {

@@ -34,7 +34,7 @@ import type { RequestUser } from '../auth/interfaces/request-user.interface';
 import { UserRole } from '../../shared/enums/user-role.enum';
 import type { IPaymentsGatewayService } from '../payments-gateway/interfaces/payments-gateway-service.interface';
 import { PAYMENTS_GATEWAY_SERVICE } from '../payments-gateway/constants/payments-gateway.token';
-import { CustomerResponseDto } from '../payments-gateway/dto/customer-response.dto';
+import { GatewayCustomerResponseDto } from '../payments-gateway/dto/gateway-customer-response.dto';
 import { I18N_USERS } from '@/shared/constants/i18n';
 import {
   UserAddressSnapshotDto,
@@ -436,7 +436,7 @@ export class UsersService extends BaseService implements IUsersService {
   private async ensureCustomersRetrieve(
     userId: string,
     customerId: string,
-  ): Promise<CustomerResponseDto> {
+  ): Promise<GatewayCustomerResponseDto> {
     try {
       const customer =
         await this.paymentsGatewayService.customersRetrieve(customerId);

@@ -7,7 +7,7 @@ import { OrderByUserQueryDto } from '../dto/order-by-user-query.dto';
 import { OrderResponseDto, PublicOrderResponseDto } from '../dto/order-response.dto';
 import type { RequestUser } from '@/modules/auth/interfaces/request-user.interface';
 import { IBaseService } from '@/shared/services/base-service.interface';
-import { PaymentIntentUpdateDto } from '../dto/payment-intent-update.dto';
+import { UpdateOrderPaymentDto } from '../dto/order-payment.dto';
 
 export interface IOrdersService extends IBaseService {
   publicCreate(
@@ -36,9 +36,9 @@ export interface IOrdersService extends IBaseService {
 
   adminRemove(id: string): Promise<void>;
 
-  markPaymentAsSucceeded(dto: PaymentIntentUpdateDto): Promise<OrderResponseDto>;
+  markPaymentAsSucceeded(dto: UpdateOrderPaymentDto): Promise<OrderResponseDto>;
 
-  markPaymentAsFailed(dto: PaymentIntentUpdateDto): Promise<OrderResponseDto>;
+  markPaymentAsFailed(dto: UpdateOrderPaymentDto): Promise<OrderResponseDto>;
 
   ship(id: string, dto: ShipOrderDto): Promise<OrderResponseDto>;
 

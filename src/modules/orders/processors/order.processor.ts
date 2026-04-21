@@ -23,7 +23,7 @@ export class OrderProcessor extends BaseProcessor {
   }
 
   // Main method
-  async process(job: Job) {
+  async process(job: Job): Promise<void> {
     await this.executeProcessJob(
       job,
       this.factory,
@@ -32,7 +32,7 @@ export class OrderProcessor extends BaseProcessor {
   }
 
   @OnWorkerEvent('failed')
-  async processFailed(job: Job, error: Error) {
+  async processFailed(job: Job, error: Error): Promise<void> {
     if (job.attemptsMade >= (job.opts.attempts || 1)) {
       // Execute after all retries have been exhausted
       await this.executeFailedJob(
