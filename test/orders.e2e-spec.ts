@@ -140,9 +140,9 @@ describe('Orders (E2E)', () => {
       // Arrange: force paymentIntentsCreate to throw for this one call.
       // create() runs inside @Transactional(), so all DB writes (order +
       // order_items + stock decrement) must be rolled back.
-      (
-        paymentsGatewayServiceMock.paymentIntentsCreate as jest.Mock
-      ).mockRejectedValueOnce(new Error('Simulated Stripe error'));
+      (paymentsGatewayServiceMock.paymentsCreate as jest.Mock).mockRejectedValueOnce(
+        new Error('Simulated Stripe error'),
+      );
 
       const payload = {
         items: [{ itemId: testItemId, quantity: 1 }],

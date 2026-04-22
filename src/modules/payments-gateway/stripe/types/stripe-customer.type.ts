@@ -71,12 +71,12 @@ export type StripeCustomerResponse = Awaited<
   ReturnType<Stripe.Stripe['customers']['retrieve']>
 >;
 
-export type DeletedStripeCustomer = Extract<
+export type StripeDeletedCustomer = Extract<
   StripeCustomerResponse,
   { deleted: true }
 >;
 
-export type StripeCustomer = Exclude<StripeCustomerResponse, DeletedStripeCustomer>;
+export type StripeCustomer = Exclude<StripeCustomerResponse, StripeDeletedCustomer>;
 
 export type StripeCustomerCreateTaxIdType = NonNullable<
   StripeCustomerCreateParams['tax_id_data']

@@ -1,15 +1,15 @@
 import {
   StripeCreateCustomerDto,
   StripeCreateCustomerShippingDto,
-} from '@/modules/payments-gateway/dto/stripe-customer.dto';
-import { StripePaymentCustomer } from '../types/customer.types';
+} from '../dto/stripe-customer.dto';
+import { StripePaymentCustomer } from '../types/stripe-customer.type';
 import {
   StripeCustomer,
   StripeCustomerCreateParams,
   StripeCustomerCreateTaxIdType,
   StripeCustomerList,
   StripeCustomerListItem,
-} from '../types/customer.types';
+} from '../types/stripe-customer.type';
 
 /**
  * Mapper class to convert between Stripe types and internal application types

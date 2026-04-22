@@ -41,7 +41,6 @@ import type { IItemsService } from '../items/interfaces/items-service.interface'
 import { ITEMS_SERVICE } from '../items/constants/items.token';
 import type { IPaymentsGatewayService } from '../payments-gateway/interfaces/payments-gateway-service.interface';
 import { PAYMENTS_GATEWAY_SERVICE } from '../payments-gateway/constants/payments-gateway.token';
-import { GatewayPaymentIntentParams } from '../payments-gateway/types/payment-intent.types';
 import { OrderMessageFactory } from './factories/order-message.factory';
 import { I18N_ORDERS } from '@/shared/constants/i18n';
 import {
@@ -55,6 +54,7 @@ import { BaseService } from '@/shared/services/base.service';
 import { DbGuardService } from '@/shared/modules/db-guard/db-guard.service';
 import { OrderTransitionPolicy } from './helpers/order-transition-policy';
 import { Order } from './entities/order.entity';
+import { GatewayPaymentParams } from '../payments-gateway/interfaces/gateway-payment-params.interface';
 
 @Injectable()
 export class OrdersService extends BaseService implements IOrdersService {
@@ -113,8 +113,8 @@ export class OrdersService extends BaseService implements IOrdersService {
 
     const completeOrder = await this.getOrderOrThrow(savedOrder.id);
 
-    const paymentIntentParams = this.buildPaymentIntentParams(completeOrder, userId);
-    const paymentIntent = await this.paymentsGatewayService.paymentIntentsCreate(
+    const paymentIntentParams = this.buildPaymentParams(completeOrder, userId);
+    const paymentIntent = await this.paymentsGatewayService.paymentsCreate(
       paymentIntentParams,
       idempotencyKey,
     );
@@ -168,7 +168,7 @@ export class OrdersService extends BaseService implements IOrdersService {
       throw new ForbiddenException(template(I18N_ORDERS.ERRORS.ACCESS_DENIED));
     }
 
-    const paymentIntent = await this.paymentsGatewayService.paymentIntentsRetrieve(
+    const paymentIntent = await this.paymentsGatewayService.paymentsRetrieve(
       order.paymentId,
     );
 
@@ -205,7 +205,7 @@ export class OrdersService extends BaseService implements IOrdersService {
   async adminFindOne(id: string): Promise<OrderResponseDto> {
     const order = await this.getOrderOrThrow(id);
 
-    const paymentIntent = await this.paymentsGatewayService.paymentIntentsRetrieve(
+    const paymentIntent = await this.paymentsGatewayService.paymentsRetrieve(
       order.paymentId,
     );
 
@@ -475,14 +475,14 @@ export class OrdersService extends BaseService implements IOrdersService {
     );
   }
 
-  private buildPaymentIntentParams(
+  private buildPaymentParams(
     order: {
       total: number;
       user?: { customerId?: string; email?: string };
       id: string;
     },
     userId: string,
-  ): GatewayPaymentIntentParams {
+  ): GatewayPaymentParams {
     return {
       amount: order.total,
       currency: 'brl',

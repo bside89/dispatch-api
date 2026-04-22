@@ -4,21 +4,8 @@ const makeCustomer = (id: string) => ({
   id,
   email: 'test@test.com',
   name: 'Test Customer',
-  businessName: null,
-  individualName: null,
-  phone: null,
-  description: null,
-  balance: 0,
-  invoicePrefix: null,
-  defaultPaymentMethodId: null,
-  preferredLocales: [],
   metadata: {},
-  taxExempt: null,
   address: null,
-  shipping: null,
-  taxIds: [],
-  createdAt: new Date(),
-  livemode: false,
 });
 
 export const paymentsGatewayServiceMock: Pick<
@@ -28,15 +15,18 @@ export const paymentsGatewayServiceMock: Pick<
   | 'customersDelete'
   | 'customersList'
   | 'customersRetrieve'
-  | 'paymentIntentsCreate'
-  | 'paymentIntentsRetrieve'
+  | 'paymentsCreate'
+  | 'paymentsRetrieve'
+  | 'refundsCreate'
+  | 'refundsRetrieve'
+  | 'constructWebhookEvent'
 > = {
   customersCreate: jest.fn(async () => makeCustomer('cus_test_create')),
   customersUpdate: jest.fn(async () => makeCustomer('cus_test_update')),
   customersDelete: jest.fn(async () => undefined),
   customersList: jest.fn(async () => [makeCustomer('cus_test_list')]),
   customersRetrieve: jest.fn(async () => makeCustomer('cus_test_retrieve')),
-  paymentIntentsCreate: jest.fn(async () => ({
+  paymentsCreate: jest.fn(async () => ({
     id: 'pi_test_mock',
     status: 'requires_confirmation',
     clientSecret: 'pi_test_mock_secret',
@@ -44,12 +34,22 @@ export const paymentsGatewayServiceMock: Pick<
     amount: 0,
     livemode: false,
   })),
-  paymentIntentsRetrieve: jest.fn(async () => ({
+  paymentsRetrieve: jest.fn(async () => ({
     id: 'pi_test_mock',
     status: 'requires_confirmation',
     clientSecret: 'pi_test_mock_secret',
     currency: 'brl',
     amount: 0,
     livemode: false,
+  })),
+  refundsCreate: jest.fn(async () => undefined),
+  refundsRetrieve: jest.fn(async () => undefined),
+  constructWebhookEvent: jest.fn(() => ({
+    type: 'UNKNOWN' as never,
+    data: {
+      externalId: 'evt_test_mock',
+      status: 'unknown',
+      metadata: {},
+    },
   })),
 };

@@ -3,15 +3,15 @@ import Stripe from 'stripe';
 import { BaseService } from '@/shared/services/base.service';
 import {
   StripeCustomerResponse,
-  DeletedStripeCustomer,
-} from '../types/customer.types';
-import { StripePaymentCustomer } from '../types/customer.types';
-import { STRIPE_CLIENT } from '../constants/stripe-client.token';
+  StripeDeletedCustomer,
+} from '../types/stripe-customer.type';
+import { StripePaymentCustomer } from '../types/stripe-customer.type';
+import { STRIPE_CLIENT } from '../../constants/stripe-client.token';
 import {
   StripeCreateCustomerDto,
   StripeUpdateCustomerDto,
-} from '@/modules/payments-gateway/dto/stripe-customer.dto';
-import { StripeCustomerMapper } from '../utils/stripe-customer-mapper';
+} from '../dto/stripe-customer.dto';
+import { StripeCustomerMapper } from '../helpers/stripe-customer-mapper.helper';
 import { template } from '@/shared/utils/functions.utils';
 import { I18N_PAYMENTS } from '@/shared/constants/i18n';
 
@@ -82,7 +82,7 @@ export class StripeCustomersGateway extends BaseService {
 
   private isDeletedCustomer(
     customer: StripeCustomerResponse,
-  ): customer is DeletedStripeCustomer {
+  ): customer is StripeDeletedCustomer {
     return 'deleted' in customer && customer.deleted === true;
   }
 }

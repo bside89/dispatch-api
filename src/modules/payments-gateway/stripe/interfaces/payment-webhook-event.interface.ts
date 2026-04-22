@@ -1,4 +1,4 @@
-import { PaymentEventType } from '../enums/payment-event-type.enum';
+import { PaymentEventType } from '../../enums/payment-event-type.enum';
 
 export interface PaymentWebhookEventData {
   externalId: string;

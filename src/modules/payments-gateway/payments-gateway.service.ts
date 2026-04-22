@@ -1,12 +1,12 @@
 import { BaseService } from '@/shared/services/base.service';
 import { Injectable, OnApplicationBootstrap } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { StripeCustomersGateway } from './gateways/stripe-customers.gateway';
-import { StripePaymentIntentsGateway } from './gateways/stripe-payment-intents.gateway';
+import { StripeCustomersGateway } from './stripe/gateways/stripe-customers.gateway';
+import { StripePaymentIntentsGateway } from './stripe/gateways/stripe-payment-intents.gateway';
 import {
   StripeCreateCustomerAddressDto,
   StripeCreateCustomerDto,
-} from './dto/stripe-customer.dto';
+} from './stripe/dto/stripe-customer.dto';
 import {
   GatewayCreateCustomerDto,
   GatewayUpdateCustomerDto,
@@ -17,14 +17,14 @@ import { EntityMapper } from '@/shared/utils/entity-mapper.utils';
 import {
   StripeUpdateCustomerAddressDto,
   StripeUpdateCustomerDto,
-} from './dto/stripe-customer.dto';
+} from './stripe/dto/stripe-customer.dto';
 import { GatewayPaymentResponseDto } from './dto/gateway-payment-response.dto';
-import {
-  GatewayPaymentIntentParams,
-  StripePaymentIntentCreateParams,
-} from './types/payment-intent.types';
+import { StripePaymentIntentCreateParams } from './stripe/types/stripe-payment-intent.type';
 import { PaymentEventType } from './enums/payment-event-type.enum';
-import { PaymentWebhookEvent } from './types/payment-webhook-event.types';
+import { PaymentWebhookEvent } from './stripe/interfaces/payment-webhook-event.interface';
+import { StripeRefundsGateway } from './stripe/gateways/stripe-refunds.gateway';
+import { GatewayPaymentParams } from './interfaces/gateway-payment-params.interface';
+import { StripeWebhooksGateway } from './stripe/gateways/stripe-webhooks.gateway';
 
 @Injectable()
 export class PaymentsGatewayService
@@ -36,6 +36,8 @@ export class PaymentsGatewayService
   constructor(
     private readonly stripeCustomersGateway: StripeCustomersGateway,
     private readonly stripePaymentIntentsGateway: StripePaymentIntentsGateway,
+    private readonly stripeRefundsGateway: StripeRefundsGateway,
+    private readonly stripeWebhooksGateway: StripeWebhooksGateway,
     private readonly configService: ConfigService,
   ) {
     super(PaymentsGatewayService.name);
@@ -93,8 +95,8 @@ export class PaymentsGatewayService
 
   //#region Payment Intents
 
-  async paymentIntentsCreate(
-    params: GatewayPaymentIntentParams,
+  async paymentsCreate(
+    params: GatewayPaymentParams,
     idempotencyKey: string,
   ): Promise<GatewayPaymentResponseDto> {
     const stripeParams = this.toStripePaymentIntentParams(params);
@@ -106,7 +108,7 @@ export class PaymentsGatewayService
     return mapped;
   }
 
-  async paymentIntentsRetrieve(
+  async paymentsRetrieve(
     paymentIntentId: string,
   ): Promise<GatewayPaymentResponseDto> {
     const paymentIntent =
@@ -115,11 +117,36 @@ export class PaymentsGatewayService
     return mapped;
   }
 
+  //#endregion
+
+  //#region Refunds
+
+  async refundsCreate(
+    paymentIntentId: string,
+    amount: number,
+    idempotencyKey?: string,
+  ): Promise<void> {
+    await this.stripeRefundsGateway.create(
+      paymentIntentId,
+      amount,
+      'requested_by_customer',
+      idempotencyKey,
+    );
+  }
+
+  async refundsRetrieve(refundId: string): Promise<void> {
+    await this.stripeRefundsGateway.retrieve(refundId);
+  }
+
+  //#endregion
+
+  //#region Webhooks
+
   constructWebhookEvent(
     payload: Buffer | string,
     signature: string,
   ): PaymentWebhookEvent {
-    const stripeEvent = this.stripePaymentIntentsGateway.constructWebhookEvent(
+    const stripeEvent = this.stripeWebhooksGateway.constructWebhookEvent(
       payload,
       signature,
       this.webhookSecret,
@@ -135,6 +162,8 @@ export class PaymentsGatewayService
   }
 
   //#endregion
+
+  //#region Private methods
 
   private toStripeCreateCustomerDto(
     dto: GatewayCreateCustomerDto,
@@ -167,7 +196,7 @@ export class PaymentsGatewayService
   }
 
   private toStripePaymentIntentParams(
-    params: GatewayPaymentIntentParams,
+    params: GatewayPaymentParams,
   ): StripePaymentIntentCreateParams {
     return {
       amount: params.amount,
@@ -187,4 +216,6 @@ export class PaymentsGatewayService
     };
     return map[stripeType] ?? PaymentEventType.UNKNOWN;
   }
+
+  //#endregion
 }

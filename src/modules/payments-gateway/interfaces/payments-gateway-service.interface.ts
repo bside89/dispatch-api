@@ -4,9 +4,9 @@ import {
 } from '../dto/gateway-customer.dto';
 import { GatewayCustomerResponseDto } from '../dto/gateway-customer-response.dto';
 import { GatewayPaymentResponseDto } from '../dto/gateway-payment-response.dto';
-import { GatewayPaymentIntentParams } from '../types/payment-intent.types';
 import { IBaseService } from '@/shared/services/base-service.interface';
-import { PaymentWebhookEvent } from '../types/payment-webhook-event.types';
+import { PaymentWebhookEvent } from '../stripe/interfaces/payment-webhook-event.interface';
+import { GatewayPaymentParams } from './gateway-payment-params.interface';
 
 export interface IPaymentsGatewayService extends IBaseService {
   customersCreate(
@@ -26,14 +26,20 @@ export interface IPaymentsGatewayService extends IBaseService {
 
   customersDelete(customerId: string, idempotencyKey: string): Promise<void>;
 
-  paymentIntentsCreate(
-    params: GatewayPaymentIntentParams,
+  paymentsCreate(
+    params: GatewayPaymentParams,
     idempotencyKey: string,
   ): Promise<GatewayPaymentResponseDto>;
 
-  paymentIntentsRetrieve(
+  paymentsRetrieve(paymentIntentId: string): Promise<GatewayPaymentResponseDto>;
+
+  refundsCreate(
     paymentIntentId: string,
-  ): Promise<GatewayPaymentResponseDto>;
+    amount: number,
+    idempotencyKey?: string,
+  ): Promise<void>;
+
+  refundsRetrieve(refundId: string): Promise<void>;
 
   constructWebhookEvent(
     payload: Buffer | string,

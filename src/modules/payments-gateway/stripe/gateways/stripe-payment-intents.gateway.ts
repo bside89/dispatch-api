@@ -1,12 +1,11 @@
 import { Inject, Injectable } from '@nestjs/common';
 import Stripe from 'stripe';
 import { BaseService } from '@/shared/services/base.service';
-import { STRIPE_CLIENT } from '../constants/stripe-client.token';
+import { STRIPE_CLIENT } from '../../constants/stripe-client.token';
 import {
   StripePaymentIntentCreateParams,
   StripePaymentIntentResponse,
-  StripeWebhookEvent,
-} from '../types/payment-intent.types';
+} from '../types/stripe-payment-intent.type';
 
 @Injectable()
 export class StripePaymentIntentsGateway extends BaseService {
@@ -23,17 +22,5 @@ export class StripePaymentIntentsGateway extends BaseService {
 
   async retrieve(paymentIntentId: string): Promise<StripePaymentIntentResponse> {
     return this.stripe.paymentIntents.retrieve(paymentIntentId);
-  }
-
-  constructWebhookEvent(
-    payload: Buffer | string,
-    signature: string,
-    secret: string,
-  ): StripeWebhookEvent {
-    return this.stripe.webhooks.constructEvent(
-      payload,
-      signature,
-      secret,
-    ) as unknown as StripeWebhookEvent;
   }
 }

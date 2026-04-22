@@ -22,7 +22,7 @@ import {
   StripeCustomerInvoiceAmountTaxDisplay,
   StripeCustomerTaxExempt as StripeCustomerTaxExempt,
   StripeCustomerTaxValidateLocation as StripeCustomerTaxValidateLocation,
-} from '../types/customer.types';
+} from '../types/stripe-customer.type';
 
 const STRIPE_CUSTOMER_TAX_EXEMPT_VALUES: StripeCustomerTaxExempt[] = [
   'exempt',
@@ -399,6 +399,38 @@ export class StripeCreateCustomerDto {
 
 export class StripeUpdateCustomerAddressDto extends PartialType(
   StripeCreateCustomerAddressDto,
+) {}
+
+export class StripeUpdateCustomerShippingDto extends PartialType(
+  StripeCreateCustomerShippingDto,
+) {}
+
+export class StripeUpdateCustomerInvoiceCustomFieldDto extends PartialType(
+  StripeCreateCustomerInvoiceCustomFieldDto,
+) {}
+
+export class StripeUpdateCustomerInvoiceRenderingOptionsDto extends PartialType(
+  StripeCreateCustomerInvoiceRenderingOptionsDto,
+) {}
+
+export class StripeUpdateCustomerInvoiceSettingsDto extends PartialType(
+  StripeCreateCustomerInvoiceSettingsDto,
+) {}
+
+export class StripeUpdateCustomerTaxDto extends PartialType(
+  StripeCreateCustomerTaxDto,
+) {}
+
+export class StripeUpdateCustomerTaxIdDto extends PartialType(
+  StripeCreateCustomerTaxIdDto,
+) {}
+
+export class StripeUpdateCustomerCashBalanceSettingsDto extends PartialType(
+  StripeCreateCustomerCashBalanceSettingsDto,
+) {}
+
+export class StripeUpdateCustomerCashBalanceDto extends PartialType(
+  StripeCreateCustomerCashBalanceDto,
 ) {}
 
 export class StripeUpdateCustomerDto extends PartialType(StripeCreateCustomerDto) {}
