@@ -439,7 +439,7 @@ export class UsersService extends BaseService implements IUsersService {
   ): Promise<GatewayCustomerResponseDto> {
     try {
       const customer =
-        await this.paymentsGatewayService.customersRetrieve(customerId);
+        await this.paymentsGatewayService.customers.retrieve(customerId);
       return customer;
     } catch (e) {
       const error = ensureError(e);

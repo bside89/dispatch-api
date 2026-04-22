@@ -277,7 +277,7 @@ describe('Users (Integration)', () => {
       );
 
       // Track the specific call for this test
-      const deleteSpy = jest.spyOn(paymentsGatewayServiceMock, 'customersDelete');
+      const deleteSpy = jest.spyOn(paymentsGatewayServiceMock.customers, 'delete');
 
       try {
         // Use adminRemove: the admin actor (higher role) removes the regular user (lower role)

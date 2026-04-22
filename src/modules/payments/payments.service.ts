@@ -22,7 +22,7 @@ export class PaymentsService extends BaseService implements IPaymentsService {
     payload: Buffer | string,
     signature: string,
   ): Promise<void> {
-    const event = this.paymentsGatewayService.constructWebhookEvent(
+    const event = this.paymentsGatewayService.webhooks.constructWebhookEvent(
       payload,
       signature,
     );

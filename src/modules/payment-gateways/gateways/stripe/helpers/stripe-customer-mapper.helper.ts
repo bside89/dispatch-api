@@ -1,6 +1,13 @@
 import {
+  GatewayCreateCustomerDto,
+  GatewayUpdateCustomerDto,
+} from '@/modules/payment-gateways/dto/gateway-customer.dto';
+import {
+  StripeCreateCustomerAddressDto,
   StripeCreateCustomerDto,
   StripeCreateCustomerShippingDto,
+  StripeUpdateCustomerAddressDto,
+  StripeUpdateCustomerDto,
 } from '../dto/stripe-customer.dto';
 import { StripePaymentCustomer } from '../types/stripe-customer.type';
 import {
@@ -181,5 +188,35 @@ export class StripeCustomerMapper {
       createdAt: new Date(customer.created * 1000),
       livemode: customer.livemode,
     };
+  }
+
+  static toStripeCreateCustomerDto(
+    dto: GatewayCreateCustomerDto,
+  ): StripeCreateCustomerDto {
+    const result = new StripeCreateCustomerDto();
+    result.email = dto.email;
+    result.name = dto.name;
+    if (dto.address) {
+      const addr = new StripeCreateCustomerAddressDto();
+      Object.assign(addr, dto.address);
+      result.address = addr;
+    }
+    result.metadata = dto.metadata;
+    return result;
+  }
+
+  static toStripeUpdateCustomerDto(
+    dto: GatewayUpdateCustomerDto,
+  ): StripeUpdateCustomerDto {
+    const result = new StripeUpdateCustomerDto();
+    if (dto.email !== undefined) result.email = dto.email;
+    if (dto.name !== undefined) result.name = dto.name;
+    if (dto.address !== undefined) {
+      const addr = new StripeUpdateCustomerAddressDto();
+      Object.assign(addr, dto.address);
+      result.address = addr;
+    }
+    if (dto.metadata !== undefined) result.metadata = dto.metadata;
+    return result;
   }
 }

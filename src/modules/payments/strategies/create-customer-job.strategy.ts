@@ -78,9 +78,9 @@ export class CreateCustomerJobStrategy extends BasePaymentJobStrategy<CreateCust
     data: CreateCustomerJobPayload,
   ): Promise<GatewayCustomerResponseDto> {
     const dto = this.toCreateCustomerDto(data);
-    const idempotencyKey = this.idempotencyKey(data.correlationId);
+    const idempotencyKey = this.idempotencyKey(data.userDto.id);
 
-    return this.paymentsGatewayService.customersCreate(dto, idempotencyKey);
+    return this.paymentsGatewayService.customers.create(dto, idempotencyKey);
   }
 
   private toCreateCustomerDto(

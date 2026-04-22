@@ -8,41 +8,57 @@ import { IBaseService } from '@/shared/services/base-service.interface';
 import { PaymentWebhookEvent } from './payment-webhook-event.interface';
 import { PaymentGatewayParams } from './payment-gateways-params.interface';
 
-export interface IPaymentGatewaysService extends IBaseService {
-  customersCreate(
+interface IPaymentGatewaysCustomers {
+  create(
     dto: GatewayCreateCustomerDto,
     idempotencyKey: string,
   ): Promise<GatewayCustomerResponseDto>;
 
-  customersList(): Promise<GatewayCustomerResponseDto[]>;
+  list(): Promise<GatewayCustomerResponseDto[]>;
 
-  customersRetrieve(customerId: string): Promise<GatewayCustomerResponseDto>;
+  retrieve(customerId: string): Promise<GatewayCustomerResponseDto>;
 
-  customersUpdate(
+  update(
     customerId: string,
     dto: GatewayUpdateCustomerDto,
     idempotencyKey: string,
   ): Promise<GatewayCustomerResponseDto>;
 
-  customersDelete(customerId: string, idempotencyKey: string): Promise<void>;
+  delete(customerId: string, idempotencyKey: string): Promise<void>;
+}
 
-  paymentsCreate(
+interface IPaymentGatewaysPayments {
+  create(
     params: PaymentGatewayParams,
     idempotencyKey: string,
   ): Promise<GatewayPaymentResponseDto>;
 
-  paymentsRetrieve(paymentIntentId: string): Promise<GatewayPaymentResponseDto>;
+  retrieve(paymentIntentId: string): Promise<GatewayPaymentResponseDto>;
+}
 
-  refundsCreate(
+interface IPaymentGatewaysRefunds {
+  create(
     paymentIntentId: string,
     amount: number,
     idempotencyKey?: string,
   ): Promise<void>;
 
-  refundsRetrieve(refundId: string): Promise<void>;
+  retrieve(refundId: string): Promise<void>;
+}
 
+interface IPaymentGatewaysWebhooks {
   constructWebhookEvent(
     payload: Buffer | string,
     signature: string,
   ): PaymentWebhookEvent;
+}
+
+export interface IPaymentGatewaysService extends IBaseService {
+  customers: IPaymentGatewaysCustomers;
+
+  payments: IPaymentGatewaysPayments;
+
+  refunds: IPaymentGatewaysRefunds;
+
+  webhooks: IPaymentGatewaysWebhooks;
 }

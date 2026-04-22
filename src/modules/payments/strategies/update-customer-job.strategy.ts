@@ -80,7 +80,7 @@ export class UpdateCustomerJobStrategy extends BasePaymentJobStrategy<UpdateCust
     const updateCustomerDto = this.toUpdateCustomerDto(data);
     const idempotencyKey = this.idempotencyKey(data.correlationId);
 
-    return this.paymentsGatewayService.customersUpdate(
+    return this.paymentsGatewayService.customers.update(
       userDto.customerId,
       updateCustomerDto,
       idempotencyKey,

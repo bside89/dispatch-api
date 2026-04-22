@@ -1,9 +1,9 @@
 import { Module } from '@nestjs/common';
 import { PaymentGatewaysService } from './payment-gateways.service';
-import { StripeCustomersAdapter } from './gateways/stripe/providers/stripe-customers.adapter';
-import { StripePaymentIntentsAdapter } from './gateways/stripe/providers/stripe-payment-intents.adapter';
-import { StripeRefundsAdapter } from './gateways/stripe/providers/stripe-refunds.adapter';
-import { StripeWebhooksAdapter } from './gateways/stripe/providers/stripe-webhooks.adapter';
+import { StripeCustomersAdapter } from './gateways/stripe/adapters/stripe-customers.adapter';
+import { StripePaymentIntentsAdapter } from './gateways/stripe/adapters/stripe-payment-intents.adapter';
+import { StripeRefundsAdapter } from './gateways/stripe/adapters/stripe-refunds.adapter';
+import { StripeWebhooksAdapter } from './gateways/stripe/adapters/stripe-webhooks.adapter';
 import { PAYMENTS_GATEWAY_SERVICE } from './constants/payments-gateway.token';
 import { stripeClient } from '@/config/stripe.config';
 import { STRIPE_CLIENT } from './constants/stripe-client.token';

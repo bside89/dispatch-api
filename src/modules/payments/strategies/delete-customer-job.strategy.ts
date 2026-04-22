@@ -68,7 +68,8 @@ export class DeleteCustomerJobStrategy extends BasePaymentJobStrategy<DeleteCust
   private async deleteCustomer(data: DeleteCustomerJobPayload): Promise<void> {
     const { userDto } = data;
     const idempotencyKey = this.idempotencyKey(data.correlationId);
-    await this.paymentsGatewayService.customersDelete(
+
+    await this.paymentsGatewayService.customers.delete(
       userDto.customerId,
       idempotencyKey,
     );

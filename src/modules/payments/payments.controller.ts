@@ -36,7 +36,7 @@ export class PaymentsController extends BaseController {
     super(PaymentsController.name);
   }
 
-  @Post('webhooks/payment')
+  @Post('webhooks')
   @Public()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({

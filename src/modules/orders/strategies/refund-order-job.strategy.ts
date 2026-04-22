@@ -10,15 +10,19 @@ import type { IOutboxService } from '@/shared/modules/outbox/interfaces/outbox-s
 import { ORDER_REPOSITORY } from '../constants/orders.token';
 import type { IOrderRepository } from '../interfaces/order-repository.interface';
 import { BaseOrderJobStrategy } from './base-order-job.strategy';
-import { delay } from '@/shared/utils/functions.utils';
 import { OrderMessageFactory } from '../factories/order-message.factory';
 import { Order } from '../entities/order.entity';
 import { DbGuardService } from '@/shared/modules/db-guard/db-guard.service';
+import type { IPaymentGatewaysService } from '@/modules/payment-gateways/interfaces/payment-gateways-service.interface';
+import { PAYMENTS_GATEWAY_SERVICE } from '@/modules/payment-gateways/constants/payments-gateway.token';
+import { PAYMENT_KEY } from '@/shared/modules/cache/constants/payment.key';
 
 @Injectable()
 export class RefundOrderJobStrategy extends BaseOrderJobStrategy<RefundOrderJobPayload> {
   constructor(
     private readonly messages: OrderMessageFactory,
+    @Inject(PAYMENTS_GATEWAY_SERVICE)
+    private readonly paymentsGatewayService: IPaymentGatewaysService,
     @Inject(OUTBOX_SERVICE) private readonly outboxService: IOutboxService,
     @Inject(CACHE_SERVICE) cacheService: ICacheService,
     @Inject(ORDER_REPOSITORY) orderRepository: IOrderRepository,
@@ -64,12 +68,16 @@ export class RefundOrderJobStrategy extends BaseOrderJobStrategy<RefundOrderJobP
   }
 
   private async refundPayment(order: Order) {
-    const { id: orderId } = order;
+    const { id: orderId, paymentId } = order;
 
-    // TODO: trigger Stripe PaymentIntent refund here
-    await delay(1000);
+    const idempotencyKey = PAYMENT_KEY.IDEMPOTENCY('refund-order', orderId);
+    await this.paymentsGatewayService.refunds.create(
+      paymentId,
+      order.total,
+      idempotencyKey,
+    );
 
-    this.logger.log(`Refund OK`, { orderId });
+    this.logger.log(`Payment refunded successfully`, { orderId });
   }
 
   private async finish(order: Order) {

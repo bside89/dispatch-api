@@ -6,10 +6,13 @@ import {
   StripeRefundResponse,
   StripeRefundRetrieveResponse,
 } from '../types/stripe-refund.type';
+import { BaseStripeAdapter } from './base-stripe.adapter';
 
 @Injectable()
-export class StripeRefundsAdapter {
-  constructor(@Inject(STRIPE_CLIENT) private readonly stripe: Stripe.Stripe) {}
+export class StripeRefundsAdapter extends BaseStripeAdapter {
+  constructor(@Inject(STRIPE_CLIENT) stripe: Stripe.Stripe) {
+    super(stripe);
+  }
 
   async create(
     paymentIntentId: string,

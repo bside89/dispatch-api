@@ -114,7 +114,7 @@ export class OrdersService extends BaseService implements IOrdersService {
     const completeOrder = await this.getOrderOrThrow(savedOrder.id);
 
     const paymentIntentParams = this.buildPaymentParams(completeOrder, userId);
-    const paymentIntent = await this.paymentsGatewayService.paymentsCreate(
+    const paymentIntent = await this.paymentsGatewayService.payments.create(
       paymentIntentParams,
       idempotencyKey,
     );
@@ -168,7 +168,7 @@ export class OrdersService extends BaseService implements IOrdersService {
       throw new ForbiddenException(template(I18N_ORDERS.ERRORS.ACCESS_DENIED));
     }
 
-    const paymentIntent = await this.paymentsGatewayService.paymentsRetrieve(
+    const paymentIntent = await this.paymentsGatewayService.payments.retrieve(
       order.paymentId,
     );
 
@@ -205,7 +205,7 @@ export class OrdersService extends BaseService implements IOrdersService {
   async adminFindOne(id: string): Promise<OrderResponseDto> {
     const order = await this.getOrderOrThrow(id);
 
-    const paymentIntent = await this.paymentsGatewayService.paymentsRetrieve(
+    const paymentIntent = await this.paymentsGatewayService.payments.retrieve(
       order.paymentId,
     );
 

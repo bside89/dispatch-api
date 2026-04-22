@@ -1,7 +1,7 @@
 export const I18N_PAYMENTS = {
   ERRORS: {
     WEBHOOK_SIGNATURE_REQUIRED: 'payments.errors.webhookSignatureRequired',
-    WEBHOOK_SECRET_REQUIRED: 'payments.errors.webhookSecretRequired',
+    STRIPE_WEBHOOK_SECRET_REQUIRED: 'payments.errors.webhookSecretRequired',
     CREATE_CUSTOMER_FAILED: 'payments.errors.createCustomerFailed',
     UPDATE_CUSTOMER_FAILED: 'payments.errors.updateCustomerFailed',
     CUSTOMER_DELETED: 'payments.errors.customerDeleted',

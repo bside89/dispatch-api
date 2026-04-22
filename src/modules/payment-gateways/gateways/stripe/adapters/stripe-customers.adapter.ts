@@ -4,7 +4,6 @@ import {
   StripeCustomerResponse,
   StripeDeletedCustomer,
 } from '../types/stripe-customer.type';
-import { StripePaymentCustomer } from '../types/stripe-customer.type';
 import { STRIPE_CLIENT } from '../../../constants/stripe-client.token';
 import {
   StripeCreateCustomerDto,
@@ -13,28 +12,39 @@ import {
 import { StripeCustomerMapper } from '../helpers/stripe-customer-mapper.helper';
 import { template } from '@/shared/utils/functions.utils';
 import { I18N_PAYMENTS } from '@/shared/constants/i18n';
+import { BaseStripeAdapter } from './base-stripe.adapter';
+import { GatewayCustomerResponseDto } from '@/modules/payment-gateways/dto/gateway-customer-response.dto';
+import { EntityMapper } from '@/shared/utils/entity-mapper.utils';
 
 @Injectable()
-export class StripeCustomersAdapter {
-  constructor(@Inject(STRIPE_CLIENT) private readonly stripe: Stripe.Stripe) {}
+export class StripeCustomersAdapter extends BaseStripeAdapter {
+  constructor(@Inject(STRIPE_CLIENT) stripe: Stripe.Stripe) {
+    super(stripe);
+  }
 
   async create(
     createCustomerDto: StripeCreateCustomerDto,
     idempotencyKey: string,
-  ): Promise<StripePaymentCustomer> {
+  ): Promise<GatewayCustomerResponseDto> {
     const customer = await this.stripe.customers.create(
       StripeCustomerMapper.mapToStripeCustomerCreateParams(createCustomerDto),
       { idempotencyKey },
     );
-    return StripeCustomerMapper.mapToPaymentCustomer(customer);
+    const paymentCustomer = StripeCustomerMapper.mapToPaymentCustomer(customer);
+    return EntityMapper.map(paymentCustomer, GatewayCustomerResponseDto);
   }
 
-  async list(): Promise<StripePaymentCustomer[]> {
+  async list(): Promise<GatewayCustomerResponseDto[]> {
     const customers = await this.stripe.customers.list();
-    return StripeCustomerMapper.mapToPaymentCustomerList(customers.data);
+    const paymentCustomers = StripeCustomerMapper.mapToPaymentCustomerList(
+      customers.data,
+    );
+    return paymentCustomers.map((paymentCustomer) =>
+      EntityMapper.map(paymentCustomer, GatewayCustomerResponseDto),
+    );
   }
 
-  async retrieve(customerId: string): Promise<StripePaymentCustomer> {
+  async retrieve(customerId: string): Promise<GatewayCustomerResponseDto> {
     const customer = await this.stripe.customers.retrieve(customerId);
 
     if (this.isDeletedCustomer(customer)) {
@@ -43,14 +53,17 @@ export class StripeCustomersAdapter {
       );
     }
 
-    return StripeCustomerMapper.mapToPaymentCustomer(customer);
+    return EntityMapper.map(
+      StripeCustomerMapper.mapToPaymentCustomer(customer),
+      GatewayCustomerResponseDto,
+    );
   }
 
   async update(
     customerId: string,
     updateParams: Partial<StripeUpdateCustomerDto>,
     idempotencyKey: string,
-  ): Promise<StripePaymentCustomer> {
+  ): Promise<GatewayCustomerResponseDto> {
     const customer = await this.stripe.customers.update(
       customerId,
       StripeCustomerMapper.mapToStripeCustomerCreateParams(
@@ -65,7 +78,10 @@ export class StripeCustomersAdapter {
       );
     }
 
-    return StripeCustomerMapper.mapToPaymentCustomer(customer);
+    return EntityMapper.map(
+      StripeCustomerMapper.mapToPaymentCustomer(customer),
+      GatewayCustomerResponseDto,
+    );
   }
 
   async delete(customerId: string, idempotencyKey: string): Promise<void> {
