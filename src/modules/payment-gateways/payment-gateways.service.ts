@@ -1,46 +1,46 @@
 import { BaseService } from '@/shared/services/base.service';
 import { Injectable, OnApplicationBootstrap } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { StripeCustomersGateway } from './stripe/gateways/stripe-customers.gateway';
-import { StripePaymentIntentsGateway } from './stripe/gateways/stripe-payment-intents.gateway';
+import { StripeCustomersAdapter } from './gateways/stripe/providers/stripe-customers.adapter';
+import { StripePaymentIntentsAdapter } from './gateways/stripe/providers/stripe-payment-intents.adapter';
 import {
   StripeCreateCustomerAddressDto,
   StripeCreateCustomerDto,
-} from './stripe/dto/stripe-customer.dto';
+} from './gateways/stripe/dto/stripe-customer.dto';
 import {
   GatewayCreateCustomerDto,
   GatewayUpdateCustomerDto,
 } from './dto/gateway-customer.dto';
-import { IPaymentsGatewayService } from './interfaces/payments-gateway-service.interface';
+import { IPaymentGatewaysService } from './interfaces/payment-gateways-service.interface';
 import { GatewayCustomerResponseDto } from './dto/gateway-customer-response.dto';
 import { EntityMapper } from '@/shared/utils/entity-mapper.utils';
 import {
   StripeUpdateCustomerAddressDto,
   StripeUpdateCustomerDto,
-} from './stripe/dto/stripe-customer.dto';
+} from './gateways/stripe/dto/stripe-customer.dto';
 import { GatewayPaymentResponseDto } from './dto/gateway-payment-response.dto';
-import { StripePaymentIntentCreateParams } from './stripe/types/stripe-payment-intent.type';
+import { StripePaymentIntentCreateParams } from './gateways/stripe/types/stripe-payment-intent.type';
 import { PaymentEventType } from './enums/payment-event-type.enum';
-import { PaymentWebhookEvent } from './stripe/interfaces/payment-webhook-event.interface';
-import { StripeRefundsGateway } from './stripe/gateways/stripe-refunds.gateway';
-import { GatewayPaymentParams } from './interfaces/gateway-payment-params.interface';
-import { StripeWebhooksGateway } from './stripe/gateways/stripe-webhooks.gateway';
+import { PaymentWebhookEvent } from './interfaces/payment-webhook-event.interface';
+import { StripeRefundsAdapter } from './gateways/stripe/providers/stripe-refunds.adapter';
+import { PaymentGatewayParams } from './interfaces/payment-gateways-params.interface';
+import { StripeWebhooksAdapter } from './gateways/stripe/providers/stripe-webhooks.adapter';
 
 @Injectable()
-export class PaymentsGatewayService
+export class PaymentGatewaysService
   extends BaseService
-  implements IPaymentsGatewayService, OnApplicationBootstrap
+  implements IPaymentGatewaysService, OnApplicationBootstrap
 {
   private webhookSecret: string;
 
   constructor(
-    private readonly stripeCustomersGateway: StripeCustomersGateway,
-    private readonly stripePaymentIntentsGateway: StripePaymentIntentsGateway,
-    private readonly stripeRefundsGateway: StripeRefundsGateway,
-    private readonly stripeWebhooksGateway: StripeWebhooksGateway,
+    private readonly stripeCustomersAdapter: StripeCustomersAdapter,
+    private readonly stripePaymentIntentsAdapter: StripePaymentIntentsAdapter,
+    private readonly stripeRefundsAdapter: StripeRefundsAdapter,
+    private readonly stripeWebhooksAdapter: StripeWebhooksAdapter,
     private readonly configService: ConfigService,
   ) {
-    super(PaymentsGatewayService.name);
+    super(PaymentGatewaysService.name);
   }
 
   onApplicationBootstrap() {
@@ -56,7 +56,7 @@ export class PaymentsGatewayService
     idempotencyKey: string,
   ): Promise<GatewayCustomerResponseDto> {
     const stripeDto = this.toStripeCreateCustomerDto(dto);
-    const customer = await this.stripeCustomersGateway.create(
+    const customer = await this.stripeCustomersAdapter.create(
       stripeDto,
       idempotencyKey,
     );
@@ -64,12 +64,12 @@ export class PaymentsGatewayService
   }
 
   async customersList(): Promise<GatewayCustomerResponseDto[]> {
-    const customers = await this.stripeCustomersGateway.list();
+    const customers = await this.stripeCustomersAdapter.list();
     return EntityMapper.mapArray(customers, GatewayCustomerResponseDto);
   }
 
   async customersRetrieve(customerId: string): Promise<GatewayCustomerResponseDto> {
-    const customer = await this.stripeCustomersGateway.retrieve(customerId);
+    const customer = await this.stripeCustomersAdapter.retrieve(customerId);
     return EntityMapper.map(customer, GatewayCustomerResponseDto);
   }
 
@@ -79,7 +79,7 @@ export class PaymentsGatewayService
     idempotencyKey: string,
   ): Promise<GatewayCustomerResponseDto> {
     const stripeDto = this.toStripeUpdateCustomerDto(dto);
-    const updatedCustomer = await this.stripeCustomersGateway.update(
+    const updatedCustomer = await this.stripeCustomersAdapter.update(
       customerId,
       stripeDto,
       idempotencyKey,
@@ -88,7 +88,7 @@ export class PaymentsGatewayService
   }
 
   async customersDelete(customerId: string, idempotencyKey: string): Promise<void> {
-    await this.stripeCustomersGateway.delete(customerId, idempotencyKey);
+    await this.stripeCustomersAdapter.delete(customerId, idempotencyKey);
   }
 
   //#endregion
@@ -96,11 +96,11 @@ export class PaymentsGatewayService
   //#region Payment Intents
 
   async paymentsCreate(
-    params: GatewayPaymentParams,
+    params: PaymentGatewayParams,
     idempotencyKey: string,
   ): Promise<GatewayPaymentResponseDto> {
     const stripeParams = this.toStripePaymentIntentParams(params);
-    const paymentIntent = await this.stripePaymentIntentsGateway.create(
+    const paymentIntent = await this.stripePaymentIntentsAdapter.create(
       stripeParams,
       idempotencyKey,
     );
@@ -112,7 +112,7 @@ export class PaymentsGatewayService
     paymentIntentId: string,
   ): Promise<GatewayPaymentResponseDto> {
     const paymentIntent =
-      await this.stripePaymentIntentsGateway.retrieve(paymentIntentId);
+      await this.stripePaymentIntentsAdapter.retrieve(paymentIntentId);
     const mapped = EntityMapper.map(paymentIntent, GatewayPaymentResponseDto);
     return mapped;
   }
@@ -126,7 +126,7 @@ export class PaymentsGatewayService
     amount: number,
     idempotencyKey?: string,
   ): Promise<void> {
-    await this.stripeRefundsGateway.create(
+    await this.stripeRefundsAdapter.create(
       paymentIntentId,
       amount,
       'requested_by_customer',
@@ -135,7 +135,7 @@ export class PaymentsGatewayService
   }
 
   async refundsRetrieve(refundId: string): Promise<void> {
-    await this.stripeRefundsGateway.retrieve(refundId);
+    await this.stripeRefundsAdapter.retrieve(refundId);
   }
 
   //#endregion
@@ -146,7 +146,7 @@ export class PaymentsGatewayService
     payload: Buffer | string,
     signature: string,
   ): PaymentWebhookEvent {
-    const stripeEvent = this.stripeWebhooksGateway.constructWebhookEvent(
+    const stripeEvent = this.stripeWebhooksAdapter.constructWebhookEvent(
       payload,
       signature,
       this.webhookSecret,
@@ -196,7 +196,7 @@ export class PaymentsGatewayService
   }
 
   private toStripePaymentIntentParams(
-    params: GatewayPaymentParams,
+    params: PaymentGatewayParams,
   ): StripePaymentIntentCreateParams {
     return {
       amount: params.amount,

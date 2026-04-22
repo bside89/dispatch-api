@@ -1,14 +1,11 @@
-import { BaseService } from '@/shared/services/base.service';
 import { Injectable, Inject } from '@nestjs/common';
 import Stripe from 'stripe';
-import { STRIPE_CLIENT } from '../../constants/stripe-client.token';
+import { STRIPE_CLIENT } from '../../../constants/stripe-client.token';
 import { StripeWebhookEvent } from '../types/stripe-webhook.type';
 
 @Injectable()
-export class StripeWebhooksGateway extends BaseService {
-  constructor(@Inject(STRIPE_CLIENT) private readonly stripe: Stripe.Stripe) {
-    super(StripeWebhooksGateway.name);
-  }
+export class StripeWebhooksAdapter {
+  constructor(@Inject(STRIPE_CLIENT) private readonly stripe: Stripe.Stripe) {}
 
   constructWebhookEvent(
     payload: Buffer | string,

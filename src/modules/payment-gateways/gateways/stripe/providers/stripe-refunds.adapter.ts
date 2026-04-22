@@ -1,5 +1,4 @@
-import { BaseService } from '@/shared/services/base.service';
-import { STRIPE_CLIENT } from '../../constants/stripe-client.token';
+import { STRIPE_CLIENT } from '../../../constants/stripe-client.token';
 import { Injectable, Inject } from '@nestjs/common';
 import Stripe from 'stripe';
 import {
@@ -9,10 +8,8 @@ import {
 } from '../types/stripe-refund.type';
 
 @Injectable()
-export class StripeRefundsGateway extends BaseService {
-  constructor(@Inject(STRIPE_CLIENT) private readonly stripe: Stripe.Stripe) {
-    super(StripeRefundsGateway.name);
-  }
+export class StripeRefundsAdapter {
+  constructor(@Inject(STRIPE_CLIENT) private readonly stripe: Stripe.Stripe) {}
 
   async create(
     paymentIntentId: string,

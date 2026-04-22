@@ -4,13 +4,13 @@ import { PublicUsersController } from './public-users.controller';
 import { UsersService } from './users.service';
 import { User } from './entities/user.entity';
 import { UserRepository } from './repositories/user.repository';
-import { PaymentsGatewayModule } from '../payments-gateway/payments-gateway.module';
+import { PaymentGatewaysModule } from '../payment-gateways/payment-gateways.module';
 import { UserMessageFactory } from './factories/user-message.factory';
 import { AdminUsersController } from './admin-users.controller';
 import { USERS_SERVICE, USER_REPOSITORY } from './constants/users.token';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([User]), PaymentsGatewayModule],
+  imports: [TypeOrmModule.forFeature([User]), PaymentGatewaysModule],
   controllers: [PublicUsersController, AdminUsersController],
   providers: [
     { provide: USERS_SERVICE, useClass: UsersService },

@@ -11,7 +11,7 @@ import { OrderRepository } from './repositories/order.repository';
 import { OrderItemRepository } from './repositories/order-item.repository';
 import { CancelOrderJobStrategy, ProcessOrderJobStrategy } from './strategies';
 import { RefundOrderJobStrategy } from './strategies/refund-order-job.strategy';
-import { PaymentsGatewayModule } from '../payments-gateway/payments-gateway.module';
+import { PaymentGatewaysModule } from '../payment-gateways/payment-gateways.module';
 import { ItemsModule } from '../items/items.module';
 import { OrderMessageFactory } from './factories/order-message.factory';
 import {
@@ -23,7 +23,7 @@ import {
 @Module({
   imports: [
     TypeOrmModule.forFeature([Order, OrderItem]),
-    PaymentsGatewayModule,
+    PaymentGatewaysModule,
     ItemsModule,
   ],
   controllers: [PublicOrdersController, AdminOrdersController],

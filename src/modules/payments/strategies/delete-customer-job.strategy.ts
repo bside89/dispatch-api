@@ -2,8 +2,8 @@ import { Injectable, Inject } from '@nestjs/common';
 import { DeleteCustomerJobPayload } from '@/shared/payloads/payments-job.payload';
 import { BasePaymentJobStrategy } from './base-payment-job.strategy';
 import { Job } from 'bullmq';
-import { PAYMENTS_GATEWAY_SERVICE } from '@/modules/payments-gateway/constants/payments-gateway.token';
-import type { IPaymentsGatewayService } from '@/modules/payments-gateway/interfaces/payments-gateway-service.interface';
+import { PAYMENTS_GATEWAY_SERVICE } from '@/modules/payment-gateways/constants/payments-gateway.token';
+import type { IPaymentGatewaysService } from '@/modules/payment-gateways/interfaces/payment-gateways-service.interface';
 import { ORDER_REPOSITORY } from '@/modules/orders/constants/orders.token';
 import type { IOrderRepository } from '@/modules/orders/interfaces/order-repository.interface';
 import { USER_REPOSITORY } from '@/modules/users/constants/users.token';
@@ -17,7 +17,7 @@ import { DbGuardService } from '@/shared/modules/db-guard/db-guard.service';
 export class DeleteCustomerJobStrategy extends BasePaymentJobStrategy<DeleteCustomerJobPayload> {
   constructor(
     @Inject(PAYMENTS_GATEWAY_SERVICE)
-    paymentsGatewayService: IPaymentsGatewayService,
+    paymentsGatewayService: IPaymentGatewaysService,
     @Inject(CACHE_SERVICE) cacheService: ICacheService,
     @Inject(ORDER_REPOSITORY) orderRepository: IOrderRepository,
     @Inject(USER_REPOSITORY) userRepository: IUserRepository,

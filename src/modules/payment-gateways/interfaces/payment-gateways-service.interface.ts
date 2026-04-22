@@ -5,10 +5,10 @@ import {
 import { GatewayCustomerResponseDto } from '../dto/gateway-customer-response.dto';
 import { GatewayPaymentResponseDto } from '../dto/gateway-payment-response.dto';
 import { IBaseService } from '@/shared/services/base-service.interface';
-import { PaymentWebhookEvent } from '../stripe/interfaces/payment-webhook-event.interface';
-import { GatewayPaymentParams } from './gateway-payment-params.interface';
+import { PaymentWebhookEvent } from './payment-webhook-event.interface';
+import { PaymentGatewayParams } from './payment-gateways-params.interface';
 
-export interface IPaymentsGatewayService extends IBaseService {
+export interface IPaymentGatewaysService extends IBaseService {
   customersCreate(
     dto: GatewayCreateCustomerDto,
     idempotencyKey: string,
@@ -27,7 +27,7 @@ export interface IPaymentsGatewayService extends IBaseService {
   customersDelete(customerId: string, idempotencyKey: string): Promise<void>;
 
   paymentsCreate(
-    params: GatewayPaymentParams,
+    params: PaymentGatewayParams,
     idempotencyKey: string,
   ): Promise<GatewayPaymentResponseDto>;
 

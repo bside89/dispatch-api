@@ -1,12 +1,11 @@
 import { Injectable, NotFoundException, Inject } from '@nestjs/common';
 import Stripe from 'stripe';
-import { BaseService } from '@/shared/services/base.service';
 import {
   StripeCustomerResponse,
   StripeDeletedCustomer,
 } from '../types/stripe-customer.type';
 import { StripePaymentCustomer } from '../types/stripe-customer.type';
-import { STRIPE_CLIENT } from '../../constants/stripe-client.token';
+import { STRIPE_CLIENT } from '../../../constants/stripe-client.token';
 import {
   StripeCreateCustomerDto,
   StripeUpdateCustomerDto,
@@ -16,10 +15,8 @@ import { template } from '@/shared/utils/functions.utils';
 import { I18N_PAYMENTS } from '@/shared/constants/i18n';
 
 @Injectable()
-export class StripeCustomersGateway extends BaseService {
-  constructor(@Inject(STRIPE_CLIENT) private readonly stripe: Stripe.Stripe) {
-    super(StripeCustomersGateway.name);
-  }
+export class StripeCustomersAdapter {
+  constructor(@Inject(STRIPE_CLIENT) private readonly stripe: Stripe.Stripe) {}
 
   async create(
     createCustomerDto: StripeCreateCustomerDto,

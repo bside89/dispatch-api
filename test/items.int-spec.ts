@@ -9,7 +9,7 @@ import {
   ITEM_REPOSITORY,
 } from '@/modules/items/constants/items.token';
 import { IItemRepository } from '@/modules/items/interfaces/item-repository.interface';
-import { PAYMENTS_GATEWAY_SERVICE } from '@/modules/payments-gateway/constants/payments-gateway.token';
+import { PAYMENTS_GATEWAY_SERVICE } from '@/modules/payment-gateways/constants/payments-gateway.token';
 import { cleanDatabase, cleanRedis } from './utils/database-cleaner';
 import { paymentsGatewayServiceMock } from './utils/mock-payments-gateway-service';
 import {

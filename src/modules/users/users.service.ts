@@ -32,9 +32,9 @@ import {
 } from '@/shared/payloads/payments-job.payload';
 import type { RequestUser } from '../auth/interfaces/request-user.interface';
 import { UserRole } from '../../shared/enums/user-role.enum';
-import type { IPaymentsGatewayService } from '../payments-gateway/interfaces/payments-gateway-service.interface';
-import { PAYMENTS_GATEWAY_SERVICE } from '../payments-gateway/constants/payments-gateway.token';
-import { GatewayCustomerResponseDto } from '../payments-gateway/dto/gateway-customer-response.dto';
+import type { IPaymentGatewaysService } from '../payment-gateways/interfaces/payment-gateways-service.interface';
+import { PAYMENTS_GATEWAY_SERVICE } from '../payment-gateways/constants/payments-gateway.token';
+import { GatewayCustomerResponseDto } from '../payment-gateways/dto/gateway-customer-response.dto';
 import { I18N_USERS } from '@/shared/constants/i18n';
 import {
   UserAddressSnapshotDto,
@@ -52,7 +52,7 @@ export class UsersService extends BaseService implements IUsersService {
   constructor(
     @Inject(USER_REPOSITORY) private readonly userRepository: IUserRepository,
     @Inject(PAYMENTS_GATEWAY_SERVICE)
-    private readonly paymentsGatewayService: IPaymentsGatewayService,
+    private readonly paymentsGatewayService: IPaymentGatewaysService,
     @Inject(IDEMPOTENCY_SERVICE)
     private readonly idempotencyService: IIdempotencyService,
     @Inject(OUTBOX_SERVICE) private readonly outboxService: IOutboxService,

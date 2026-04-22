@@ -28,7 +28,7 @@ import { TerminusModule } from '@nestjs/terminus';
 import { throttleConfig } from './config/throttle.config';
 import { SIDE_EFFECTS_QUEUE, ORDER_QUEUE } from './shared/constants/queues.token';
 import { PaymentsModule } from './modules/payments/payments.module';
-import { PaymentsGatewayModule } from './modules/payments-gateway/payments-gateway.module';
+import { PaymentGatewaysModule } from './modules/payment-gateways/payment-gateways.module';
 import { ItemsModule } from './modules/items/items.module';
 import * as path from 'path';
 import { existsSync } from 'fs';
@@ -119,7 +119,7 @@ const i18nPath = [
     OutboxModule,
     TerminusModule,
     PaymentsModule,
-    PaymentsGatewayModule,
+    PaymentGatewaysModule,
     NotificationsModule,
   ],
   controllers: [AppController],

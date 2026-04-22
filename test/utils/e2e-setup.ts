@@ -1,5 +1,5 @@
 import { AppModule } from '@/app.module';
-import { PAYMENTS_GATEWAY_SERVICE } from '@/modules/payments-gateway/constants/payments-gateway.token';
+import { PAYMENTS_GATEWAY_SERVICE } from '@/modules/payment-gateways/constants/payments-gateway.token';
 import { OUTBOX_SERVICE } from '@/shared/modules/outbox/constants/outbox.token';
 import { REDIS_CLIENT } from '@/shared/modules/cache/constants/redis-client.token';
 import { INestApplication, ValidationPipe } from '@nestjs/common';

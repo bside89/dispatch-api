@@ -6,7 +6,7 @@ import { LOCK_KEY } from '@/shared/constants/lock.key';
 import { PaymentJobPayload } from '@/shared/payloads/payments-job.payload';
 import type { IOrderRepository } from '@/modules/orders/interfaces/order-repository.interface';
 import type { IUserRepository } from '@/modules/users/interfaces/user-repository.interface';
-import type { IPaymentsGatewayService } from '@/modules/payments-gateway/interfaces/payments-gateway-service.interface';
+import type { IPaymentGatewaysService } from '@/modules/payment-gateways/interfaces/payment-gateways-service.interface';
 import { DbGuardService } from '@/shared/modules/db-guard/db-guard.service';
 
 export abstract class BasePaymentJobStrategy<
@@ -14,7 +14,7 @@ export abstract class BasePaymentJobStrategy<
 > extends BaseJobStrategy<T> {
   constructor(
     jobName: string,
-    protected readonly paymentsGatewayService: IPaymentsGatewayService,
+    protected readonly paymentsGatewayService: IPaymentGatewaysService,
     protected readonly cacheService: ICacheService,
     protected readonly orderRepository: IOrderRepository,
     protected readonly userRepository: IUserRepository,

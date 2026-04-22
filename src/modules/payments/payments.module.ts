@@ -10,11 +10,11 @@ import {
   UpdateCustomerJobStrategy,
 } from './strategies';
 import { PaymentJobHandlerFactory } from './factories/payment-job-handler.factory';
-import { PaymentsGatewayModule } from '../payments-gateway/payments-gateway.module';
+import { PaymentGatewaysModule } from '../payment-gateways/payment-gateways.module';
 import { PAYMENTS_SERVICE } from './constants/payments.token';
 
 @Module({
-  imports: [UsersModule, OrdersModule, PaymentsGatewayModule],
+  imports: [UsersModule, OrdersModule, PaymentGatewaysModule],
   controllers: [PaymentsController],
   providers: [
     { provide: PAYMENTS_SERVICE, useClass: PaymentsService },

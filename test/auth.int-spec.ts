@@ -8,7 +8,7 @@ import { IAuthService } from '@/modules/auth/interfaces/auth-service.interface';
 import { AUTH_SERVICE } from '@/modules/auth/constants/auth.token';
 import { IOutboxRepository } from '@/shared/modules/outbox/interfaces/outbox-repository.interface';
 import { OUTBOX_REPOSITORY } from '@/shared/modules/outbox/constants/outbox.token';
-import { PAYMENTS_GATEWAY_SERVICE } from '@/modules/payments-gateway/constants/payments-gateway.token';
+import { PAYMENTS_GATEWAY_SERVICE } from '@/modules/payment-gateways/constants/payments-gateway.token';
 import { cleanDatabase, cleanRedis } from './utils/database-cleaner';
 import { paymentsGatewayServiceMock } from './utils/mock-payments-gateway-service';
 import { waitFor } from './utils/wait-for';

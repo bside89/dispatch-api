@@ -39,8 +39,8 @@ import type { RequestUser } from '../auth/interfaces/request-user.interface';
 import { LOCK_KEY } from '@/shared/constants/lock.key';
 import type { IItemsService } from '../items/interfaces/items-service.interface';
 import { ITEMS_SERVICE } from '../items/constants/items.token';
-import type { IPaymentsGatewayService } from '../payments-gateway/interfaces/payments-gateway-service.interface';
-import { PAYMENTS_GATEWAY_SERVICE } from '../payments-gateway/constants/payments-gateway.token';
+import type { IPaymentGatewaysService } from '../payment-gateways/interfaces/payment-gateways-service.interface';
+import { PAYMENTS_GATEWAY_SERVICE } from '../payment-gateways/constants/payments-gateway.token';
 import { OrderMessageFactory } from './factories/order-message.factory';
 import { I18N_ORDERS } from '@/shared/constants/i18n';
 import {
@@ -54,7 +54,7 @@ import { BaseService } from '@/shared/services/base.service';
 import { DbGuardService } from '@/shared/modules/db-guard/db-guard.service';
 import { OrderTransitionPolicy } from './helpers/order-transition-policy';
 import { Order } from './entities/order.entity';
-import { GatewayPaymentParams } from '../payments-gateway/interfaces/gateway-payment-params.interface';
+import { PaymentGatewayParams } from '../payment-gateways/interfaces/payment-gateways-params.interface';
 
 @Injectable()
 export class OrdersService extends BaseService implements IOrdersService {
@@ -65,7 +65,7 @@ export class OrdersService extends BaseService implements IOrdersService {
     @Inject(ITEMS_SERVICE) private readonly itemsService: IItemsService,
     @Inject(OUTBOX_SERVICE) private readonly outboxService: IOutboxService,
     @Inject(PAYMENTS_GATEWAY_SERVICE)
-    private readonly paymentsGatewayService: IPaymentsGatewayService,
+    private readonly paymentsGatewayService: IPaymentGatewaysService,
     @Inject(IDEMPOTENCY_SERVICE)
     private readonly idempotencyService: IIdempotencyService,
     private readonly messages: OrderMessageFactory,
@@ -482,7 +482,7 @@ export class OrdersService extends BaseService implements IOrdersService {
       id: string;
     },
     userId: string,
-  ): GatewayPaymentParams {
+  ): PaymentGatewayParams {
     return {
       amount: order.total,
       currency: 'brl',

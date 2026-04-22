@@ -1,17 +1,14 @@
 import { Inject, Injectable } from '@nestjs/common';
 import Stripe from 'stripe';
-import { BaseService } from '@/shared/services/base.service';
-import { STRIPE_CLIENT } from '../../constants/stripe-client.token';
+import { STRIPE_CLIENT } from '../../../constants/stripe-client.token';
 import {
   StripePaymentIntentCreateParams,
   StripePaymentIntentResponse,
 } from '../types/stripe-payment-intent.type';
 
 @Injectable()
-export class StripePaymentIntentsGateway extends BaseService {
-  constructor(@Inject(STRIPE_CLIENT) private readonly stripe: Stripe.Stripe) {
-    super(StripePaymentIntentsGateway.name);
-  }
+export class StripePaymentIntentsAdapter {
+  constructor(@Inject(STRIPE_CLIENT) private readonly stripe: Stripe.Stripe) {}
 
   async create(
     params: StripePaymentIntentCreateParams,

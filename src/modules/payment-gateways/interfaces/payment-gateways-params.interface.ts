@@ -1,4 +1,4 @@
-export interface GatewayPaymentParams {
+export interface PaymentGatewayParams {
   amount: number;
   currency: string;
   customerId?: string;
