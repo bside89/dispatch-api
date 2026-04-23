@@ -5,7 +5,7 @@ import { Params } from 'nestjs-pino';
 import { RequestContext } from '@/shared/utils/request-context.utils';
 
 export const loggerConfig = (configService: ConfigService): Params => {
-  const isProduction = configService.get('APP_ENV') === 'production';
+  const isProduction = configService.get('NODE_ENV') === 'production';
 
   return {
     pinoHttp: {

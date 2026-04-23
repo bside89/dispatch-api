@@ -1,6 +1,6 @@
 #!/bin/bash
 
-DB_NAME="order_flow"
+DB_NAME="dispatch_db"
 
 POSTGRES_CONTAINER=$(docker ps --filter "ancestor=postgres:15" --format "{{.ID}}" | head -1)
 if [ -z "$POSTGRES_CONTAINER" ]; then

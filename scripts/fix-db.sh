@@ -1,6 +1,6 @@
 #!/bin/bash
 
-DB_NAME="order_flow"
+DB_NAME="dispatch_db"
 
 echo "Fixing database connection issue..."
 

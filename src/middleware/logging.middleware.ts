@@ -11,8 +11,10 @@ export class LoggingMiddleware implements NestMiddleware {
     const correlationId = RequestContext.getCorrelationId();
     const endpoint = req.originalUrl.split('?')[0];
 
-    this.logger.debug(`${req.method} ${endpoint}`, {
+    this.logger.log('request initiated', {
       correlationId,
+      method: req.method,
+      endpoint,
     });
 
     next();

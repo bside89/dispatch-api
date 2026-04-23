@@ -4,7 +4,7 @@ services:
     container_name: postgres
     restart: always
     env_file:
-      - .env.docker
+      - .env
     environment:
       POSTGRES_DB: ${DB_DATABASE}
       POSTGRES_USER: ${DB_USERNAME}
@@ -29,7 +29,7 @@ services:
     container_name: redis
     restart: always
     env_file:
-      - .env.docker
+      - .env
     ports:
       - '${REDIS_PORT}:${REDIS_PORT}'
     volumes:
@@ -93,10 +93,10 @@ services:
     ports:
       - '${APP_PORT}:${APP_PORT}'
     env_file:
-      - .env.docker
+      - .env
     volumes:
       - ./logs:/app/logs
-      - ./.env.docker:/app/.env:ro
+      - ./.env:/app/.env:ro
     networks:
       - dispatch-network
     healthcheck:

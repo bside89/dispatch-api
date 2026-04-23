@@ -26,7 +26,11 @@ import { CorrelationIdMiddleware } from './middleware/correlation-id.middleware'
 import { LoggingMiddleware } from './middleware/logging.middleware';
 import { TerminusModule } from '@nestjs/terminus';
 import { throttleConfig } from './config/throttle.config';
-import { SIDE_EFFECTS_QUEUE, ORDER_QUEUE } from './shared/constants/queues.token';
+import {
+  SIDE_EFFECTS_QUEUE,
+  ORDER_QUEUE,
+  PAYMENT_QUEUE,
+} from './shared/constants/queues.token';
 import { PaymentsModule } from './modules/payments/payments.module';
 import { PaymentGatewaysModule } from './modules/payment-gateways/payment-gateways.module';
 import { ItemsModule } from './modules/items/items.module';
@@ -42,12 +46,14 @@ const i18nPath = [
   path.join(process.cwd(), 'src', 'i18n'),
 ].find((candidatePath) => existsSync(candidatePath));
 
+const envFilePath = `.env.${process.env.NODE_ENV || 'local'}`;
+
 @Module({
   imports: [
     // Configuration
     ConfigModule.forRoot({
       isGlobal: true,
-      envFilePath: '.env',
+      envFilePath,
     }),
 
     // Logger (Pino)
@@ -91,6 +97,10 @@ const i18nPath = [
       },
       {
         name: SIDE_EFFECTS_QUEUE,
+        adapter: BullMQAdapter,
+      },
+      {
+        name: PAYMENT_QUEUE,
         adapter: BullMQAdapter,
       },
     ),

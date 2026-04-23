@@ -26,7 +26,7 @@ export default async () => {
   process.env.REDIS_HOST = redis.getHost();
   process.env.REDIS_PORT = redis.getMappedPort(6379).toString();
 
-  process.env.APP_ENV = 'test';
+  process.env.NODE_ENV = 'local';
   process.env.TEST_ENV = 'true';
   process.env.JWT_ACCESS_SECRET = 'test-jwt-access-secret';
   process.env.JWT_REFRESH_SECRET = 'test-jwt-refresh-secret';

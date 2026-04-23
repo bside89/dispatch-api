@@ -2,6 +2,12 @@
 
 echo "Resetting containers..."
 
+cp .env.production .env
+
+compose_cmd() {
+    docker compose "$@"
+}
+
 read -p "This will remove all data. Are you sure? (y/N): " -n 1 -r
 echo
 
@@ -11,18 +17,12 @@ if [[ ! $REPLY =~ ^[Yy]$ ]]; then
 fi
 
 echo "Stopping and removing containers..."
-docker compose down -v
+compose_cmd down -v
 
 echo "Removing volumes..."
 docker volume prune -f
 
 echo "Building application from scratch..."
-docker compose build --no-cache
+compose_cmd build --no-cache
 
-echo "Starting fresh environment..."
-docker compose up -d
-
-echo "Waiting for services to be ready..."
-sleep 10
-
-echo "Environment reset completed. Applications should be running with a clean state."
+echo "Environment reset completed."

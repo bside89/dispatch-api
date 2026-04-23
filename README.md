@@ -66,7 +66,7 @@ Bull Board: http://localhost:3000/bull-board
 
 Grafana: http://localhost:3001
 
-When `APP_ENV` is different from `production`, the app creates a mock admin user on startup if it does not already exist:
+When `NODE_ENV` is different from `production`, the app creates a mock admin user on startup if it does not already exist:
 
 - Name: João Silva Admin
 - Email: joao.silva@email.com

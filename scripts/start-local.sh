@@ -2,32 +2,39 @@
 
 echo "Setting up local environment..."
 
+export NODE_ENV="local"
+cp .env.local .env
+
+compose_cmd() {
+    docker compose "$@"
+}
+
 if ! docker info > /dev/null 2>&1; then
     echo "Docker is not running."
     exit 1
 fi
 
-if ! (docker-compose ps --services --filter "status=running" | grep -q postgres &&
-      docker-compose ps --services --filter "status=running" | grep -q redis && 
-      docker-compose ps --services --filter "status=running" | grep -q promtail &&
-      docker-compose ps --services --filter "status=running" | grep -q loki &&
-      docker-compose ps --services --filter "status=running" | grep -q grafana &&
-      docker-compose ps --services --filter "status=running" | grep -q stripe-mock
+if ! (compose_cmd ps --services --filter "status=running" | grep -q postgres &&
+            compose_cmd ps --services --filter "status=running" | grep -q redis && 
+            compose_cmd ps --services --filter "status=running" | grep -q promtail &&
+            compose_cmd ps --services --filter "status=running" | grep -q loki &&
+            compose_cmd ps --services --filter "status=running" | grep -q grafana &&
+            compose_cmd ps --services --filter "status=running" | grep -q stripe-mock
     ); then
     echo "Starting infrastructure services (PostgreSQL, Redis)..."
-    docker-compose up -d postgres redis promtail loki grafana stripe-mock
+    compose_cmd up -d postgres redis promtail loki grafana stripe-mock
     
     echo "Waiting for services to be ready..."
     sleep 5
     
     # Wait for PostgreSQL
-    until docker exec $(docker-compose ps -q postgres) pg_isready -U postgres > /dev/null 2>&1; do
+    until docker exec $(compose_cmd ps -q postgres) pg_isready -U postgres > /dev/null 2>&1; do
         echo "Waiting for PostgreSQL..."
         sleep 3
     done
     
     # Wait for Redis
-    until docker exec $(docker-compose ps -q redis) redis-cli ping > /dev/null 2>&1; do
+    until docker exec $(compose_cmd ps -q redis) redis-cli ping > /dev/null 2>&1; do
         echo "Waiting for Redis..."
         sleep 2
     done
@@ -42,7 +49,7 @@ echo "Local Dev Environment"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
 echo "Debug tips:"
-echo "- Set NEST_DEBUG=true in .env for more verbose logging"
+echo "- Set LOG_LEVEL=debug in .env.local for more verbose logging"
 echo "- Use 'npm run docker:logs' to see infrastructure logs"
 echo "- Use 'npm run docker:status' to check service status"
 echo ""
@@ -51,6 +58,6 @@ read -p "Start the application now? (y/N): " -n 1 -r
 echo
 
 if [[ $REPLY =~ ^[Yy]$ ]]; then
-    echo "Starting NestJS in Dev Mode..."
+    echo "Starting NestJS in Local mode..."
     nest start --debug --watch
 fi
