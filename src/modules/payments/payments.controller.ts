@@ -62,7 +62,7 @@ export class PaymentsController extends BaseController {
   })
   async handlePaymentWebhook(
     @Req() request: Request & { rawBody?: Buffer },
-    @Headers('webhook-signature') webhookSignature: string,
+    @Headers('stripe-signature') webhookSignature: string,
   ): Promise<PaymentWebhookResponseDto> {
     if (!webhookSignature) {
       throw new BadRequestException(

@@ -66,33 +66,34 @@ describe('seedMockItems', () => {
     expect(itemRepository.insert).toHaveBeenCalledTimes(4);
     expect(itemRepository.insert).toHaveBeenNthCalledWith(1, {
       id: '1f1a8d24-9d2d-4df2-8e44-9f6df7a3c001',
-      name: 'Hamburguer Clássico',
+      name: 'Chapinha Prancha Cabelo Profissional Nano Titanium 450F BIVOLT atlas',
       description:
-        'Hamburguer com carne bovina, queijo, alface, tomate e molho especial.',
+        'Chapinha Prancha Cabelo Profissional Nano Titanium 450F BIVOLT atlas.',
       stock: 50,
-      price: 2890,
+      price: 8488,
     });
     expect(itemRepository.insert).toHaveBeenNthCalledWith(2, {
       id: '1f1a8d24-9d2d-4df2-8e44-9f6df7a3c002',
-      name: 'Batata Frita Média',
-      description:
-        'Porção média de batatas crocantes, servida com sal e tempero da casa.',
+      name: 'Panela de Pressão Elétrica Philco 4L 14 funções PPPE04A',
+      description: 'Panela de Pressão Elétrica Philco 4L 14 funções PPPE04A.',
       stock: 80,
-      price: 1490,
+      price: 27541,
     });
     expect(itemRepository.insert).toHaveBeenNthCalledWith(3, {
       id: '1f1a8d24-9d2d-4df2-8e44-9f6df7a3c003',
-      name: 'Refrigerante Lata',
-      description: 'Lata de refrigerante gelada com 350 ml.',
+      name: 'Cooktop a Gás Philco 4 Queimadores Superautomático PCT04TC Bivolt',
+      description:
+        'Cooktop a gás com 4 queimadores, modelo superautomático PCT04TC, bivolt.',
       stock: 120,
-      price: 790,
+      price: 38941,
     });
     expect(itemRepository.insert).toHaveBeenNthCalledWith(4, {
       id: '1f1a8d24-9d2d-4df2-8e44-9f6df7a3c004',
-      name: 'Milkshake de Chocolate',
-      description: 'Milkshake cremoso de chocolate com cobertura de cacau.',
+      name: 'Kit 4 Alto Falantes Triaxiais JBL 6TRMS80 80 Watts Rms + Módulo Taramps TS400x4',
+      description:
+        'Kit 4 Alto Falantes Triaxiais JBL 6TRMS80 80 Watts Rms + Módulo Taramps TS400x4.',
       stock: 35,
-      price: 1890,
+      price: 70290,
     });
     expect(logger.log).toHaveBeenCalledTimes(4);
   });
@@ -113,7 +114,7 @@ describe('seedMockItems', () => {
       'Mock item already exists, skipping seed',
       {
         itemId: '1f1a8d24-9d2d-4df2-8e44-9f6df7a3c001',
-        name: 'Hamburguer Clássico',
+        name: 'Chapinha Prancha Cabelo Profissional Nano Titanium 450F BIVOLT atlas',
       },
     );
     expect(logger.debug).toHaveBeenNthCalledWith(
@@ -121,7 +122,7 @@ describe('seedMockItems', () => {
       'Mock item already exists, skipping seed',
       {
         itemId: '1f1a8d24-9d2d-4df2-8e44-9f6df7a3c003',
-        name: 'Refrigerante Lata',
+        name: 'Cooktop a Gás Philco 4 Queimadores Superautomático PCT04TC Bivolt',
       },
     );
   });

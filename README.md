@@ -9,9 +9,7 @@
 
 ## Overview
 
-Dispatch is an order management API built with NestJS. I built it to work through the architectural problems that come up in real e-commerce backends: async processing, distributed locking, and transactional guarantees.
-
-The flow is hybrid. Payment processing and compensation (cancel, refund) run through BullMQ queues — they need retries and backoff. Shipping and delivery are manual endpoints, because those depend on someone at a warehouse, or users with privileged access (like a delivery person), making a decision.
+Dispatch is an order management API built with NestJS. It is a portfolio project built to work through the architectural problems that come up in real e-commerce backends: async processing, distributed locking, authentication/authorizatin and transactional guarantees.
 
 ---
 
@@ -54,7 +52,7 @@ chmod +x install.sh && ./install.sh
 
 This script will automatically create your `.env` file from the example and start the services using `docker-compose up --build`.
 
-> **Note:** If you prefer to run manually, ensure you copy `.env.example` to `.env.docker` before running `docker-compose up --build`.
+> **Note:** If you prefer to run manually, ensure you copy `.env.example` to `.env.production` and `.env.local` before running `docker-compose up --build`.
 
 > **Stripe tip:** Set `STRIPE_EXEC_MODE` to `local`, `docker`, or `live` depending on how you want to test payments. The details are in the Stripe testing section below.
 
@@ -66,7 +64,7 @@ Bull Board: http://localhost:3000/bull-board
 
 Grafana: http://localhost:3001
 
-When `NODE_ENV` is different from `production`, the app creates a mock admin user on startup if it does not already exist:
+When `SEED_TEST_DATA` is `true`, the app creates a mock admin user on startup if it does not already exist:
 
 - Name: João Silva Admin
 - Email: joao.silva@email.com
@@ -77,40 +75,22 @@ This user is meant for local and development testing only. In `production`, it i
 
 ---
 
-## Architecture overview
-
-```
-Client → API (NestJS)
-        ↓
-     Orders Module
-        ↓
-     BullMQ Queue
-        ↓
-     Workers (Strategies)
-        ↓
-     Event Bus
-        ↓
-     Notifications / Side Effects
-```
-
----
-
 ## Architecture highlights
 
-- **Event-driven within a monolith**  
-  Orders and payments go through queues. Notifications and side effects communicate through an internal event bus. No service discovery, no shared network. Less operational overhead; the tradeoff is that module boundaries have to be maintained by convention.
-
 - **Queue-based processing (BullMQ)**  
-  Payment processing and order compensation run through BullMQ with exponential backoff. If the process job fails, it retries up to 3 times before triggering the compensation flow.
-
-- **Hybrid fulfillment model**  
-  PROCESS, CANCEL, and REFUND go through BullMQ because they need retries. SHIP and DELIVER are synchronous endpoints an admin calls when the warehouse is actually ready — no queue, no scheduler.
+  Orders, payments and side-effects (like notifications) are processed through the respective queues in the background with exponential backoff. If the process job fails, it retries up to 3 times before triggering the compensation flow.
 
 - **Strategy + Factory patterns**  
-  Each order job type (PROCESS, CANCEL, REFUND) has a dedicated strategy class. Adding a new job type means adding one class — the processor and factory stay untouched.
+  Each order job type (PROCESS, CANCEL, REFUND) has a dedicated strategy class. Adding a new job type means adding one class — the processor stay untouched.
 
 - **Idempotent job execution**  
   Jobs carry the order ID and target status in their payload. Before executing, the strategy re-reads the database and validates the precondition. A PAID → PROCESSED job running twice gets blocked on the second run.
+
+- **Cache-aside pattern**  
+  Heavy-requested endpoints in the frontend (like listing Items/Products) are cached inside Redis with a default TTL. After any Product modification the cache is invalidated.
+
+- **Payments gateway (Stripe)**  
+  PaymentIntent objects are created along with Order. Customer objects are created along with User. When the payment is confirmed, the application receives the appropriate webhook through a endpoint and start processing the Order.
 
 - **Centralized logging with correlationId**  
   Every request gets a correlation ID injected at the middleware level. Async jobs carry it forward so you can trace a single order across all log lines, even across queue hops.
@@ -118,28 +98,11 @@ Client → API (NestJS)
 - **High-throughput outbox processor**  
   Uses recursive polling with `setImmediate` between batches to yield back to the event loop. A spike in queued events doesn't starve other requests.
 
-- **Database concurrency control**  
-  Uses `SELECT ... FOR UPDATE SKIP LOCKED` on outbox reads, so multiple processor instances can run against the same database without double-dispatching events.
+- **Race conditions control**  
+  Methods and jobs are executed with lock protection. Before running the method/job acquires a Redlock lock with specific operation key, preventing same method/job running at the same time.
 
----
-
-## Performance and scalability
-
-I ran k6 stress tests to find performance bottlenecks.
-
-### Concurrency tuning
-
-The three queues have different I/O profiles, so they get different concurrency limits:
-
-| Queue        | Concurrency | Strategy                                                                                                |
-| :----------- | :---------- | :------------------------------------------------------------------------------------------------------ |
-| **Orders**   | `15`        | Capped to protect the PostgreSQL connection pool during complex transactions.                           |
-| **Events**   | `30`        | Higher because these are fast external I/O calls — notifications don't need the same care as DB writes. |
-| **Payments** | `15`        | Same as Orders.                                                                                         |
-
-### Throughput benchmarks
-
-Switching to batch processing cut Outbox latency. Load tests at 100+ concurrent orders came back clean — no lost events, no noticeable lag on state updates.
+- **Transactional operations**  
+  Database-write methods/jobs run inside a TransactionalContext. If some error occur before the operation completes, a rollback occur and nothing is persisted, guaranteeing atomicity.
 
 ---
 
@@ -239,7 +202,7 @@ sequenceDiagram
 
 ## Testing strategy
 
-Integration tests spin up real PostgreSQL and Redis containers via Testcontainers. No mocked databases, no "works on my machine" surprises.
+Integration and E2E tests spin up real PostgreSQL and Redis containers via Testcontainers. No mocked databases, no "works on my machine" surprises.
 
 There's also a k6 load test that hammers the queue under concurrent load to confirm jobs don't get processed twice when retries kick in.
 
@@ -253,29 +216,29 @@ Stripe behavior is controlled by `STRIPE_EXEC_MODE`.
 - `docker`: starts `stripe-mock` in Docker and points the app to `stripe-mock:12111`. Use this when the whole stack runs inside Docker.
 - `live`: talks to Stripe's test environment. You need to put your own Stripe test secret key in `.env`.
 
-The integration and E2E tests mock `PaymentsService`, so they do not depend on Stripe at all. If you want to test real Stripe behavior, switch to `live`. If you just want the app to run without external calls, keep `local` or `docker`.
+The integration and E2E tests mock `PaymentGatewaysService`, so they do not depend on Stripe at all. If you want to test real Stripe behavior, switch to `live`. If you just want the app to run without external calls, keep `local` or `docker`.
 
 ---
 
 ## Features
 
-- Order creation and lifecycle management
-- Hybrid order pipeline: BullMQ for automatic processing, admin endpoints for manual fulfillment
-- Decoupled notification system
-- Idempotency for jobs and events
-- Authentication with multi-device support
-- Refresh token hashing
+- Async user notification system
+- Cache endpoints with intensive read
+- Idempotency for requests and jobs
+- Atomic and secure (from race conditions) operations
+- Authentication with role-based support
 - Secure logout (session invalidation)
+- Efficient error tracking with structured logs
 
 ---
 
 ## Engineering trade-offs
 
-| Decision                    | Reason                                                                                                                                                                                                 |
-| --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Monolith over Microservices | No service discovery, no cross-service network calls, no distributed tracing setup. The constraints are worth it for a project at this scale.                                                          |
-| BullMQ over Kafka           | Kafka's strength is ordered, partitioned streams across consumer groups. BullMQ with Redis covers the actual requirements: reliable retries, per-queue concurrency caps, and rate limiting.            |
-| Partial event-driven        | Only order processing and notifications go through the event bus. Auth and user management are plain request/response — adding async complexity there would solve a problem this project doesn't have. |
+| Decision                    | Reason                                                                                                                                                                                              |
+| --------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Monolith over Microservices | No service discovery, no cross-service network calls, no distributed tracing setup. The constraints are worth it for a project at this scale.                                                       |
+| BullMQ over Kafka           | Kafka's strength is ordered, partitioned streams across consumer groups. BullMQ with Redis covers the actual requirements: reliable retries, per-queue concurrency caps, and rate limiting.         |
+| Partial event-driven        | Only order processing and notifications go through the queues. Auth and user management are plain request/response — adding async complexity there would solve a problem this project doesn't have. |
 
 ---
 
@@ -297,9 +260,7 @@ A few things in this codebase that aren't obvious from the feature list:
 
 The outbox processor (`shared/modules/outbox/`) uses a recursive `setImmediate` loop to drain event batches without blocking the event loop. Under load, it batches aggressively while still yielding between iterations.
 
-The hybrid fulfillment model required splitting what was originally a fully automatic queue pipeline. `ORDER_STATUS_PRECONDITIONS` in `orders/constants/` enforces valid state transitions for both the BullMQ strategies and the direct service calls — single source of truth for the state machine.
-
-The integration tests (`test/orders.int-spec.ts`) run the actual outbox processor against real PostgreSQL and Redis containers via Testcontainers. Timing bugs, lock contention, and idempotency issues show up in tests, not in production. That's the point.
+Each Order job has its compensation logic. If the job failed after all retries and payment is not processed, the Order has its status changed to CANCELED. If the payment is already processed, a job calls the refund endpoint from Stripe and change the Order status to REFUNDED.
 
 ---
 
