@@ -11,22 +11,22 @@ export class AuthMessageFactory extends BaseMessageFactory {
 
   public responses = {
     login: async (language: string) =>
-      this.factory(I18N_AUTH.RESPONSES.LOGIN, undefined, language),
+      this.create(I18N_AUTH.RESPONSES.LOGIN, undefined, language),
     refresh: async (language: string) =>
-      this.factory(I18N_AUTH.RESPONSES.REFRESH, undefined, language),
+      this.create(I18N_AUTH.RESPONSES.REFRESH, undefined, language),
     logout: async (language: string) =>
-      this.factory(I18N_AUTH.RESPONSES.LOGOUT, undefined, language),
+      this.create(I18N_AUTH.RESPONSES.LOGOUT, undefined, language),
   };
 
   public notifications = {
     login: async (language: string, userName: string) =>
-      this.factory(I18N_AUTH.NOTIFICATIONS.LOGIN, { userName }, language),
+      this.create(I18N_AUTH.NOTIFICATIONS.LOGIN, { userName }, language),
   };
 
   public errors = {
     invalidRefreshToken: async (language: string) =>
-      this.factory(I18N_AUTH.ERRORS.INVALID_REFRESH_TOKEN, undefined, language),
+      this.create(I18N_AUTH.ERRORS.INVALID_REFRESH_TOKEN, undefined, language),
     invalidPassword: async (language: string) =>
-      this.factory(I18N_AUTH.ERRORS.INVALID_PASSWORD, undefined, language),
+      this.create(I18N_AUTH.ERRORS.INVALID_PASSWORD, undefined, language),
   };
 }

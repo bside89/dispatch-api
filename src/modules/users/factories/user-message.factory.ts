@@ -11,15 +11,15 @@ export class UserMessageFactory extends BaseMessageFactory {
 
   public responses = {
     create: async (language: string) =>
-      this.factory(I18N_USERS.RESPONSES.CREATE, undefined, language),
+      this.create(I18N_USERS.RESPONSES.CREATE, undefined, language),
 
     findOne: async (language: string) =>
-      this.factory(I18N_USERS.RESPONSES.FIND_ONE, undefined, language),
+      this.create(I18N_USERS.RESPONSES.FIND_ONE, undefined, language),
 
     update: async (language: string) =>
-      this.factory(I18N_USERS.RESPONSES.UPDATE, undefined, language),
+      this.create(I18N_USERS.RESPONSES.UPDATE, undefined, language),
 
     remove: async (language: string) =>
-      this.factory(I18N_USERS.RESPONSES.DELETE, undefined, language),
+      this.create(I18N_USERS.RESPONSES.DELETE, undefined, language),
   };
 }

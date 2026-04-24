@@ -12,42 +12,42 @@ export class OrderMessageFactory extends BaseMessageFactory {
 
   public responses = {
     create: async (language: string) =>
-      this.factory(I18N_ORDERS.RESPONSES.CREATE, undefined, language),
+      this.create(I18N_ORDERS.RESPONSES.CREATE, undefined, language),
     findOne: async (language: string) =>
-      this.factory(I18N_ORDERS.RESPONSES.FIND_ONE, undefined, language),
+      this.create(I18N_ORDERS.RESPONSES.FIND_ONE, undefined, language),
     update: async (language: string, status: OrderStatus) =>
-      this.factory(I18N_ORDERS.RESPONSES.UPDATE, { status }, language),
+      this.create(I18N_ORDERS.RESPONSES.UPDATE, { status }, language),
     remove: async (language: string) =>
-      this.factory(I18N_ORDERS.RESPONSES.REMOVE, undefined, language),
+      this.create(I18N_ORDERS.RESPONSES.REMOVE, undefined, language),
     ship: async (language: string) =>
-      this.factory(I18N_ORDERS.RESPONSES.SHIP, undefined, language),
+      this.create(I18N_ORDERS.RESPONSES.SHIP, undefined, language),
     deliver: async (language: string) =>
-      this.factory(I18N_ORDERS.RESPONSES.DELIVER, undefined, language),
+      this.create(I18N_ORDERS.RESPONSES.DELIVER, undefined, language),
     cancel: async (language: string) =>
-      this.factory(I18N_ORDERS.RESPONSES.CANCEL, undefined, language),
+      this.create(I18N_ORDERS.RESPONSES.CANCEL, undefined, language),
     refund: async (language: string) =>
-      this.factory(I18N_ORDERS.RESPONSES.REFUND, undefined, language),
+      this.create(I18N_ORDERS.RESPONSES.REFUND, undefined, language),
   };
 
   public notifications = {
     orderCreated: async (language: string, total: string) =>
-      this.factory(I18N_ORDERS.NOTIFICATIONS.ORDER_CREATED, { total }, language),
+      this.create(I18N_ORDERS.NOTIFICATIONS.ORDER_CREATED, { total }, language),
     orderUpdated: async (language: string, status: OrderStatus) =>
-      this.factory(I18N_ORDERS.NOTIFICATIONS.ORDER_UPDATED, { status }, language),
+      this.create(I18N_ORDERS.NOTIFICATIONS.ORDER_UPDATED, { status }, language),
     orderPaid: async (language: string) =>
-      this.factory(I18N_ORDERS.NOTIFICATIONS.ORDER_PAID, undefined, language),
+      this.create(I18N_ORDERS.NOTIFICATIONS.ORDER_PAID, undefined, language),
     orderProcessed: async (language: string) =>
-      this.factory(I18N_ORDERS.NOTIFICATIONS.ORDER_PROCESSED, undefined, language),
+      this.create(I18N_ORDERS.NOTIFICATIONS.ORDER_PROCESSED, undefined, language),
     orderShipped: async (language: string) =>
-      this.factory(I18N_ORDERS.NOTIFICATIONS.ORDER_SHIPPED, undefined, language),
+      this.create(I18N_ORDERS.NOTIFICATIONS.ORDER_SHIPPED, undefined, language),
     orderDelivered: async (language: string) =>
-      this.factory(I18N_ORDERS.NOTIFICATIONS.ORDER_DELIVERED, undefined, language),
+      this.create(I18N_ORDERS.NOTIFICATIONS.ORDER_DELIVERED, undefined, language),
     orderCanceled: async (language: string) =>
-      this.factory(I18N_ORDERS.NOTIFICATIONS.ORDER_CANCELED, undefined, language),
+      this.create(I18N_ORDERS.NOTIFICATIONS.ORDER_CANCELED, undefined, language),
     orderRefunded: async (language: string) =>
-      this.factory(I18N_ORDERS.NOTIFICATIONS.ORDER_REFUNDED, undefined, language),
+      this.create(I18N_ORDERS.NOTIFICATIONS.ORDER_REFUNDED, undefined, language),
     orderProcessFailed: async (language: string) =>
-      this.factory(
+      this.create(
         I18N_ORDERS.NOTIFICATIONS.ORDER_PROCESS_FAILED,
         undefined,
         language,
@@ -56,17 +56,17 @@ export class OrderMessageFactory extends BaseMessageFactory {
 
   public errors = {
     orderNotFound: async (language: string) =>
-      this.factory(I18N_ORDERS.ERRORS.ORDER_NOT_FOUND, undefined, language),
+      this.create(I18N_ORDERS.ERRORS.ORDER_NOT_FOUND, undefined, language),
     invalidOrderData: async (language: string) =>
-      this.factory(I18N_ORDERS.ERRORS.INVALID_ORDER_DATA, undefined, language),
+      this.create(I18N_ORDERS.ERRORS.INVALID_ORDER_DATA, undefined, language),
     insufficientStock: async (language: string, itemName: string) =>
-      this.factory(I18N_ORDERS.ERRORS.INSUFFICIENT_STOCK, { itemName }, language),
+      this.create(I18N_ORDERS.ERRORS.INSUFFICIENT_STOCK, { itemName }, language),
     badPreconditions: async (
       language: string,
       status: OrderStatus,
       currentStatus: OrderStatus,
     ) =>
-      this.factory(
+      this.create(
         I18N_ORDERS.ERRORS.BAD_PRECONDITIONS,
         { status, currentStatus },
         language,
