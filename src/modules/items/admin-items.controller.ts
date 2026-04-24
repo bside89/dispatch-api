@@ -34,7 +34,6 @@ import { CreateItemDto } from './dto/create-item.dto';
 import { UpdateItemDto } from './dto/update-item.dto';
 import { ItemQueryDto } from './dto/item-query.dto';
 import { ItemResponseDto } from './dto/item-response.dto';
-import { UserRole } from '../../shared/enums/user-role.enum';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { PagOffsetResultDto } from '@/shared/dto/pag-offset-result.dto';
 import { BaseController } from '@/shared/controllers/base.controller';
@@ -43,6 +42,7 @@ import { ItemMessageFactory } from './factories/item-message.factory';
 import type { RequestUser } from '../auth/interfaces/request-user.interface';
 import { I18N_COMMON } from '@/shared/constants/i18n';
 import { template } from '@/shared/utils/functions.utils';
+import { ROLE_GROUPS } from '@/shared/constants/role-groups.constant';
 
 @Controller({ path: 'v1/admin/items', version: '1' })
 @ApiTags('items-admin')
@@ -56,7 +56,7 @@ export class AdminItemsController extends BaseController {
   }
 
   @Post()
-  @Roles(UserRole.SUPERADMIN, UserRole.ADMIN)
+  @Roles(...ROLE_GROUPS.COMMON.ADMIN_MANAGEMENT)
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({
     summary: 'Create a new item',
@@ -99,7 +99,7 @@ export class AdminItemsController extends BaseController {
   }
 
   @Get()
-  @Roles(UserRole.SUPERADMIN, UserRole.ADMIN)
+  @Roles(...ROLE_GROUPS.COMMON.ADMIN_MANAGEMENT)
   @ApiOperation({
     summary: 'Get all items (admin)',
     description:
@@ -117,7 +117,7 @@ export class AdminItemsController extends BaseController {
   }
 
   @Get(':id')
-  @Roles(UserRole.SUPERADMIN, UserRole.ADMIN)
+  @Roles(...ROLE_GROUPS.COMMON.ADMIN_MANAGEMENT)
   @ApiOperation({ summary: 'Get item by ID (admin)' })
   @ApiParam({
     name: 'id',
@@ -141,7 +141,7 @@ export class AdminItemsController extends BaseController {
   }
 
   @Patch(':id')
-  @Roles(UserRole.SUPERADMIN, UserRole.ADMIN)
+  @Roles(...ROLE_GROUPS.COMMON.ADMIN_MANAGEMENT)
   @ApiOperation({ summary: 'Update an item', description: 'Requires admin role.' })
   @ApiParam({
     name: 'id',
@@ -167,7 +167,7 @@ export class AdminItemsController extends BaseController {
   }
 
   @Delete(':id')
-  @Roles(UserRole.SUPERADMIN, UserRole.ADMIN)
+  @Roles(...ROLE_GROUPS.COMMON.ADMIN_MANAGEMENT)
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Delete an item', description: 'Requires admin role.' })
   @ApiParam({

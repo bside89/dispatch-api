@@ -37,12 +37,12 @@ import { BaseController } from '@/shared/controllers/base.controller';
 import { GetUser } from '@/shared/decorators/get-user.decorator';
 import type { RequestUser } from '../auth/interfaces/request-user.interface';
 import { UserMessageFactory } from './factories/user-message.factory';
-import { UserRole } from '@/shared/enums/user-role.enum';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { CreateUserDto } from './dto/create-user.dto';
 import { I18N_COMMON } from '@/shared/constants/i18n/i18n-common.constant';
 import { template } from '@/shared/utils/functions.utils';
 import { PagOffsetResultDto } from '@/shared/dto/pag-offset-result.dto';
+import { ROLE_GROUPS } from '@/shared/constants/role-groups.constant';
 
 @Controller({ path: 'v1/admin/users', version: '1' })
 @ApiTags('users-admin')
@@ -56,7 +56,7 @@ export class AdminUsersController extends BaseController {
   }
 
   @Post()
-  @Roles(UserRole.SUPERADMIN, UserRole.ADMIN)
+  @Roles(...ROLE_GROUPS.COMMON.ADMIN_MANAGEMENT)
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({
     summary: 'Create a new user',
@@ -107,7 +107,7 @@ export class AdminUsersController extends BaseController {
   }
 
   @Get()
-  @Roles(UserRole.SUPERADMIN, UserRole.ADMIN)
+  @Roles(...ROLE_GROUPS.COMMON.ADMIN_MANAGEMENT)
   @ApiOperation({
     summary: 'Get all users',
     description:
@@ -124,7 +124,7 @@ export class AdminUsersController extends BaseController {
   }
 
   @Get(':id')
-  @Roles(UserRole.SUPERADMIN, UserRole.ADMIN)
+  @Roles(...ROLE_GROUPS.COMMON.ADMIN_MANAGEMENT)
   @ApiOperation({
     summary: 'Get user by ID',
     description: 'Retrieves a specific user by their unique identifier.',
@@ -156,7 +156,7 @@ export class AdminUsersController extends BaseController {
   }
 
   @Patch(':id')
-  @Roles(UserRole.SUPERADMIN, UserRole.ADMIN)
+  @Roles(...ROLE_GROUPS.COMMON.ADMIN_MANAGEMENT)
   @ApiOperation({
     summary: 'Update user information',
     description:
@@ -198,7 +198,7 @@ export class AdminUsersController extends BaseController {
   }
 
   @Delete(':id')
-  @Roles(UserRole.SUPERADMIN, UserRole.ADMIN)
+  @Roles(...ROLE_GROUPS.COMMON.ADMIN_MANAGEMENT)
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({
     summary: 'Delete user',

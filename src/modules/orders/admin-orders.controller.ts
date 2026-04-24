@@ -49,7 +49,7 @@ export class AdminOrdersController extends BaseController {
   }
 
   @Get()
-  @Roles(...ROLE_GROUPS.ORDER_FINANCIAL)
+  @Roles(...ROLE_GROUPS.ORDER.FINANCIAL)
   @ApiOperation({
     summary: 'Get all orders',
     description: 'Retrieve a paginated list of orders with optional filtering',
@@ -65,7 +65,7 @@ export class AdminOrdersController extends BaseController {
   }
 
   @Get(':id')
-  @Roles(...ROLE_GROUPS.ORDER_FINANCIAL)
+  @Roles(...ROLE_GROUPS.ORDER.FINANCIAL)
   @ApiOperation({
     summary: 'Get order by ID',
     description: 'Retrieve a specific order by its unique identifier',
@@ -92,7 +92,7 @@ export class AdminOrdersController extends BaseController {
   }
 
   @Patch(':id')
-  @Roles(...ROLE_GROUPS.ORDER_MANAGEMENT)
+  @Roles(...ROLE_GROUPS.ORDER.MANAGEMENT)
   @ApiOperation({
     summary: 'Update an order',
     description: 'Update order details including status',
@@ -130,7 +130,7 @@ export class AdminOrdersController extends BaseController {
   }
 
   @Delete(':id')
-  @Roles(...ROLE_GROUPS.ORDER_MANAGEMENT)
+  @Roles(...ROLE_GROUPS.ORDER.MANAGEMENT)
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({
     summary: 'Delete an order',
@@ -163,7 +163,7 @@ export class AdminOrdersController extends BaseController {
   }
 
   @Patch(':id/ship')
-  @Roles(...ROLE_GROUPS.ORDER_SHIPPING)
+  @Roles(...ROLE_GROUPS.ORDER.SHIPPING)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Mark order as shipped',
@@ -193,7 +193,7 @@ export class AdminOrdersController extends BaseController {
   }
 
   @Patch(':id/deliver')
-  @Roles(...ROLE_GROUPS.ORDER_DELIVERY)
+  @Roles(...ROLE_GROUPS.ORDER.DELIVERY)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Mark order as delivered',
@@ -219,7 +219,7 @@ export class AdminOrdersController extends BaseController {
   }
 
   @Patch(':id/cancel')
-  @Roles(...ROLE_GROUPS.ORDER_FINANCIAL)
+  @Roles(...ROLE_GROUPS.ORDER.FINANCIAL)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Cancel an order',
@@ -244,7 +244,7 @@ export class AdminOrdersController extends BaseController {
   }
 
   @Patch(':id/refund')
-  @Roles(...ROLE_GROUPS.ORDER_FINANCIAL)
+  @Roles(...ROLE_GROUPS.ORDER.FINANCIAL)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Refund an order',
