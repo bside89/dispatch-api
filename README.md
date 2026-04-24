@@ -9,7 +9,7 @@
 
 ## Overview
 
-Dispatch is an order management API built with NestJS. It is a portfolio project built to work through the architectural problems that come up in real e-commerce backends: async processing, distributed locking, authentication/authorizatin and transactional guarantees.
+Dispatch is an order management API built with NestJS. It is a portfolio project built to work through the architectural problems that come up in real e-commerce backends: async processing, distributed locking, authentication/authorization and transactional guarantees.
 
 ---
 
