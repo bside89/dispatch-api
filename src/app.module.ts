@@ -39,6 +39,7 @@ import { existsSync } from 'fs';
 import { AcceptLanguageResolver, I18nModule, QueryResolver } from 'nestjs-i18n';
 import { DbGuardModule } from './shared/modules/db-guard/db-guard.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
+import { SeedDataService } from './shared/services/seed-data.service';
 
 const i18nPath = [
   path.join(__dirname, 'i18n'),
@@ -134,6 +135,8 @@ const envFilePath = `.env.${process.env.NODE_ENV || 'local'}`;
   ],
   controllers: [AppController],
   providers: [
+    SeedDataService,
+
     // Global JWT Auth Guard
     {
       provide: APP_GUARD,

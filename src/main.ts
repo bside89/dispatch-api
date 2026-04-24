@@ -7,9 +7,7 @@ import { BasicAuthMiddleware } from './middleware/basic-auth.middleware';
 import helmet from 'helmet';
 import { Logger } from 'nestjs-pino';
 import { AllExceptionsFilter } from './shared/filters/exception.filter';
-import { DataSource } from 'typeorm';
-import { seedMockAdminUser } from './shared/helpers/seed-mock-admin-user.helper';
-import { seedMockItems } from './shared/helpers/seed-mock-items.helper';
+import { SeedDataService } from './shared/services/seed-data.service';
 
 function configureSecurity(
   app: INestApplication,
@@ -75,8 +73,8 @@ async function bootstrap() {
     rawBody: true,
   });
   const configService = app.get(ConfigService);
-  const dataSource = app.get(DataSource);
   const logger = app.get(Logger);
+  const seedDataService = app.get(SeedDataService);
 
   app.useLogger(logger);
   app.useGlobalFilters(new AllExceptionsFilter());
@@ -92,9 +90,9 @@ async function bootstrap() {
   configureSwagger(app, configService);
 
   const authMiddleware = new BasicAuthMiddleware(configService);
-  await seedMockAdminUser(configService, dataSource, logger);
-  await seedMockItems(configService, dataSource, logger);
   app.use('/bull-board', (req, res, next) => authMiddleware.use(req, res, next));
+
+  await seedDataService.run();
 
   const port = configService.get('APP_PORT') || 3000;
   const grafanaPort = configService.get('GRAFANA_PORT') || 3001;
