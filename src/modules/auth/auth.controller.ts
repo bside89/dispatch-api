@@ -17,6 +17,8 @@ import { BaseController } from '@/shared/controllers/base.controller';
 import { LoginResponseDto } from './dto/login-response.dto';
 import type { RequestUser } from './interfaces/request-user.interface';
 import { AuthMessageFactory } from './factories/auth-message.factory';
+import { Throttle } from '@nestjs/throttler';
+import { resolveThrottleLimit } from '../../config/throttle.config';
 
 @Controller({ path: 'v1/auth', version: '1' })
 @ApiTags('auth')
@@ -31,6 +33,7 @@ export class AuthController extends BaseController {
 
   @Post('login')
   @Public()
+  @Throttle({ default: { limit: resolveThrottleLimit(5) } })
   @ApiOperation({
     summary: 'User login',
     description:
@@ -58,6 +61,7 @@ export class AuthController extends BaseController {
   @Post('refresh')
   @Public()
   @UseGuards(JwtRefreshAuthGuard)
+  @Throttle({ default: { limit: resolveThrottleLimit(20) } })
   @ApiOperation({
     summary: 'Refresh token',
     description: 'Refreshes the access token using a valid refresh token.',
@@ -77,6 +81,7 @@ export class AuthController extends BaseController {
   }
 
   @Post('logout')
+  @Throttle({ default: { limit: resolveThrottleLimit(20) } })
   @ApiOperation({
     summary: 'User logout',
     description: 'Logs out a user and invalidates their refresh token.',

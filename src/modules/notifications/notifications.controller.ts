@@ -14,6 +14,7 @@ import { NOTIFICATIONS_SERVICE } from './constants/notifications.token';
 import { BaseController } from '@/shared/controllers/base.controller';
 import { CursorParamsPipe } from '@/shared/pipes/cursor-params.pipe';
 import type { CursorParams } from '@/shared/types/cursor-params.type';
+import { SkipThrottle } from '@nestjs/throttler';
 
 @Controller({ path: 'v1/notifications', version: '1' })
 @ApiTags('notifications')
@@ -27,6 +28,7 @@ export class NotificationsController extends BaseController {
   }
 
   @Get()
+  @SkipThrottle()
   @ApiOkResponse({ type: [NotificationResponseDto] })
   @ApiQuery({ name: 'cursor', required: false, type: String })
   async findByUser(
@@ -46,12 +48,14 @@ export class NotificationsController extends BaseController {
   }
 
   @Get('unread/count')
+  @SkipThrottle()
   @ApiOkResponse({ type: Number })
   async countUnread(@GetUser() user: RequestUser) {
     return this.notificationsService.countUnread(user.id);
   }
 
   @Get('has-new')
+  @SkipThrottle()
   @ApiOkResponse({ type: Boolean })
   async hasNewNotifications(@GetUser() user: RequestUser) {
     return this.notificationsService.hasNewNotifications(user.id);

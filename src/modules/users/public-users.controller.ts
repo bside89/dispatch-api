@@ -42,6 +42,8 @@ import { UserMessageFactory } from './factories/user-message.factory';
 import { I18N_COMMON } from '@/shared/constants/i18n';
 import { template } from '@/shared/utils/functions.utils';
 import { PagOffsetResultDto } from '@/shared/dto/pag-offset-result.dto';
+import { SkipThrottle, Throttle } from '@nestjs/throttler';
+import { resolveThrottleLimit } from '../../config/throttle.config';
 
 @Controller({ path: 'v1/users', version: '1' })
 @ApiTags('users')
@@ -57,6 +59,7 @@ export class PublicUsersController extends BaseController {
   @Post()
   @Public()
   @HttpCode(HttpStatus.CREATED)
+  @Throttle({ default: { limit: resolveThrottleLimit(10) } })
   @ApiOperation({
     summary: 'Create a new user',
     description:
@@ -101,6 +104,7 @@ export class PublicUsersController extends BaseController {
   }
 
   @Get()
+  @SkipThrottle()
   @ApiOperation({
     summary: 'Get all users',
     description:
@@ -117,6 +121,7 @@ export class PublicUsersController extends BaseController {
   }
 
   @Get('me')
+  @SkipThrottle()
   @ApiOperation({
     summary: 'Get current user',
     description: "Retrieves the authenticated user's information.",
@@ -136,6 +141,7 @@ export class PublicUsersController extends BaseController {
   }
 
   @Get(':id')
+  @SkipThrottle()
   @ApiOperation({
     summary: 'Get user by ID',
     description: 'Retrieves a specific user by their unique identifier.',

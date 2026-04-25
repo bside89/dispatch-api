@@ -43,6 +43,8 @@ import { I18N_COMMON } from '@/shared/constants/i18n/i18n-common.constant';
 import { template } from '@/shared/utils/functions.utils';
 import { PagOffsetResultDto } from '@/shared/dto/pag-offset-result.dto';
 import { ROLE_GROUPS } from '@/shared/constants/role-groups.constant';
+import { SkipThrottle, Throttle } from '@nestjs/throttler';
+import { resolveThrottleLimit } from '../../config/throttle.config';
 
 @Controller({ path: 'v1/admin/users', version: '1' })
 @ApiTags('users-admin')
@@ -58,6 +60,7 @@ export class AdminUsersController extends BaseController {
   @Post()
   @Roles(...ROLE_GROUPS.COMMON.ADMIN_MANAGEMENT)
   @HttpCode(HttpStatus.CREATED)
+  @Throttle({ default: { limit: resolveThrottleLimit(10) } })
   @ApiOperation({
     summary: 'Create a new user',
     description:
@@ -108,6 +111,7 @@ export class AdminUsersController extends BaseController {
 
   @Get()
   @Roles(...ROLE_GROUPS.COMMON.ADMIN_MANAGEMENT)
+  @SkipThrottle()
   @ApiOperation({
     summary: 'Get all users',
     description:
@@ -125,6 +129,7 @@ export class AdminUsersController extends BaseController {
 
   @Get(':id')
   @Roles(...ROLE_GROUPS.COMMON.ADMIN_MANAGEMENT)
+  @SkipThrottle()
   @ApiOperation({
     summary: 'Get user by ID',
     description: 'Retrieves a specific user by their unique identifier.',

@@ -36,6 +36,7 @@ import { BaseController } from '@/shared/controllers/base.controller';
 import { ErrorResponseDto } from '@/shared/dto/error-response.dto';
 import type { RequestUser } from '../auth/interfaces/request-user.interface';
 import { OrderMessageFactory } from './factories/order-message.factory';
+import { SkipThrottle } from '@nestjs/throttler';
 
 @Controller({ path: 'v1/admin/orders', version: '1' })
 @ApiTags('orders-admin')
@@ -50,6 +51,7 @@ export class AdminOrdersController extends BaseController {
 
   @Get()
   @Roles(...ROLE_GROUPS.ORDER.FINANCIAL)
+  @SkipThrottle()
   @ApiOperation({
     summary: 'Get all orders',
     description: 'Retrieve a paginated list of orders with optional filtering',
@@ -66,6 +68,7 @@ export class AdminOrdersController extends BaseController {
 
   @Get(':id')
   @Roles(...ROLE_GROUPS.ORDER.FINANCIAL)
+  @SkipThrottle()
   @ApiOperation({
     summary: 'Get order by ID',
     description: 'Retrieve a specific order by its unique identifier',

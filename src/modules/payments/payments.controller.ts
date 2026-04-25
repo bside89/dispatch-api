@@ -25,6 +25,7 @@ import { PaymentWebhookDto } from './dto/payment-webhook.dto';
 import { PaymentWebhookResponseDto } from './dto/payment-webhook-response.dto';
 import { I18N_PAYMENTS } from '@/shared/constants/i18n';
 import { template } from '@/shared/utils/functions.utils';
+import { SkipThrottle } from '@nestjs/throttler';
 
 @Controller({ path: 'v1/payments', version: '1' })
 @ApiTags('payments')
@@ -38,6 +39,7 @@ export class PaymentsController extends BaseController {
 
   @Post('webhooks')
   @Public()
+  @SkipThrottle()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Payment webhook endpoint',

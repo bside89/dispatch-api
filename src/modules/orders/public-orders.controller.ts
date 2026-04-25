@@ -37,6 +37,8 @@ import type { RequestUser } from '../auth/interfaces/request-user.interface';
 import { OrderMessageFactory } from './factories/order-message.factory';
 import { template } from '@/shared/utils/functions.utils';
 import { I18N_COMMON } from '@/shared/constants/i18n';
+import { SkipThrottle, Throttle } from '@nestjs/throttler';
+import { resolveThrottleLimit } from '../../config/throttle.config';
 
 @Controller({ path: 'v1/orders', version: '1' })
 @ApiTags('orders')
@@ -51,6 +53,7 @@ export class PublicOrdersController extends BaseController {
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
+  @Throttle({ default: { limit: resolveThrottleLimit(10) } })
   @ApiOperation({
     summary: 'Create a new order',
     description:
@@ -96,6 +99,7 @@ export class PublicOrdersController extends BaseController {
   }
 
   @Get('me')
+  @SkipThrottle()
   @ApiOperation({
     summary: 'Get orders for the authenticated user',
     description:
@@ -115,6 +119,7 @@ export class PublicOrdersController extends BaseController {
   }
 
   @Get(':id')
+  @SkipThrottle()
   @ApiOperation({
     summary: 'Get order by ID',
     description:

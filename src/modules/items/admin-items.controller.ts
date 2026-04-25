@@ -43,6 +43,8 @@ import type { RequestUser } from '../auth/interfaces/request-user.interface';
 import { I18N_COMMON } from '@/shared/constants/i18n';
 import { template } from '@/shared/utils/functions.utils';
 import { ROLE_GROUPS } from '@/shared/constants/role-groups.constant';
+import { SkipThrottle, Throttle } from '@nestjs/throttler';
+import { resolveThrottleLimit } from '../../config/throttle.config';
 
 @Controller({ path: 'v1/admin/items', version: '1' })
 @ApiTags('items-admin')
@@ -58,6 +60,7 @@ export class AdminItemsController extends BaseController {
   @Post()
   @Roles(...ROLE_GROUPS.COMMON.ADMIN_MANAGEMENT)
   @HttpCode(HttpStatus.CREATED)
+  @Throttle({ default: { limit: resolveThrottleLimit(10) } })
   @ApiOperation({
     summary: 'Create a new item',
     description:
@@ -100,6 +103,7 @@ export class AdminItemsController extends BaseController {
 
   @Get()
   @Roles(...ROLE_GROUPS.COMMON.ADMIN_MANAGEMENT)
+  @SkipThrottle()
   @ApiOperation({
     summary: 'Get all items (admin)',
     description:
@@ -118,6 +122,7 @@ export class AdminItemsController extends BaseController {
 
   @Get(':id')
   @Roles(...ROLE_GROUPS.COMMON.ADMIN_MANAGEMENT)
+  @SkipThrottle()
   @ApiOperation({ summary: 'Get item by ID (admin)' })
   @ApiParam({
     name: 'id',
