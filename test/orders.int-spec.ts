@@ -330,7 +330,7 @@ describe('Orders (Integration)', () => {
 
       // Wait for the async BullMQ pipeline to advance the order to PROCESSED.
       //   webhook → markPaymentAsSucceeded → PAID + Outbox → ORDER_PROCESS
-      //   Outbox → ORDER_PROCESS → PROCESSED + SIDE_EFFECTS_NOTIFY_USER
+      //   Outbox → ORDER_PROCESS → PROCESSED + EFFECTS_NOTIFY_USER
       //
       // delay() is mocked and setImmediate triggers process() after each add(),
       // so this resolves in ~10-50ms (BullMQ + Redis latency).
@@ -469,7 +469,7 @@ describe('Orders (Integration)', () => {
         expect(finalOrder.status).toBe('REFUNDED');
 
         // Assert: outbox should be fully consumed (RefundOrderJobStrategy adds one
-        // final SIDE_EFFECTS_NOTIFY_USER entry; setImmediate dispatches it immediately)
+        // final EFFECTS_NOTIFY_USER entry; setImmediate dispatches it immediately)
         await waitFor(
           async () => {
             const rows = await dataSource.query(`SELECT id FROM outbox`);

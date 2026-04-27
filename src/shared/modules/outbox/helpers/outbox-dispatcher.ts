@@ -6,7 +6,7 @@ import { BaseOutboxJobPayload } from '../payloads/outbox.payload';
 type OutboxDispatchPlan = {
   orderQueueMsg: QueueJob<BaseOutboxJobPayload>[];
   paymentQueueMsg: QueueJob<BaseOutboxJobPayload>[];
-  sideEffectQueueMsg: QueueJob<BaseOutboxJobPayload>[];
+  effectQueueMsg: QueueJob<BaseOutboxJobPayload>[];
 };
 
 export class OutboxDispatcher {
@@ -22,8 +22,8 @@ export class OutboxDispatcher {
     OutboxType.PAYMENT_DELETE_CUSTOMER,
   ]);
 
-  private static readonly SIDE_EFFECTS_TYPES = new Set<OutboxType>([
-    OutboxType.SIDE_EFFECTS_NOTIFY_USER,
+  private static readonly EFFECTS_TYPES = new Set<OutboxType>([
+    OutboxType.EFFECTS_NOTIFY_USER,
   ]);
 
   static partition(messages: Outbox[]): OutboxDispatchPlan {
@@ -34,8 +34,8 @@ export class OutboxDispatcher {
       paymentQueueMsg: messages
         .filter((message) => OutboxDispatcher.PAYMENT_TYPES.has(message.type))
         .map((message) => OutboxDispatcher.toQueueJob(message)),
-      sideEffectQueueMsg: messages
-        .filter((message) => OutboxDispatcher.SIDE_EFFECTS_TYPES.has(message.type))
+      effectQueueMsg: messages
+        .filter((message) => OutboxDispatcher.EFFECTS_TYPES.has(message.type))
         .map((message) => OutboxDispatcher.toQueueJob(message)),
     };
   }

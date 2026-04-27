@@ -12,7 +12,7 @@ import { HashAdapter } from '@/shared/utils/hash-adapter.utils';
 import { CACHE_TTL } from '@/shared/constants/cache-ttl.constant';
 import type { IOutboxService } from '@/shared/modules/outbox/interfaces/outbox-service.interface';
 import { OUTBOX_SERVICE } from '@/shared/modules/outbox/constants/outbox.token';
-import { NotifyUserJobPayload } from '@/shared/payloads/side-effects-job.payload';
+import { NotifyUserJobPayload } from '@/shared/payloads/effects-job.payload';
 import type { RequestUser } from './interfaces/request-user.interface';
 import { AUTH_KEY } from '../../shared/modules/cache/constants/auth.key';
 import type ms from 'ms';

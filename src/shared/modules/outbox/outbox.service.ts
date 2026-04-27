@@ -14,7 +14,7 @@ import { BaseService } from '@/shared/services/base.service';
 import { DbGuardService } from '../db-guard/db-guard.service';
 import { BaseOutboxJobPayload } from './payloads/outbox.payload';
 import { OutboxDispatcher } from './helpers/outbox-dispatcher';
-import { SIDE_EFFECTS_QUEUE } from '@/shared/constants/queues.token';
+import { EFFECTS_QUEUE } from '@/shared/constants/queues.token';
 
 @Injectable()
 export class OutboxService
@@ -28,7 +28,7 @@ export class OutboxService
   constructor(
     @InjectQueue(ORDER_QUEUE) private readonly orderQueue: Queue,
     @InjectQueue(PAYMENT_QUEUE) private readonly paymentQueue: Queue,
-    @InjectQueue(SIDE_EFFECTS_QUEUE) private readonly sideEffectQueue: Queue,
+    @InjectQueue(EFFECTS_QUEUE) private readonly effectQueue: Queue,
     @Inject(OUTBOX_REPOSITORY) private readonly outboxRepository: IOutboxRepository,
     private readonly guard: DbGuardService,
   ) {
@@ -87,7 +87,7 @@ export class OutboxService
   private async dispatch(messages: Outbox[]): Promise<void> {
     if (messages.length === 0) return;
 
-    const { orderQueueMsg, paymentQueueMsg, sideEffectQueueMsg } =
+    const { orderQueueMsg, paymentQueueMsg, effectQueueMsg } =
       OutboxDispatcher.partition(messages);
 
     if (orderQueueMsg.length > 0) {
@@ -96,8 +96,8 @@ export class OutboxService
     if (paymentQueueMsg.length > 0) {
       await this.paymentQueue.addBulk(paymentQueueMsg);
     }
-    if (sideEffectQueueMsg.length > 0) {
-      await this.sideEffectQueue.addBulk(sideEffectQueueMsg);
+    if (effectQueueMsg.length > 0) {
+      await this.effectQueue.addBulk(effectQueueMsg);
     }
   }
 

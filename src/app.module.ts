@@ -15,7 +15,7 @@ import { APP_GUARD } from '@nestjs/core';
 import { JwtAuthGuard } from './modules/auth/guards/jwt.guard';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { RolesGuard } from './modules/auth/guards/roles.guard';
-import { SideEffectsModule } from './modules/side-effects/side-effects.module';
+import { EffectsModule } from './modules/effects/effects.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { loggerConfig } from './config/logger.config';
 import { LoggerModule } from 'nestjs-pino';
@@ -27,7 +27,7 @@ import { LoggingMiddleware } from './middleware/logging.middleware';
 import { TerminusModule } from '@nestjs/terminus';
 import { throttleConfig } from './config/throttle.config';
 import {
-  SIDE_EFFECTS_QUEUE,
+  EFFECTS_QUEUE,
   ORDER_QUEUE,
   PAYMENT_QUEUE,
 } from './shared/constants/queues.token';
@@ -97,7 +97,7 @@ const envFilePath = `.env.${process.env.NODE_ENV || 'local'}`;
         adapter: BullMQAdapter,
       },
       {
-        name: SIDE_EFFECTS_QUEUE,
+        name: EFFECTS_QUEUE,
         adapter: BullMQAdapter,
       },
       {
@@ -124,7 +124,7 @@ const envFilePath = `.env.${process.env.NODE_ENV || 'local'}`;
     OrdersModule,
     UsersModule,
     ItemsModule,
-    SideEffectsModule,
+    EffectsModule,
     CacheModule,
     DbGuardModule,
     OutboxModule,

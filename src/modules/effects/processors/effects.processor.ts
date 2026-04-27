@@ -4,31 +4,27 @@ import { BaseProcessor } from '@/shared/processors/base.processor';
 import { ConfigService } from '@nestjs/config';
 import { CACHE_SERVICE } from '@/shared/modules/cache/constants/cache.token';
 import type { ICacheService } from '@/shared/modules/cache/interfaces/cache-service.interface';
-import { SideEffectJobHandlerFactory } from '../factories/side-effects-job-handler.factory';
-import { SIDE_EFFECT_KEY } from '../constants/side-effects.key';
-import { SIDE_EFFECTS_QUEUE } from '@/shared/constants/queues.token';
+import { EffectJobHandlerFactory } from '../factories/effects-job-handler.factory';
+import { EFFECT_KEY } from '../constants/effects.key';
+import { EFFECTS_QUEUE } from '@/shared/constants/queues.token';
 import { Injectable, Inject } from '@nestjs/common';
 import { DbGuardService } from '@/shared/modules/db-guard/db-guard.service';
 
 @Injectable()
-@Processor(SIDE_EFFECTS_QUEUE, { maxStalledCount: 1 })
-export class SideEffectsProcessor extends BaseProcessor {
+@Processor(EFFECTS_QUEUE, { maxStalledCount: 1 })
+export class EffectsProcessor extends BaseProcessor {
   constructor(
-    protected readonly factory: SideEffectJobHandlerFactory,
+    protected readonly factory: EffectJobHandlerFactory,
     @Inject(CACHE_SERVICE) cacheService: ICacheService,
     configService: ConfigService,
     guard: DbGuardService,
   ) {
-    super(SideEffectsProcessor.name, cacheService, configService, guard);
+    super(EffectsProcessor.name, cacheService, configService, guard);
   }
 
   // Main method
   async process(job: Job): Promise<void> {
-    await this.executeProcessJob(
-      job,
-      this.factory,
-      SIDE_EFFECT_KEY.IDEMPOTENCY(job.id),
-    );
+    await this.executeProcessJob(job, this.factory, EFFECT_KEY.IDEMPOTENCY(job.id));
   }
 
   @OnWorkerEvent('failed')
@@ -38,7 +34,7 @@ export class SideEffectsProcessor extends BaseProcessor {
       await this.executeFailedJob(
         job,
         this.factory,
-        SIDE_EFFECT_KEY.IDEMPOTENCY(job.id),
+        EFFECT_KEY.IDEMPOTENCY(job.id),
         error,
       );
     }

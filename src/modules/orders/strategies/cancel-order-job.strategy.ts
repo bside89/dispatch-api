@@ -2,7 +2,7 @@ import { Injectable, Inject } from '@nestjs/common';
 import { Job } from 'bullmq';
 import { OrderStatus } from '../enums/order-status.enum';
 import { CancelOrderJobPayload } from '../../../shared/payloads/orders-job.payload';
-import { NotifyUserJobPayload } from '../../../shared/payloads/side-effects-job.payload';
+import { NotifyUserJobPayload } from '../../../shared/payloads/effects-job.payload';
 import { CACHE_SERVICE } from '../../../shared/modules/cache/constants/cache.token';
 import type { ICacheService } from '../../../shared/modules/cache/interfaces/cache-service.interface';
 import { OUTBOX_SERVICE } from '@/shared/modules/outbox/constants/outbox.token';

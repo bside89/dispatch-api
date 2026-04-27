@@ -23,8 +23,8 @@ describe('OutboxDispatcher', () => {
       },
       {
         id: '3',
-        type: OutboxType.SIDE_EFFECTS_NOTIFY_USER,
-        payload: { type: OutboxType.SIDE_EFFECTS_NOTIFY_USER, c: 3 },
+        type: OutboxType.EFFECTS_NOTIFY_USER,
+        payload: { type: OutboxType.EFFECTS_NOTIFY_USER, c: 3 },
         correlationId: 'corr-3',
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -62,10 +62,10 @@ describe('OutboxDispatcher', () => {
       },
     ]);
 
-    expect(result.sideEffectQueueMsg).toEqual([
+    expect(result.effectQueueMsg).toEqual([
       {
-        name: OutboxType.SIDE_EFFECTS_NOTIFY_USER,
-        data: { type: OutboxType.SIDE_EFFECTS_NOTIFY_USER, c: 3 },
+        name: OutboxType.EFFECTS_NOTIFY_USER,
+        data: { type: OutboxType.EFFECTS_NOTIFY_USER, c: 3 },
         opts: { jobId: '3' },
       },
     ]);

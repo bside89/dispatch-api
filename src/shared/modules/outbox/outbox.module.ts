@@ -8,10 +8,10 @@ import { Outbox } from './entities/outbox.entity';
 import {
   ORDER_QUEUE,
   PAYMENT_QUEUE,
-  SIDE_EFFECTS_QUEUE,
+  EFFECTS_QUEUE,
 } from '@/shared/constants/queues.token';
 import { OUTBOX_SERVICE, OUTBOX_REPOSITORY } from './constants/outbox.token';
-import { SideEffectsModule } from '@/modules/side-effects/side-effects.module';
+import { EffectsModule } from '@/modules/effects/effects.module';
 
 @Global()
 @Module({
@@ -28,11 +28,11 @@ import { SideEffectsModule } from '@/modules/side-effects/side-effects.module';
       forceDisconnectOnShutdown: true,
     }),
     BullModule.registerQueue({
-      name: SIDE_EFFECTS_QUEUE,
+      name: EFFECTS_QUEUE,
       defaultJobOptions: bullmqDefaultJobOptions,
       forceDisconnectOnShutdown: true,
     }),
-    SideEffectsModule,
+    EffectsModule,
   ],
   providers: [
     { provide: OUTBOX_SERVICE, useClass: OutboxService },

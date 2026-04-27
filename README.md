@@ -78,7 +78,7 @@ This user is meant for local and development testing only. In `production`, it i
 ## Architecture highlights
 
 - **Queue-based processing (BullMQ)**  
-  Orders, payments and side-effects (like notifications) are processed through the respective queues in the background with exponential backoff. If the process job fails, it retries up to 3 times before triggering the compensation flow.
+  Orders, payments and side effects (like notifications) are processed through the respective queues in the background with exponential backoff. If the process job fails, it retries up to 3 times before triggering the compensation flow.
 
 - **Strategy + Factory patterns**  
   Each order job type (PROCESS, CANCEL, REFUND) has a dedicated strategy class. Adding a new job type means adding one class — the processor stay untouched.

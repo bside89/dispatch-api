@@ -173,18 +173,18 @@ describe('Auth (Integration)', () => {
   // ---------------------------------------------------------------------------
 
   describe('Login — Notification Pipeline', () => {
-    it('should create a SIDE_EFFECTS_NOTIFY_USER outbox entry immediately after login', async () => {
+    it('should create a EFFECTS_NOTIFY_USER outbox entry immediately after login', async () => {
       await rawInsertUser('outbox-login@test.com');
 
       await authService.login('outbox-login@test.com', 'securePass123');
 
       const outboxEntries = await dataSource.query(
-        `SELECT type FROM outbox WHERE type = 'SIDE_EFFECTS_NOTIFY_USER'`,
+        `SELECT type FROM outbox WHERE type = 'EFFECTS_NOTIFY_USER'`,
       );
       expect(outboxEntries).toHaveLength(1);
     });
 
-    it('should persist a notification row after the full SIDE_EFFECTS_NOTIFY_USER pipeline completes', async () => {
+    it('should persist a notification row after the full EFFECTS_NOTIFY_USER pipeline completes', async () => {
       const userId = await rawInsertUser('full-pipeline@test.com');
 
       await authService.login('full-pipeline@test.com', 'securePass123');
@@ -192,7 +192,7 @@ describe('Auth (Integration)', () => {
       // Wait for the full pipeline end-to-end:
       //   outboxService.add → outbox row → setImmediate → OutboxService.process
       //   → BullMQ job enqueued + outbox row deleted
-      //   → SideEffectsProcessor.process → NotifyUserJobStrategy.execute
+      //   → EffectsProcessor.process → NotifyUserJobStrategy.execute
       //   → notificationsService.create → notification row in DB
       //
       // We poll for the notification row itself (the real terminal condition)

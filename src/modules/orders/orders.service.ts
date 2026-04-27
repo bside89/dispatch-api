@@ -12,7 +12,7 @@ import { OrderQueryDto } from './dto/order-query.dto';
 import { OrderStatus } from './enums/order-status.enum';
 import { IDEMPOTENCY_SERVICE } from '../../shared/modules/cache/constants/idempotency.token';
 import type { IIdempotencyService } from '../../shared/modules/cache/interfaces/idempotency-service.interface';
-import { NotifyUserJobPayload } from '@/shared/payloads/side-effects-job.payload';
+import { NotifyUserJobPayload } from '@/shared/payloads/effects-job.payload';
 import type { IOrderRepository } from './interfaces/order-repository.interface';
 import { ORDER_REPOSITORY } from './constants/orders.token';
 import type { IOrderItemRepository } from './interfaces/order-item-repository.interface';

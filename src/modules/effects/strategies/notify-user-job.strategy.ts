@@ -1,12 +1,12 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { Job } from 'bullmq';
-import { BaseSideEffectJobStrategy } from './base-side-effects-job.strategy';
-import { NotifyUserJobPayload } from '@/shared/payloads/side-effects-job.payload';
+import { BaseEffectJobStrategy } from './base-effects-job.strategy';
+import { NotifyUserJobPayload } from '@/shared/payloads/effects-job.payload';
 import type { INotificationsService } from '@/modules/notifications/interfaces/notifications-service.interface';
 import { NOTIFICATIONS_SERVICE } from '@/modules/notifications/constants/notifications.token';
 
 @Injectable()
-export class NotifyUserJobStrategy extends BaseSideEffectJobStrategy<NotifyUserJobPayload> {
+export class NotifyUserJobStrategy extends BaseEffectJobStrategy<NotifyUserJobPayload> {
   constructor(
     @Inject(NOTIFICATIONS_SERVICE)
     private readonly notificationsService: INotificationsService,

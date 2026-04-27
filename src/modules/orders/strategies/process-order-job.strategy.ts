@@ -6,7 +6,7 @@ import {
   ProcessOrderJobPayload,
   RefundOrderJobPayload,
 } from '@/shared/payloads/orders-job.payload';
-import { NotifyUserJobPayload } from '@/shared/payloads/side-effects-job.payload';
+import { NotifyUserJobPayload } from '@/shared/payloads/effects-job.payload';
 import { ensureError } from '@/shared/utils/functions.utils';
 import { CACHE_SERVICE } from '@/shared/modules/cache/constants/cache.token';
 import type { ICacheService } from '@/shared/modules/cache/interfaces/cache-service.interface';
