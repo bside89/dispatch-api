@@ -2,10 +2,8 @@
 
 echo "Resetting containers..."
 
-cp .env.production .env
-
 compose_cmd() {
-    docker compose "$@"
+    docker compose --env-file .env.production "$@"
 }
 
 read -p "This will remove all data. Are you sure? (y/N): " -n 1 -r

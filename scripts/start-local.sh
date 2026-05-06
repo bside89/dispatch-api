@@ -3,10 +3,9 @@
 echo "Setting up local environment..."
 
 export NODE_ENV="local"
-cp .env.local .env
 
 compose_cmd() {
-    docker compose "$@"
+    docker compose --env-file .env.local "$@"
 }
 
 if ! docker info > /dev/null 2>&1; then

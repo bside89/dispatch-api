@@ -50,9 +50,10 @@ cd dispatch-api
 chmod +x install.sh && ./install.sh
 ```
 
-This script will automatically create your `.env` file from the example and start the services using `docker-compose up --build`.
+This script will automatically create your `.env.local` and `.env.production` files from the example files and start the services using `docker compose --env-file .env.production up --build`.
 
-> **Note:** If you prefer to run manually, ensure you copy `.env.example` to `.env.production` and `.env.local` before running `docker-compose up --build`.
+> **Note:** If you prefer to run manually, ensure you copy `.env.example.production` to `.env.production` and `.env.example.local` to `.env.local` before running `docker compose --env-file .env.production up --build`.
+> **Note:** The Compose file reads `${...}` values during interpolation, so when using `.env.production` you must pass it explicitly with `docker compose --env-file .env.production up --build`.
 
 > **Stripe tip:** Set `STRIPE_EXEC_MODE` to `local`, `docker`, or `live` depending on how you want to test payments. The details are in the Stripe testing section below.
 

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-cp .env.example .env.local
-cp .env.example .env.production
+cp .env.example.local .env.local
+cp .env.example.production .env.production
 
-docker compose up --build
+docker compose --env-file .env.production up --build

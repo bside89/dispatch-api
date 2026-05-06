@@ -26,11 +26,11 @@
     "migration:revert": "npm run typeorm -- migration:revert -d src/config/typeorm.config.ts",
     "reset-db": "chmod +x scripts/reset-db.sh && scripts/reset-db.sh",
     "create-db": "chmod +x scripts/create-db.sh && scripts/create-db.sh",
-    "docker:up": "docker compose up -d",
-    "docker:down": "docker compose down",
-    "docker:build": "docker compose build --no-cache",
-    "docker:logs": "docker compose logs -f",
-    "docker:status": "docker compose ps"
+    "docker:up": "docker compose --env-file .env.production up -d",
+    "docker:down": "docker compose --env-file .env.production down",
+    "docker:build": "docker compose --env-file .env.production build --no-cache",
+    "docker:logs": "docker compose --env-file .env.production logs -f",
+    "docker:status": "docker compose --env-file .env.production ps"
   },
   "dependencies": {
     "@bull-board/api": "^6.20.6",

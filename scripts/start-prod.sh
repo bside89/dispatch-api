@@ -3,7 +3,6 @@
 echo "Setting up production environment..."
 
 export NODE_ENV="production"
-cp .env.production .env
 
 if ! docker info > /dev/null 2>&1; then
     echo "Docker is not running."
@@ -25,5 +24,5 @@ echo
 
 if [[ $REPLY =~ ^[Yy]$ ]]; then
     echo "Starting NestJS in Production mode..."
-    docker compose up -d
+    docker compose --env-file .env.production up -d
 fi
