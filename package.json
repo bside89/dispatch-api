@@ -1,7 +1,7 @@
 {
   "name": "dispatch-api",
   "version": "1.0.0",
-  "description": "Dispatch: order management API with NestJS, PostgreSQL, Redis and BullMQ",
+  "description": "Dispatch: E-commerce API with NestJS, PostgreSQL, Redis and BullMQ.",
   "author": "Bruno",
   "private": true,
   "license": "MIT",
