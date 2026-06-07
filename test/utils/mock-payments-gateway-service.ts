@@ -1,3 +1,4 @@
+import { randomUUID } from 'crypto';
 import { IPaymentsGatewayAdapter } from '@/modules/payments/interfaces/payments-gateway-adapter.interface';
 
 const makeCustomer = (id: string) => ({
@@ -21,7 +22,13 @@ const makeRefund = (refundId: string) => ({
 });
 
 export const paymentsGatewayServiceMock = {
-  createCustomer: jest.fn().mockResolvedValue(makeCustomer('cus_test_create')),
+  createCustomer: jest
+    .fn()
+    .mockImplementation(() =>
+      Promise.resolve(
+        makeCustomer(`cus_test_${randomUUID().replace(/-/g, '').slice(0, 12)}`),
+      ),
+    ),
   findAllCustomers: jest.fn().mockResolvedValue({
     items: [makeCustomer('cus_test_list')],
     nextCursor: undefined,
@@ -30,7 +37,13 @@ export const paymentsGatewayServiceMock = {
   findOneCustomer: jest.fn().mockResolvedValue(makeCustomer('cus_test_retrieve')),
   updateCustomer: jest.fn().mockResolvedValue(makeCustomer('cus_test_update')),
   deleteCustomer: jest.fn().mockResolvedValue(undefined),
-  createPayment: jest.fn().mockResolvedValue(makePayment('pi_test_create')),
+  createPayment: jest
+    .fn()
+    .mockImplementation(() =>
+      Promise.resolve(
+        makePayment(`pi_test_${randomUUID().replace(/-/g, '').slice(0, 12)}`),
+      ),
+    ),
   findOnePayment: jest.fn().mockResolvedValue(makePayment('pi_test_retrieve')),
   createRefundPayment: jest.fn().mockResolvedValue(makeRefund('re_test_create')),
   findOneRefundPayment: jest.fn().mockResolvedValue(makeRefund('re_test_retrieve')),

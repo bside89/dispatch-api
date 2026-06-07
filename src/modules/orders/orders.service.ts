@@ -27,7 +27,8 @@ import type { IIdempotencyService } from '../../shared/modules/cache/interfaces/
 import type { RequestUser } from '../auth/interfaces/request-user.interface';
 import { ITEMS_SERVICE } from '../items/constants/items.token';
 import type { IItemsService } from '../items/interfaces/items-service.interface';
-import { PAYMENTS_GATEWAY_ADAPTER } from '../payments/constants/payments.token';
+import { PAYMENTS_SERVICE } from '../payments/constants/payments.token';
+import { PaymentResponseDto } from '../payments/dto/payment-response.dto';
 import type { IPaymentsService } from '../payments/interfaces/payments-service.interface';
 import { User } from '../users/entities/user.entity';
 import { ORDER_ITEM_REPOSITORY, ORDER_REPOSITORY } from './constants/orders.token';
@@ -35,11 +36,7 @@ import { CreateOrderDto } from './dto/create-order.dto';
 import { OrderByUserQueryDto } from './dto/order-by-user-query.dto';
 import { UpdateOrderPaymentDto } from './dto/order-payment.dto';
 import { OrderQueryDto } from './dto/order-query.dto';
-import {
-  OrderPaymentDto,
-  OrderResponseDto,
-  PublicOrderResponseDto,
-} from './dto/order-response.dto';
+import { OrderResponseDto, PublicOrderResponseDto } from './dto/order-response.dto';
 import { ShipOrderDto } from './dto/ship-order.dto';
 import { UpdateOrderDto } from './dto/update-order.dto';
 import { Order } from './entities/order.entity';
@@ -63,7 +60,7 @@ export class OrdersService extends BaseService implements IOrdersService {
     private readonly orderItemRepository: IOrderItemRepository,
     @Inject(ITEMS_SERVICE) private readonly itemsService: IItemsService,
     @Inject(OUTBOX_SERVICE) private readonly outboxService: IOutboxService,
-    @Inject(PAYMENTS_GATEWAY_ADAPTER)
+    @Inject(PAYMENTS_SERVICE)
     private readonly paymentsService: IPaymentsService,
     @Inject(IDEMPOTENCY_SERVICE)
     private readonly idempotencyService: IIdempotencyService,
@@ -122,7 +119,7 @@ export class OrdersService extends BaseService implements IOrdersService {
     await this.dispatchOrderCreatedNotification(order.user, order.total);
 
     const orderMapped = EntityMapper.map(order, PublicOrderResponseDto);
-    orderMapped.paymentData = EntityMapper.map(payment, OrderPaymentDto);
+    orderMapped.payment = EntityMapper.map(payment, PaymentResponseDto);
 
     this.logger.debug('Order created', {
       idempotencyKey: idempotencyKey,
@@ -165,7 +162,7 @@ export class OrdersService extends BaseService implements IOrdersService {
     const payment = await this.paymentsService.findOnePayment(order.payment.id);
 
     const orderMapped = EntityMapper.map(order, PublicOrderResponseDto);
-    orderMapped.paymentData = EntityMapper.map(payment, OrderPaymentDto);
+    orderMapped.payment = EntityMapper.map(payment, PaymentResponseDto);
 
     this.logger.debug('Found order', { orderId: id });
 
@@ -197,7 +194,7 @@ export class OrdersService extends BaseService implements IOrdersService {
     const payment = await this.paymentsService.findOnePayment(order.payment.id);
 
     const orderMapped = EntityMapper.map(order, OrderResponseDto);
-    orderMapped.paymentData = EntityMapper.map(payment, OrderPaymentDto);
+    orderMapped.payment = EntityMapper.map(payment, PaymentResponseDto);
 
     this.logger.debug('Found order', { orderId: id });
 
@@ -407,7 +404,7 @@ export class OrdersService extends BaseService implements IOrdersService {
 
   private async getOrderOrThrow(id: string): Promise<Order> {
     const order = await this.orderRepository.findById(id, {
-      relations: ['user', 'items'],
+      relations: ['user', 'items', 'payment'],
     });
     if (!order) {
       throw new NotFoundException(template(I18N_ORDERS.ERRORS.ORDER_NOT_FOUND));

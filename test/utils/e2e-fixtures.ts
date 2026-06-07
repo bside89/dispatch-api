@@ -91,14 +91,13 @@ export async function createFixtureUser(
   const email = options.email ?? `user-${userId}@test.com`;
   const name = options.name ?? 'Regular Test User';
   const role = options.role ?? UserRole.USER;
-  const customerId = options.customerId ?? `cus_${userId.replace(/-/g, '')}`;
 
   const passwordHash = await getTestUserPasswordHash();
 
   await dataSource.query(
-    `INSERT INTO "users" (id, name, "customerId", email, password, role)
-     VALUES ($1, $2, $3, $4, $5, $6)`,
-    [userId, name, customerId, email, passwordHash, role],
+    `INSERT INTO "users" (id, name, email, password, role)
+     VALUES ($1, $2, $3, $4, $5)`,
+    [userId, name, email, passwordHash, role],
   );
 
   return {
@@ -106,7 +105,6 @@ export async function createFixtureUser(
     email,
     name,
     role,
-    customerId,
     password: TEST_USER_PASSWORD,
   };
 }

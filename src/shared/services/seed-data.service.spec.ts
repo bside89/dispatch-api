@@ -34,20 +34,13 @@ describe('SeedDataService', () => {
     }),
   } as unknown as DataSource;
 
-  const paymentsGatewayService = {
-    customers: {
-      list: jest.fn(),
-      create: jest.fn(),
-    },
+  const paymentsService = {
+    findCustomerByUserId: jest.fn(),
+    createCustomer: jest.fn(),
   };
 
   const createSubject = () =>
-    new SeedDataService(
-      configService,
-      dataSource,
-      logger,
-      paymentsGatewayService as never,
-    );
+    new SeedDataService(configService, dataSource, logger, paymentsService as never);
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -66,36 +59,30 @@ describe('SeedDataService', () => {
     expect(dataSource.getRepository).not.toHaveBeenCalled();
     expect(userRepository.insert).not.toHaveBeenCalled();
     expect(itemRepository.insert).not.toHaveBeenCalled();
-    expect(paymentsGatewayService.customers.list).not.toHaveBeenCalled();
+    expect(paymentsService.findCustomerByUserId).not.toHaveBeenCalled();
   });
 
   it('creates the mock admin customer and user when missing', async () => {
     (configService.get as jest.Mock).mockReturnValue('true');
     userRepository.existsBy.mockResolvedValue(false);
-    paymentsGatewayService.customers.list.mockResolvedValue([]);
-    paymentsGatewayService.customers.create.mockResolvedValue({
+    paymentsService.findCustomerByUserId.mockResolvedValue(null);
+    paymentsService.createCustomer.mockResolvedValue({
       id: 'cus_123',
+      userId: 'c6d77b5d-1d3f-4c91-9e9d-9b7a8f7c4b21',
       email: 'joao.silva@email.com',
       name: 'João Silva Admin',
-      metadata: {},
-      address: null,
     });
 
     await createSubject().seedMockAdminUser();
 
-    expect(paymentsGatewayService.customers.list).toHaveBeenCalledTimes(1);
-    expect(paymentsGatewayService.customers.create).toHaveBeenCalledWith(
+    expect(paymentsService.findCustomerByUserId).toHaveBeenCalledWith(
+      'c6d77b5d-1d3f-4c91-9e9d-9b7a8f7c4b21',
+    );
+    expect(paymentsService.createCustomer).toHaveBeenCalledWith(
       {
+        userId: 'c6d77b5d-1d3f-4c91-9e9d-9b7a8f7c4b21',
         name: 'João Silva Admin',
         email: 'joao.silva@email.com',
-        address: {
-          line1: 'Av. Paulista, 1000',
-          line2: 'Apto 101',
-          city: 'São Paulo',
-          state: 'SP',
-          postalCode: '01000-000',
-          country: 'BR',
-        },
       },
       'seed-mock-admin-user-c6d77b5d-1d3f-4c91-9e9d-9b7a8f7c4b21',
     );
@@ -120,8 +107,8 @@ describe('SeedDataService', () => {
 
     await createSubject().seedMockAdminUser();
 
-    expect(paymentsGatewayService.customers.list).not.toHaveBeenCalled();
-    expect(paymentsGatewayService.customers.create).not.toHaveBeenCalled();
+    expect(paymentsService.findCustomerByUserId).not.toHaveBeenCalled();
+    expect(paymentsService.createCustomer).not.toHaveBeenCalled();
     expect(userRepository.insert).not.toHaveBeenCalled();
     expect(logger.debug).toHaveBeenCalledWith(
       'Mock admin user already exists, skipping seed',

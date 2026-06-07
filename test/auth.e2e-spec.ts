@@ -62,8 +62,8 @@ describe('Auth (E2E)', () => {
         })
         .expect(HttpStatus.CREATED);
 
-      expect(res.body.data).toHaveProperty('accessToken');
-      expect(res.body.data).toHaveProperty('refreshToken');
+      expect(res.body).toHaveProperty('accessToken');
+      expect(res.body).toHaveProperty('refreshToken');
     });
 
     it('POST /v1/auth/refresh - should deny access with incorrect refreshToken', async () => {
@@ -84,9 +84,9 @@ describe('Auth (E2E)', () => {
         .set('Authorization', `Bearer ${validRefreshToken}`)
         .expect(HttpStatus.CREATED);
 
-      expect(refreshRes.body.data).toHaveProperty('accessToken');
-      expect(refreshRes.body.data).toHaveProperty('refreshToken');
-      expect(refreshRes.body.data.refreshToken).not.toBe(validRefreshToken);
+      expect(refreshRes.body).toHaveProperty('accessToken');
+      expect(refreshRes.body).toHaveProperty('refreshToken');
+      expect(refreshRes.body.refreshToken).not.toBe(validRefreshToken);
     });
 
     it('POST /v1/auth/logout - should deny access with incorrect accessToken', async () => {

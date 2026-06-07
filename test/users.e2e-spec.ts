@@ -67,8 +67,8 @@ describe('Users (E2E)', () => {
         .send(payload)
         .expect(HttpStatus.CREATED);
 
-      expect(res.body.data).toHaveProperty('id');
-      expect(res.body.data.email).toBe(payload.email);
+      expect(res.body).toHaveProperty('id');
+      expect(res.body.email).toBe(payload.email);
     });
 
     it('POST /v1/users - should reject without idempotency key', async () => {
@@ -105,7 +105,7 @@ describe('Users (E2E)', () => {
         .set('Authorization', `Bearer ${userToken}`)
         .expect(HttpStatus.OK);
 
-      expect(res.body.data.id).toBe(createdUserId);
+      expect(res.body.id).toBe(createdUserId);
     });
 
     it('PATCH /v1/users/me - should update user information', async () => {
@@ -115,7 +115,7 @@ describe('Users (E2E)', () => {
         .send({ name: 'Updated Name' })
         .expect(HttpStatus.OK);
 
-      expect(res.body.data.name).toBe('Updated Name');
+      expect(res.body.name).toBe('Updated Name');
     });
 
     it('DELETE /v1/admin/users/:id - should forbid a regular user from deleting', async () => {
@@ -143,7 +143,7 @@ describe('Users (E2E)', () => {
           .expect(HttpStatus.CREATED);
 
         await request(app.getHttpServer())
-          .delete(`/v1/admin/users/${otherUserCreated.data.id}`)
+          .delete(`/v1/admin/users/${otherUserCreated.id}`)
           .set('Authorization', `Bearer ${userToken}`)
           .expect(HttpStatus.FORBIDDEN);
       });

@@ -1,14 +1,14 @@
-import { BaseJobPayload } from '@/shared/payloads/base-job.payload';
 import { BaseJobHandlerFactory } from '@/shared/factories/base-job-handler.factory';
-import { BaseJobStrategy } from '@/shared/strategies/base-job.strategy';
 import { OutboxType } from '@/shared/modules/outbox/enums/outbox-type.enum';
+import { BaseJobPayload } from '@/shared/payloads/base-job.payload';
+import { BaseJobStrategy } from '@/shared/strategies/base-job.strategy';
 import { Injectable } from '@nestjs/common';
-import { UpdateCustomerIdJobStrategy } from '../strategies/update-customer-id-job.strategy';
+import { UpdateUserCustomerIdJobStrategy } from '../strategies/update-user-customer-id-job.strategy';
 
 @Injectable()
 export class UserJobHandlerFactory extends BaseJobHandlerFactory {
   constructor(
-    private readonly updateCustomerIdJobStrategy: UpdateCustomerIdJobStrategy,
+    private readonly updateCustomerIdJobStrategy: UpdateUserCustomerIdJobStrategy,
   ) {
     super();
   }

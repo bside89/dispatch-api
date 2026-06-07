@@ -1,33 +1,10 @@
+import { PaymentResponseDto } from '@/modules/payments/dto/payment-response.dto';
+import { UserResponseDto } from '@/modules/users/dto/user-response.dto';
 import { ApiProperty, ApiPropertyOptional, OmitType } from '@nestjs/swagger';
 import { Exclude, Expose, Type } from 'class-transformer';
+import { ValidateNested } from 'class-validator';
 import { OrderStatus } from '../enums/order-status.enum';
-import { UserResponseDto } from '@/modules/users/dto/user-response.dto';
 import { OrderItemResponseDto } from './order-item-response.dto';
-
-@Exclude()
-export class OrderPaymentDto {
-  @Expose()
-  @ApiProperty({
-    description: 'Payment identifier',
-    example: 'pi_123456789',
-  })
-  id: string;
-
-  @Expose()
-  @ApiProperty({
-    description: 'Payment status',
-    example: 'requires_confirmation',
-  })
-  status: string;
-
-  @Expose()
-  @ApiPropertyOptional({
-    description: 'Client secret used by the frontend to confirm payment',
-    example: 'pi_123456789_secret_123456789',
-  })
-  clientSecret?: string | null;
-}
-
 @Exclude()
 export class OrderResponseDto {
   @Expose()
@@ -83,12 +60,13 @@ export class OrderResponseDto {
   items?: OrderItemResponseDto[];
 
   @Expose()
-  @Type(() => OrderPaymentDto)
   @ApiProperty({
-    description: 'Payment data associated with the order',
-    type: () => OrderPaymentDto,
+    description: 'Payment details',
+    type: () => PaymentResponseDto,
   })
-  paymentData: OrderPaymentDto;
+  @Type(() => PaymentResponseDto)
+  @ValidateNested()
+  payment: PaymentResponseDto;
 
   @Expose()
   @ApiPropertyOptional({

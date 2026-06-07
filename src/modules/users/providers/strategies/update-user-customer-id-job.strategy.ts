@@ -8,12 +8,12 @@ import { Inject, Injectable } from '@nestjs/common';
 import { Job } from 'bullmq';
 
 @Injectable()
-export class UpdateCustomerIdJobStrategy extends BaseJobStrategy<UpdateUserCustomerIdJobPayload> {
+export class UpdateUserCustomerIdJobStrategy extends BaseJobStrategy<UpdateUserCustomerIdJobPayload> {
   constructor(
     @Inject(USER_REPOSITORY) private readonly userRepository: IUserRepository,
     private readonly guard: DbGuardService,
   ) {
-    super(UpdateCustomerIdJobStrategy.name);
+    super(UpdateUserCustomerIdJobStrategy.name);
   }
 
   async execute(job: Job<UpdateUserCustomerIdJobPayload>): Promise<void> {

@@ -101,9 +101,9 @@ describe('Orders (E2E)', () => {
         .send(payload)
         .expect(HttpStatus.CREATED);
 
-      expect(res.body.data.id).toBeDefined();
-      expect(res.body.data.status).toBe('PENDING');
-      expect(res.body.data.paymentData.clientSecret).toBeDefined();
+      expect(res.body.id).toBeDefined();
+      expect(res.body.status).toBe('PENDING');
+      expect(res.body.payment.stripeClientSecret).toBeDefined();
     });
 
     it('POST /v1/orders - should return the same order on duplicate idempotency key', async () => {
@@ -132,8 +132,8 @@ describe('Orders (E2E)', () => {
         .send(payload)
         .expect(HttpStatus.CREATED);
 
-      expect(result2.body.data.id).toBe(result1.body.data.id);
-      expect(result2.body.data.status).toBe(result1.body.data.status);
+      expect(result2.body.id).toBe(result1.body.id);
+      expect(result2.body.status).toBe(result1.body.status);
     });
 
     it('POST /v1/orders - should rollback the Order when Stripe returns an error', async () => {
@@ -207,7 +207,7 @@ describe('Orders (E2E)', () => {
           .expect(HttpStatus.OK);
 
         expect(res.body.items).toHaveLength(1);
-        expect(res.body.items[0].id).toBe(createdUserOrder.body.data.id);
+        expect(res.body.items[0].id).toBe(createdUserOrder.body.id);
       });
     });
 
@@ -222,14 +222,14 @@ describe('Orders (E2E)', () => {
         .send(payload)
         .expect(HttpStatus.CREATED);
 
-      const orderId = created.body.data.id;
+      const orderId = created.body.id;
 
       const res = await request(app.getHttpServer())
         .get(`/v1/orders/${orderId}`)
         .set('Authorization', `Bearer ${userToken}`)
         .expect(HttpStatus.OK);
 
-      expect(res.body.data.id).toBe(orderId);
+      expect(res.body.id).toBe(orderId);
     });
 
     it('GET /v1/orders/:id - should block access to another user order', async () => {
@@ -244,7 +244,7 @@ describe('Orders (E2E)', () => {
         .expect(HttpStatus.CREATED);
 
       await request(app.getHttpServer())
-        .get(`/v1/orders/${created.body.data.id}`)
+        .get(`/v1/orders/${created.body.id}`)
         .set('Authorization', `Bearer ${userToken}`)
         .expect(HttpStatus.FORBIDDEN);
     });
@@ -270,7 +270,7 @@ describe('Orders (E2E)', () => {
           .set('Authorization', `Bearer ${adminToken}`)
           .send(payload)
           .expect(HttpStatus.CREATED);
-        const orderId = created.body.data.id;
+        const orderId = created.body.id;
 
         await request(app.getHttpServer())
           .patch(`/v1/admin/orders/${orderId}`)
@@ -298,7 +298,7 @@ describe('Orders (E2E)', () => {
           .set('Authorization', `Bearer ${adminToken}`)
           .send(payload)
           .expect(HttpStatus.CREATED);
-        const orderId = created.body.data.id;
+        const orderId = created.body.id;
 
         await request(app.getHttpServer())
           .delete(`/v1/admin/orders/${orderId}`)
@@ -326,7 +326,7 @@ describe('Orders (E2E)', () => {
           .set('Authorization', `Bearer ${adminToken}`)
           .send(payload)
           .expect(HttpStatus.CREATED);
-        const orderId = created.body.data.id;
+        const orderId = created.body.id;
 
         // Advance order to PROCESSED status directly in DB
         await dataSource.query(
@@ -340,10 +340,10 @@ describe('Orders (E2E)', () => {
           .send({ trackingNumber: 'BR123456789', carrier: 'Correios' })
           .expect(HttpStatus.OK);
 
-        expect(res.body.data.status).toBe('SHIPPED');
-        expect(res.body.data.trackingNumber).toBe('BR123456789');
-        expect(res.body.data.carrier).toBe('Correios');
-        expect(res.body.data.shippedAt).toBeDefined();
+        expect(res.body.status).toBe('SHIPPED');
+        expect(res.body.trackingNumber).toBe('BR123456789');
+        expect(res.body.carrier).toBe('Correios');
+        expect(res.body.shippedAt).toBeDefined();
       });
     });
 
@@ -356,7 +356,7 @@ describe('Orders (E2E)', () => {
           .set('Authorization', `Bearer ${adminToken}`)
           .send(payload)
           .expect(HttpStatus.CREATED);
-        const orderId = created.body.data.id;
+        const orderId = created.body.id;
 
         // Order is still PENDING — should not be shippable
         await request(app.getHttpServer())
@@ -376,7 +376,7 @@ describe('Orders (E2E)', () => {
           .set('Authorization', `Bearer ${adminToken}`)
           .send(payload)
           .expect(HttpStatus.CREATED);
-        const orderId = created.body.data.id;
+        const orderId = created.body.id;
 
         // Advance order to SHIPPED status directly in DB
         await dataSource.query(
@@ -389,8 +389,8 @@ describe('Orders (E2E)', () => {
           .set('Authorization', `Bearer ${adminToken}`)
           .expect(HttpStatus.OK);
 
-        expect(res.body.data.status).toBe('DELIVERED');
-        expect(res.body.data.deliveredAt).toBeDefined();
+        expect(res.body.status).toBe('DELIVERED');
+        expect(res.body.deliveredAt).toBeDefined();
       });
     });
 
@@ -403,14 +403,12 @@ describe('Orders (E2E)', () => {
           .set('Authorization', `Bearer ${adminToken}`)
           .send(payload)
           .expect(HttpStatus.CREATED);
-        const orderId = created.body.data.id;
+        const orderId = created.body.id;
 
-        const res = await request(app.getHttpServer())
+        await request(app.getHttpServer())
           .patch(`/v1/admin/orders/${orderId}/cancel`)
           .set('Authorization', `Bearer ${adminToken}`)
           .expect(HttpStatus.OK);
-
-        expect(res.body.message).toMatch(/cancel/i);
       });
     });
 
@@ -423,7 +421,7 @@ describe('Orders (E2E)', () => {
           .set('Authorization', `Bearer ${adminToken}`)
           .send(payload)
           .expect(HttpStatus.CREATED);
-        const orderId = created.body.data.id;
+        const orderId = created.body.id;
 
         await dataSource.query(
           `UPDATE orders SET status = 'SHIPPED' WHERE id = $1`,
@@ -446,19 +444,17 @@ describe('Orders (E2E)', () => {
           .set('Authorization', `Bearer ${adminToken}`)
           .send(payload)
           .expect(HttpStatus.CREATED);
-        const orderId = created.body.data.id;
+        const orderId = created.body.id;
 
         // Advance order to PAID status directly in DB
         await dataSource.query(`UPDATE orders SET status = 'PAID' WHERE id = $1`, [
           orderId,
         ]);
 
-        const res = await request(app.getHttpServer())
+        await request(app.getHttpServer())
           .patch(`/v1/admin/orders/${orderId}/refund`)
           .set('Authorization', `Bearer ${adminToken}`)
           .expect(HttpStatus.OK);
-
-        expect(res.body.message).toMatch(/refund/i);
       });
     });
 
@@ -471,7 +467,7 @@ describe('Orders (E2E)', () => {
           .set('Authorization', `Bearer ${adminToken}`)
           .send(payload)
           .expect(HttpStatus.CREATED);
-        const orderId = created.body.data.id;
+        const orderId = created.body.id;
 
         // Order is still PENDING — not eligible for refund
         await request(app.getHttpServer())

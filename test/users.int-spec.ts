@@ -242,7 +242,9 @@ describe('Users (Integration)', () => {
         `SELECT "customerId" FROM users WHERE id = $1`,
         [createdUser.id],
       );
-      expect(userRow.customerId).toBe('cus_test_create');
+      expect(userRow.customerId).toMatch(
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,
+      );
 
       // Outbox should be fully consumed
       await waitFor(
@@ -262,19 +264,37 @@ describe('Users (Integration)', () => {
 
   describe('User Removal — Async Payment Pipeline', () => {
     it('should process the PAYMENT_DELETE_CUSTOMER pipeline and call gateway delete after user removal', async () => {
-      // Raw-insert a user with a customerId already set to bypass the create pipeline
+      // Raw-insert a user without customerId first (avoids circular FK dependency)
       const [{ id: userId }] = await dataSource.query(
-        `INSERT INTO "users" (name, email, password, role, "customerId")
-         VALUES ($1, $2, $3, $4, $5)
+        `INSERT INTO "users" (name, email, password, role)
+         VALUES ($1, $2, $3, $4)
          RETURNING id`,
         [
           'Delete Pipeline User',
           'delete-pipeline@test.com',
           'hashedpassword',
           'user',
-          'cus_to_delete',
         ],
       );
+
+      // Insert a customer record linked to this user (gatewayCustomerId is the Stripe ID)
+      const [{ id: customerId }] = await dataSource.query(
+        `INSERT INTO "customers" ("gatewayCustomerId", "userId", email, name)
+         VALUES ($1, $2, $3, $4)
+         RETURNING id`,
+        [
+          'cus_to_delete',
+          userId,
+          'delete-pipeline@test.com',
+          'Delete Pipeline User',
+        ],
+      );
+
+      // Link the customer UUID back to the user
+      await dataSource.query(`UPDATE "users" SET "customerId" = $1 WHERE id = $2`, [
+        customerId,
+        userId,
+      ]);
 
       // Track the specific call for this test
       const deleteSpy = jest
@@ -301,26 +321,20 @@ describe('Users (Integration)', () => {
           250,
         );
 
-        // Assert: gateway delete was called with the correct customerId
-        expect(deleteSpy).toHaveBeenCalledWith('cus_to_delete', expect.any(String));
+        // Assert: gateway delete was called with the correct gatewayCustomerId
+        expect(deleteSpy).toHaveBeenCalledWith('cus_to_delete');
       } finally {
         deleteSpy.mockRestore();
       }
     }, 30_000);
 
     it('should not persist the soft-delete when outbox insertion fails inside adminRemove', async () => {
-      // Raw-insert user with a customerId
+      // Raw-insert user without customerId to avoid FK UUID constraint
       const [{ id: userId }] = await dataSource.query(
-        `INSERT INTO "users" (name, email, password, role, "customerId")
-         VALUES ($1, $2, $3, $4, $5)
+        `INSERT INTO "users" (name, email, password, role)
+         VALUES ($1, $2, $3, $4)
          RETURNING id`,
-        [
-          'Atomic Remove User',
-          'atomic-remove@test.com',
-          'hashedpassword',
-          'user',
-          'cus_atomic_remove',
-        ],
+        ['Atomic Remove User', 'atomic-remove@test.com', 'hashedpassword', 'user'],
       );
 
       const saveSpy = jest
@@ -333,10 +347,10 @@ describe('Users (Integration)', () => {
 
       // Assert: user was NOT soft-deleted (deactivatedAt remains null)
       const [row] = await dataSource.query(
-        `SELECT "deactivatedAt" FROM users WHERE id = $1`,
+        `SELECT "deletedAt" FROM users WHERE id = $1`,
         [userId],
       );
-      expect(row.deactivatedAt).toBeNull();
+      expect(row.deletedAt).toBeNull();
 
       saveSpy.mockRestore();
     });

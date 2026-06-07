@@ -78,8 +78,8 @@ describe('Items (E2E)', () => {
         .set('Authorization', `Bearer ${userToken}`)
         .expect(HttpStatus.OK);
 
-      expect(res.body.data.id).toBe(testItemId);
-      expect(res.body.data).not.toHaveProperty('pricePaymentId');
+      expect(res.body.id).toBe(testItemId);
+      expect(res.body).not.toHaveProperty('pricePaymentId');
     });
 
     it('POST /v1/admin/items - should forbid a regular user', async () => {
@@ -119,9 +119,9 @@ describe('Items (E2E)', () => {
         .send(payload)
         .expect(HttpStatus.CREATED);
 
-      expect(res.body.data.id).toBeDefined();
-      expect(res.body.data.name).toBe(payload.name);
-      expect(res.body.data.pricePaymentId).toBe(payload.pricePaymentId);
+      expect(res.body.id).toBeDefined();
+      expect(res.body.name).toBe(payload.name);
+      expect(res.body.pricePaymentId).toBe(payload.pricePaymentId);
     });
 
     it('POST /v1/admin/items - should return the same item on duplicate idempotency key', async () => {
@@ -148,10 +148,8 @@ describe('Items (E2E)', () => {
         .send(payload)
         .expect(HttpStatus.CREATED);
 
-      expect(result2.body.data.id).toBe(result1.body.data.id);
-      expect(result2.body.data.pricePaymentId).toBe(
-        result1.body.data.pricePaymentId,
-      );
+      expect(result2.body.id).toBe(result1.body.id);
+      expect(result2.body.pricePaymentId).toBe(result1.body.pricePaymentId);
     });
 
     it('GET /v1/admin/items - should return the admin items list with full details', async () => {
@@ -171,8 +169,8 @@ describe('Items (E2E)', () => {
         .set('Authorization', `Bearer ${adminToken}`)
         .expect(HttpStatus.OK);
 
-      expect(res.body.data.id).toBe(testItemId);
-      expect(res.body.data).toHaveProperty('pricePaymentId', null);
+      expect(res.body.id).toBe(testItemId);
+      expect(res.body).toHaveProperty('pricePaymentId', null);
     });
 
     it('PATCH /v1/admin/items/:id - should update an item', async () => {
@@ -185,9 +183,9 @@ describe('Items (E2E)', () => {
         })
         .expect(HttpStatus.OK);
 
-      expect(res.body.data.id).toBe(testItemId);
-      expect(res.body.data.name).toBe('Updated Test Product');
-      expect(res.body.data.stock).toBe(25);
+      expect(res.body.id).toBe(testItemId);
+      expect(res.body.name).toBe('Updated Test Product');
+      expect(res.body.stock).toBe(25);
     });
 
     it('DELETE /v1/admin/items/:id - should remove an item', async () => {
