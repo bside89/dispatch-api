@@ -1,6 +1,6 @@
-import { UserSnapshotDto } from '../dto/user-snapshot.dto';
-import { BaseOutboxJobPayload } from '../modules/outbox/payloads/outbox.payload';
+import { UserSnapshotDto } from '../dto/snapshots/user-snapshot.dto';
 import { OutboxType } from '../modules/outbox/enums/outbox-type.enum';
+import { BaseOutboxJobPayload } from '../modules/outbox/payloads/outbox.payload';
 
 export abstract class PaymentJobPayload extends BaseOutboxJobPayload {
   constructor(public readonly userDto: UserSnapshotDto) {

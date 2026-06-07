@@ -1,16 +1,16 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { Entity, Column, ManyToOne, JoinColumn, Index } from 'typeorm';
 import { User } from '@/modules/users/entities/user.entity';
-import { DeactivatableEntity } from '@/shared/entities/deactivatable.entity';
+import { BaseEntity } from '@/shared/entities/base.entity';
+import { Column, Entity, Index, JoinColumn, ManyToOne } from 'typeorm';
 
 @Entity('notifications')
 @Index('IDX_notifications_user_read', ['userId'], {
-  where: '"read" = false AND "deactivatedAt" IS NULL',
+  where: '"read" = false AND "deletedAt" IS NULL',
 })
 @Index('IDX_notifications_user_createdAt_id_active', ['userId', 'createdAt', 'id'], {
-  where: '"deactivatedAt" IS NULL',
+  where: '"deletedAt" IS NULL',
 })
-export class Notification extends DeactivatableEntity {
+export class Notification extends BaseEntity {
   @ManyToOne(() => User, (user) => user.notifications, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'userId' })
   user: User;

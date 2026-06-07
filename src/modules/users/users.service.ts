@@ -1,58 +1,57 @@
+import { I18N_USERS } from '@/shared/constants/i18n';
+import { LOCK_KEY } from '@/shared/constants/lock.key';
+import { USER_ROLE_LEVEL } from '@/shared/constants/user-role-level.constant';
+import { PagCursorResultDto } from '@/shared/dto/pag-cursor-result.dto';
 import {
-  ForbiddenException,
-  Injectable,
-  Inject,
-  NotFoundException,
+  UserAddressSnapshotDto,
+  UserSnapshotDto,
+} from '@/shared/dto/snapshots/user-snapshot.dto';
+import { DbGuardService } from '@/shared/modules/db-guard/db-guard.service';
+import { OUTBOX_SERVICE } from '@/shared/modules/outbox/constants/outbox.token';
+import type { IOutboxService } from '@/shared/modules/outbox/interfaces/outbox-service.interface';
+import {
+  CreateCustomerJobPayload,
+  DeleteCustomerJobPayload,
+  UpdateCustomerJobPayload,
+} from '@/shared/payloads/payments-job.payload';
+import { BaseService } from '@/shared/services/base.service';
+import type { CursorParams } from '@/shared/types/cursor-params.type';
+import { EntityMapper } from '@/shared/utils/entity-mapper.utils';
+import { template } from '@/shared/utils/functions.utils';
+import { HashAdapter } from '@/shared/utils/hash-adapter.utils';
+import {
   ConflictException,
+  ForbiddenException,
+  Inject,
+  Injectable,
+  NotFoundException,
 } from '@nestjs/common';
+import { UserRole } from '../../shared/enums/user-role.enum';
 import { IDEMPOTENCY_SERVICE } from '../../shared/modules/cache/constants/idempotency.token';
+import { USER_KEY } from '../../shared/modules/cache/constants/user.key';
 import type { IIdempotencyService } from '../../shared/modules/cache/interfaces/idempotency-service.interface';
+import type { RequestUser } from '../auth/interfaces/request-user.interface';
+import { ADDRESS_REPOSITORY, USER_REPOSITORY } from './constants/users.token';
 import { CreateUserDto, PublicCreateUserDto } from './dto/create-user.dto';
 import { PublicUpdateUserDto, UpdateUserDto } from './dto/update-user.dto';
 import { PublicUserQueryDto, UserQueryDto } from './dto/user-query.dto';
-import type { IUserRepository } from './interfaces/user-repository.interface';
-import { USER_REPOSITORY } from './constants/users.token';
-import { PagOffsetResultDto } from '@/shared/dto/pag-offset-result.dto';
 import {
   PublicUserResponseDto,
   UserAddressResponseDto,
   UserResponseDto,
   UserSelfResponseDto,
 } from './dto/user-response.dto';
-import { EntityMapper } from '@/shared/utils/entity-mapper.utils';
-import { HashAdapter } from '@/shared/utils/hash-adapter.utils';
-import { ensureError, template } from '@/shared/utils/functions.utils';
-import { USER_KEY } from '../../shared/modules/cache/constants/user.key';
-import type { IOutboxService } from '@/shared/modules/outbox/interfaces/outbox-service.interface';
-import { OUTBOX_SERVICE } from '@/shared/modules/outbox/constants/outbox.token';
-import {
-  CreateCustomerJobPayload,
-  DeleteCustomerJobPayload,
-  UpdateCustomerJobPayload,
-} from '@/shared/payloads/payments-job.payload';
-import type { RequestUser } from '../auth/interfaces/request-user.interface';
-import { UserRole } from '../../shared/enums/user-role.enum';
-import type { IPaymentGatewaysService } from '../payment-gateways/interfaces/payment-gateways-service.interface';
-import { PAYMENTS_GATEWAY_SERVICE } from '../payment-gateways/constants/payments-gateway.token';
-import { GatewayCustomerResponseDto } from '../payment-gateways/dto/gateway-customer-response.dto';
-import { I18N_USERS } from '@/shared/constants/i18n';
-import {
-  UserAddressSnapshotDto,
-  UserSnapshotDto,
-} from '@/shared/dto/user-snapshot.dto';
 import { User } from './entities/user.entity';
-import { USER_ROLE_LEVEL } from '@/shared/constants/user-role-level.constant';
+import type { IAddressRepository } from './interfaces/address-repository.interface';
+import type { IUserRepository } from './interfaces/user-repository.interface';
 import { IUsersService } from './interfaces/users-service.interface';
-import { BaseService } from '@/shared/services/base.service';
-import { DbGuardService } from '@/shared/modules/db-guard/db-guard.service';
-import { LOCK_KEY } from '@/shared/constants/lock.key';
 
 @Injectable()
 export class UsersService extends BaseService implements IUsersService {
   constructor(
     @Inject(USER_REPOSITORY) private readonly userRepository: IUserRepository,
-    @Inject(PAYMENTS_GATEWAY_SERVICE)
-    private readonly paymentsGatewayService: IPaymentGatewaysService,
+    @Inject(ADDRESS_REPOSITORY)
+    private readonly addressRepository: IAddressRepository,
     @Inject(IDEMPOTENCY_SERVICE)
     private readonly idempotencyService: IIdempotencyService,
     @Inject(OUTBOX_SERVICE) private readonly outboxService: IOutboxService,
@@ -61,32 +60,21 @@ export class UsersService extends BaseService implements IUsersService {
     super(UsersService.name);
   }
 
-  //#region Public endpoints
+  //#region Public
 
   publicCreate(
     dto: PublicCreateUserDto,
     idempotencyKey: string,
   ): Promise<UserSelfResponseDto> {
     return this.guard.lockAndTransaction(LOCK_KEY.USER.CREATE(idempotencyKey), () =>
-      this._publicCreate(dto, idempotencyKey),
+      this.idempotencyService.getOrExecute(
+        USER_KEY.IDEMPOTENCY(this.publicCreate.name, idempotencyKey),
+        () => this._publicCreate(dto, idempotencyKey),
+      ),
     );
   }
 
   private async _publicCreate(
-    dto: PublicCreateUserDto,
-    idempotencyKey: string,
-  ): Promise<UserSelfResponseDto> {
-    const idempotencyKeyFormatted = USER_KEY.IDEMPOTENCY(
-      this.publicCreate.name,
-      idempotencyKey,
-    );
-
-    return this.idempotencyService.getOrExecute(idempotencyKeyFormatted, () =>
-      this._publicCreateWithIdempotency(dto, idempotencyKeyFormatted),
-    );
-  }
-
-  private async _publicCreateWithIdempotency(
     dto: PublicCreateUserDto,
     idempotencyKey: string,
   ): Promise<UserSelfResponseDto> {
@@ -99,21 +87,38 @@ export class UsersService extends BaseService implements IUsersService {
       );
     }
 
-    const user = this.userRepository.createEntity({
+    let user = this.userRepository.createEntity({
       name: dto.name,
       email: dto.email,
       password: await HashAdapter.hash(dto.password),
     });
-    const savedUser = await this.userRepository.save(user);
-    const userMapped = EntityMapper.map(savedUser, UserSelfResponseDto);
+    user = await this.userRepository.save(user);
+    const userMapped = EntityMapper.map(user, UserSelfResponseDto);
+    const snapshottedUser = EntityMapper.map(user, UserSnapshotDto);
 
-    const snapshottedUser = EntityMapper.map(savedUser, UserSnapshotDto);
-    snapshottedUser.address = EntityMapper.map(dto.address, UserAddressSnapshotDto);
+    if (dto.address) {
+      let address = this.addressRepository.createEntity({
+        city: dto.address?.city,
+        country: dto.address?.country,
+        line1: dto.address?.line1,
+        line2: dto.address?.line2,
+        postalCode: dto.address?.postalCode,
+        state: dto.address?.state,
+        userId: user.id,
+      });
+      address = await this.addressRepository.save(address);
+      userMapped.address = EntityMapper.map(address, UserAddressResponseDto);
+      snapshottedUser.address = EntityMapper.map(
+        dto.address,
+        UserAddressSnapshotDto,
+      );
+    }
+
     await this.outboxService.add(new CreateCustomerJobPayload(snapshottedUser));
 
     this.logger.debug('User created', {
       idempotencyKey,
-      userId: savedUser.id,
+      userId: user.id,
     });
 
     return userMapped;
@@ -121,16 +126,14 @@ export class UsersService extends BaseService implements IUsersService {
 
   async publicFindMe(requestUser: RequestUser): Promise<UserSelfResponseDto> {
     const user = await this.getUserOrThrow(requestUser.id);
-
-    const customer = await this.ensureCustomersRetrieve(user.id, user.customerId);
-
-    this.logger.debug('Retrieved customer data from payments gateway', {
-      userId: user.id,
-      customerId: user.customerId,
-    });
-
     const userMapped = EntityMapper.map(user, UserSelfResponseDto);
-    userMapped.address = EntityMapper.map(customer!.address, UserAddressResponseDto);
+
+    const address = await this.addressRepository.findOne({
+      where: { userId: user.id },
+    });
+    if (address) {
+      userMapped.address = EntityMapper.map(address, UserAddressResponseDto);
+    }
 
     this.logger.debug('Retrieved user profile', { id: userMapped.id });
 
@@ -154,14 +157,14 @@ export class UsersService extends BaseService implements IUsersService {
 
   async publicFindAll(
     query: PublicUserQueryDto,
-  ): Promise<PagOffsetResultDto<PublicUserResponseDto>> {
-    const result = await this.userRepository.filter(query);
+    cursor?: CursorParams,
+  ): Promise<PagCursorResultDto<PublicUserResponseDto>> {
+    const result = await this.userRepository.filter({ ...query, cursor });
 
-    const resultMapped = new PagOffsetResultDto<PublicUserResponseDto>(
-      result.meta.total,
-      result.meta.page,
-      result.meta.limit,
+    const resultMapped = new PagCursorResultDto<PublicUserResponseDto>(
       EntityMapper.mapArray(result.items, PublicUserResponseDto),
+      result.nextCursor,
+      result.hasMore,
     );
 
     this.logger.debug(`Retrieved ${result.items.length} users with public query`, {
@@ -184,7 +187,7 @@ export class UsersService extends BaseService implements IUsersService {
     dto: PublicUpdateUserDto,
     requestUser: RequestUser,
   ): Promise<UserSelfResponseDto> {
-    const user = await this.getUserOrThrow(requestUser.id);
+    let user = await this.getUserOrThrow(requestUser.id);
 
     const oldEmail = user.email;
     const newEmail = dto.email;
@@ -200,15 +203,37 @@ export class UsersService extends BaseService implements IUsersService {
     }
 
     Object.assign(user, dto);
-    const updatedUser = await this.userRepository.save(user);
+    user = await this.userRepository.save(user);
+    const userMapped = EntityMapper.map(user, UserSelfResponseDto);
+    const snapshottedUser = EntityMapper.map(user, UserSnapshotDto);
 
-    const snapshottedUser = EntityMapper.map(updatedUser, UserSnapshotDto);
-    snapshottedUser.address = EntityMapper.map(dto.address, UserAddressSnapshotDto);
+    if (dto.address) {
+      let address = await this.addressRepository.findOne({
+        where: { userId: user.id },
+      });
+      if (address) {
+        Object.assign(address, dto.address);
+        address = await this.addressRepository.save(address);
+      } else {
+        address = this.addressRepository.createEntity({
+          city: dto.address?.city,
+          country: dto.address?.country,
+          line1: dto.address?.line1,
+          line2: dto.address?.line2,
+          postalCode: dto.address?.postalCode,
+          state: dto.address?.state,
+          userId: user.id,
+        });
+        address = await this.addressRepository.save(address);
+      }
+      snapshottedUser.address = EntityMapper.map(address, UserAddressSnapshotDto);
+    }
+
     await this.outboxService.add(new UpdateCustomerJobPayload(snapshottedUser));
 
-    this.logger.debug(`User updated successfully: ${updatedUser.id}`);
+    this.logger.debug(`User updated successfully: ${user.id}`);
 
-    return EntityMapper.map(updatedUser, UserSelfResponseDto);
+    return userMapped;
   }
 
   publicRemove(requestUser: RequestUser): Promise<void> {
@@ -230,7 +255,7 @@ export class UsersService extends BaseService implements IUsersService {
 
   //#endregion
 
-  //#region Admin endpoints
+  //#region Admin
 
   adminCreate(
     dto: CreateUserDto,
@@ -239,26 +264,15 @@ export class UsersService extends BaseService implements IUsersService {
   ): Promise<UserResponseDto> {
     return this.guard.lockAndTransaction(
       `${LOCK_KEY.USER.CREATE}:${idempotencyKey}`,
-      () => this._adminCreate(dto, idempotencyKey, requestUser),
+      () =>
+        this.idempotencyService.getOrExecute(
+          USER_KEY.IDEMPOTENCY(this.adminCreate.name, idempotencyKey),
+          async () => this._adminCreate(dto, idempotencyKey, requestUser),
+        ),
     );
   }
 
   private async _adminCreate(
-    dto: CreateUserDto,
-    idempotencyKey: string,
-    requestUser: RequestUser,
-  ): Promise<UserResponseDto> {
-    const idempotencyKeyFormatted = USER_KEY.IDEMPOTENCY(
-      this.adminCreate.name,
-      idempotencyKey,
-    );
-
-    return this.idempotencyService.getOrExecute(idempotencyKeyFormatted, async () =>
-      this._adminCreateWithIdempotency(dto, idempotencyKeyFormatted, requestUser),
-    );
-  }
-
-  private async _adminCreateWithIdempotency(
     dto: CreateUserDto,
     idempotencyKey: string,
     requestUser: RequestUser,
@@ -273,23 +287,36 @@ export class UsersService extends BaseService implements IUsersService {
     }
     await this.assertRoleWriteAccess(dto.role, requestUser);
 
-    const user = this.userRepository.createEntity({
+    let user = this.userRepository.createEntity({
       name: dto.name,
       email: dto.email,
       password: await HashAdapter.hash(dto.password),
       language: dto.language || 'en',
       role: dto.role || UserRole.USER,
     });
-    const savedUser = await this.userRepository.save(user);
-    const userMapped = EntityMapper.map(savedUser, UserResponseDto);
+    user = await this.userRepository.save(user);
+    const userMapped = EntityMapper.map(user, UserResponseDto);
+    const snapshottedUser = EntityMapper.map(user, UserSnapshotDto);
 
-    const snapshottedUser = EntityMapper.map(savedUser, UserSnapshotDto);
-    snapshottedUser.address = EntityMapper.map(dto.address, UserAddressSnapshotDto);
+    if (dto.address) {
+      let address = this.addressRepository.createEntity({
+        city: dto.address?.city,
+        country: dto.address?.country,
+        line1: dto.address?.line1,
+        line2: dto.address?.line2,
+        postalCode: dto.address?.postalCode,
+        state: dto.address?.state,
+        userId: user.id,
+      });
+      address = await this.addressRepository.save(address);
+      snapshottedUser.address = EntityMapper.map(address, UserAddressSnapshotDto);
+    }
+
     await this.outboxService.add(new CreateCustomerJobPayload(snapshottedUser));
 
     this.logger.debug('User created', {
       idempotencyKey,
-      userId: savedUser.id,
+      userId: user.id,
     });
 
     return userMapped;
@@ -297,14 +324,14 @@ export class UsersService extends BaseService implements IUsersService {
 
   async adminFindAll(
     query: UserQueryDto,
-  ): Promise<PagOffsetResultDto<UserResponseDto>> {
-    const result = await this.userRepository.filter(query);
+    cursor?: CursorParams,
+  ): Promise<PagCursorResultDto<UserResponseDto>> {
+    const result = await this.userRepository.filter({ ...query, cursor });
 
-    const resultMapped = new PagOffsetResultDto<UserResponseDto>(
-      result.meta.total,
-      result.meta.page,
-      result.meta.limit,
+    const resultMapped = new PagCursorResultDto<UserResponseDto>(
       EntityMapper.mapArray(result.items, UserResponseDto),
+      result.nextCursor,
+      result.hasMore,
     );
 
     this.logger.debug(`Retrieved ${result.items.length} users`);
@@ -315,15 +342,12 @@ export class UsersService extends BaseService implements IUsersService {
   async adminFindOne(id: string): Promise<UserResponseDto> {
     const user = await this.getUserOrThrow(id);
 
-    const customer = await this.ensureCustomersRetrieve(user.id, user.customerId);
-
-    this.logger.debug('Retrieved customer data from payments gateway', {
-      userId: user.id,
-      customerId: user.customerId,
+    const address = await this.addressRepository.findOne({
+      where: { userId: user.id },
     });
 
     const userMapped = EntityMapper.map(user, UserResponseDto);
-    userMapped.address = EntityMapper.map(customer!.address, UserAddressResponseDto);
+    userMapped.address = EntityMapper.map(address, UserAddressResponseDto);
 
     this.logger.debug('User found', { id: userMapped.id });
 
@@ -345,7 +369,7 @@ export class UsersService extends BaseService implements IUsersService {
     dto: UpdateUserDto,
     requestUser: RequestUser,
   ): Promise<UserResponseDto> {
-    const user = await this.getUserOrThrow(id);
+    let user = await this.getUserOrThrow(id);
 
     const oldEmail = user.email;
     const newEmail = dto.email;
@@ -362,15 +386,39 @@ export class UsersService extends BaseService implements IUsersService {
     await this.assertWriteAccess(user, requestUser);
 
     Object.assign(user, dto);
-    const updatedUser = await this.userRepository.save(user);
+    user = await this.userRepository.save(user);
+    const snapshottedUser = EntityMapper.map(user, UserSnapshotDto);
 
-    const snapshottedUser = EntityMapper.map(updatedUser, UserSnapshotDto);
-    snapshottedUser.address = EntityMapper.map(dto.address, UserAddressSnapshotDto);
+    if (dto.address) {
+      let address = await this.addressRepository.findOne({
+        where: { userId: user.id },
+      });
+      if (address) {
+        Object.assign(address, dto.address);
+        address = await this.addressRepository.save(address);
+      } else {
+        address = this.addressRepository.createEntity({
+          city: dto.address?.city,
+          country: dto.address?.country,
+          line1: dto.address?.line1,
+          line2: dto.address?.line2,
+          postalCode: dto.address?.postalCode,
+          state: dto.address?.state,
+          userId: user.id,
+        });
+        address = await this.addressRepository.save(address);
+      }
+      snapshottedUser.address = EntityMapper.map(
+        dto.address,
+        UserAddressSnapshotDto,
+      );
+    }
+
     await this.outboxService.add(new UpdateCustomerJobPayload(snapshottedUser));
 
-    this.logger.debug(`User updated successfully: ${updatedUser.id}`);
+    this.logger.debug(`User updated successfully: ${user.id}`);
 
-    return EntityMapper.map(updatedUser, UserResponseDto);
+    return EntityMapper.map(user, UserResponseDto);
   }
 
   adminRemove(id: string, requestUser: RequestUser): Promise<void> {
@@ -430,29 +478,6 @@ export class UsersService extends BaseService implements IUsersService {
 
     if (requestUserRoleLevel <= targetRoleLevel) {
       throw new ForbiddenException(template(I18N_USERS.ERRORS.ROLE_CHANGE_DENIED));
-    }
-  }
-
-  private async ensureCustomersRetrieve(
-    userId: string,
-    customerId: string,
-  ): Promise<GatewayCustomerResponseDto> {
-    try {
-      const customer =
-        await this.paymentsGatewayService.customers.retrieve(customerId);
-      return customer;
-    } catch (e) {
-      const error = ensureError(e);
-      this.logger.error(
-        '[CRITICAL] Failed to retrieve customer data from payments gateway',
-        {
-          userId: userId,
-          customerId: customerId,
-          errorMessage: error.message,
-          stack: error.stack,
-        },
-      );
-      throw error;
     }
   }
 

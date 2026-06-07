@@ -1,13 +1,14 @@
-import { PagOffsetResultDto } from '@/shared/dto/pag-offset-result.dto';
-import { CreateOrderDto } from '../dto/create-order.dto';
-import { UpdateOrderDto } from '../dto/update-order.dto';
-import { OrderQueryDto } from '../dto/order-query.dto';
-import { ShipOrderDto } from '../dto/ship-order.dto';
-import { OrderByUserQueryDto } from '../dto/order-by-user-query.dto';
-import { OrderResponseDto, PublicOrderResponseDto } from '../dto/order-response.dto';
+import { PagCursorResultDto } from '@/shared/dto/pag-cursor-result.dto';
+import type { CursorParams } from '@/shared/types/cursor-params.type';
 import type { RequestUser } from '@/modules/auth/interfaces/request-user.interface';
 import { IBaseService } from '@/shared/services/base-service.interface';
+import { CreateOrderDto } from '../dto/create-order.dto';
+import { OrderByUserQueryDto } from '../dto/order-by-user-query.dto';
 import { UpdateOrderPaymentDto } from '../dto/order-payment.dto';
+import { OrderQueryDto } from '../dto/order-query.dto';
+import { OrderResponseDto, PublicOrderResponseDto } from '../dto/order-response.dto';
+import { ShipOrderDto } from '../dto/ship-order.dto';
+import { UpdateOrderDto } from '../dto/update-order.dto';
 
 export interface IOrdersService extends IBaseService {
   publicCreate(
@@ -19,7 +20,8 @@ export interface IOrdersService extends IBaseService {
   publicFindByUser(
     queryDto: OrderByUserQueryDto,
     userId: string,
-  ): Promise<PagOffsetResultDto<PublicOrderResponseDto>>;
+    cursor?: CursorParams,
+  ): Promise<PagCursorResultDto<PublicOrderResponseDto>>;
 
   publicFindOne(
     id: string,
@@ -28,7 +30,8 @@ export interface IOrdersService extends IBaseService {
 
   adminFindAll(
     queryDto: OrderQueryDto,
-  ): Promise<PagOffsetResultDto<OrderResponseDto>>;
+    cursor?: CursorParams,
+  ): Promise<PagCursorResultDto<OrderResponseDto>>;
 
   adminFindOne(id: string): Promise<OrderResponseDto>;
 

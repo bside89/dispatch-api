@@ -1,29 +1,32 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { PublicOrdersController } from './public-orders.controller';
-import { AdminOrdersController } from './admin-orders.controller';
-import { OrdersService } from './orders.service';
-import { Order } from './entities/order.entity';
-import { OrderItem } from './entities/order-item.entity';
-import { OrderJobHandlerFactory } from './factories';
-import { OrderProcessor } from './processors/order.processor';
-import { OrderRepository } from './repositories/order.repository';
-import { OrderItemRepository } from './repositories/order-item.repository';
-import { CancelOrderJobStrategy, ProcessOrderJobStrategy } from './strategies';
-import { RefundOrderJobStrategy } from './strategies/refund-order-job.strategy';
-import { PaymentGatewaysModule } from '../payment-gateways/payment-gateways.module';
 import { ItemsModule } from '../items/items.module';
-import { OrderMessageFactory } from './factories/order-message.factory';
+import { PaymentsModule } from '../payments/payments.module';
+import { AdminOrdersController } from './admin-orders.controller';
 import {
   ORDERS_SERVICE,
-  ORDER_REPOSITORY,
   ORDER_ITEM_REPOSITORY,
+  ORDER_REPOSITORY,
 } from './constants/orders.token';
+import { OrderItem } from './entities/order-item.entity';
+import { Order } from './entities/order.entity';
+import { OrdersService } from './orders.service';
+import { OrderJobHandlerFactory } from './providers/factories';
+import { OrderMessageFactory } from './providers/factories/order-message.factory';
+import { OrderProcessor } from './providers/processors/order.processor';
+import { OrderItemRepository } from './providers/repositories/order-item.repository';
+import { OrderRepository } from './providers/repositories/order.repository';
+import {
+  CancelOrderJobStrategy,
+  ProcessOrderJobStrategy,
+} from './providers/strategies';
+import { RefundOrderJobStrategy } from './providers/strategies/refund-order-job.strategy';
+import { PublicOrdersController } from './public-orders.controller';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Order, OrderItem]),
-    PaymentGatewaysModule,
+    PaymentsModule,
     ItemsModule,
   ],
   controllers: [PublicOrdersController, AdminOrdersController],

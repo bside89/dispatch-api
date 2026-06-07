@@ -1,72 +1,37 @@
-import { PaymentGatewaysService } from '@/modules/payment-gateways/payment-gateways.service';
+import { IPaymentsGatewayAdapter } from '@/modules/payments/interfaces/payments-gateway-adapter.interface';
 
 const makeCustomer = (id: string) => ({
   id,
   email: 'test@test.com',
   name: 'Test Customer',
-  metadata: {},
-  address: null,
+  metadata: { userId: 'user_test' },
+  address: undefined,
 });
 
-type PaymentsGatewayServiceMock = {
-  customers: {
-    create: PaymentGatewaysService['customers']['create'];
-    update: PaymentGatewaysService['customers']['update'];
-    delete: PaymentGatewaysService['customers']['delete'];
-    list: PaymentGatewaysService['customers']['list'];
-    retrieve: PaymentGatewaysService['customers']['retrieve'];
-  };
-  payments: {
-    create: PaymentGatewaysService['payments']['create'];
-    retrieve: PaymentGatewaysService['payments']['retrieve'];
-  };
-  refunds: {
-    create: PaymentGatewaysService['refunds']['create'];
-    retrieve: PaymentGatewaysService['refunds']['retrieve'];
-  };
-  webhooks: {
-    constructWebhookEvent: PaymentGatewaysService['webhooks']['constructWebhookEvent'];
-  };
-};
+const makePayment = (id: string) => ({
+  id,
+  status: 'requires_confirmation',
+  secret: 'pi_test_mock_secret',
+});
 
-export const paymentsGatewayServiceMock: PaymentsGatewayServiceMock = {
-  customers: {
-    create: jest.fn(async () => makeCustomer('cus_test_create')),
-    update: jest.fn(async () => makeCustomer('cus_test_update')),
-    delete: jest.fn(async () => undefined),
-    list: jest.fn(async () => [makeCustomer('cus_test_list')]),
-    retrieve: jest.fn(async () => makeCustomer('cus_test_retrieve')),
-  },
-  payments: {
-    create: jest.fn(async () => ({
-      id: 'pi_test_mock',
-      status: 'requires_confirmation',
-      clientSecret: 'pi_test_mock_secret',
-      currency: 'brl',
-      amount: 0,
-      livemode: false,
-    })),
-    retrieve: jest.fn(async () => ({
-      id: 'pi_test_mock',
-      status: 'requires_confirmation',
-      clientSecret: 'pi_test_mock_secret',
-      currency: 'brl',
-      amount: 0,
-      livemode: false,
-    })),
-  },
-  refunds: {
-    create: jest.fn(async () => undefined),
-    retrieve: jest.fn(async () => undefined),
-  },
-  webhooks: {
-    constructWebhookEvent: jest.fn(() => ({
-      type: 'UNKNOWN' as never,
-      data: {
-        externalId: 'evt_test_mock',
-        status: 'unknown',
-        metadata: {},
-      },
-    })),
-  },
-};
+const makeRefund = (refundId: string) => ({
+  refundId,
+  paymentId: 'pi_test_mock',
+  amount: 0,
+});
+
+export const paymentsGatewayServiceMock = {
+  createCustomer: jest.fn().mockResolvedValue(makeCustomer('cus_test_create')),
+  findAllCustomers: jest.fn().mockResolvedValue({
+    items: [makeCustomer('cus_test_list')],
+    nextCursor: undefined,
+    hasMore: false,
+  }),
+  findOneCustomer: jest.fn().mockResolvedValue(makeCustomer('cus_test_retrieve')),
+  updateCustomer: jest.fn().mockResolvedValue(makeCustomer('cus_test_update')),
+  deleteCustomer: jest.fn().mockResolvedValue(undefined),
+  createPayment: jest.fn().mockResolvedValue(makePayment('pi_test_create')),
+  findOnePayment: jest.fn().mockResolvedValue(makePayment('pi_test_retrieve')),
+  createRefundPayment: jest.fn().mockResolvedValue(makeRefund('re_test_create')),
+  findOneRefundPayment: jest.fn().mockResolvedValue(makeRefund('re_test_retrieve')),
+} as jest.Mocked<IPaymentsGatewayAdapter>;

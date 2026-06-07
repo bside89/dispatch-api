@@ -1,55 +1,50 @@
+import { PagCursorResultDto } from '@/shared/dto/pag-cursor-result.dto';
+import { CursorParamsPipe } from '@/shared/pipes/cursor-params.pipe';
+import type { CursorParams } from '@/shared/types/cursor-params.type';
 import {
   Controller,
   Get,
   Inject,
   Param,
-  Query,
   ParseUUIDPipe,
+  Query,
 } from '@nestjs/common';
 import {
-  ApiTags,
-  ApiOperation,
-  ApiParam,
   ApiNotFoundResponse,
   ApiOkResponse,
-  ApiSecurity,
+  ApiOperation,
+  ApiParam,
   ApiQuery,
+  ApiSecurity,
+  ApiTags,
 } from '@nestjs/swagger';
-import type { IItemsService } from './interfaces/items-service.interface';
 import { ITEMS_SERVICE } from './constants/items.token';
 import { PublicItemQueryDto } from './dto/item-query.dto';
 import { PublicItemResponseDto } from './dto/item-response.dto';
-import { PagOffsetResultDto } from '@/shared/dto/pag-offset-result.dto';
-import { BaseController } from '@/shared/controllers/base.controller';
-import { GetUser } from '@/shared/decorators/get-user.decorator';
-import { ItemMessageFactory } from './factories/item-message.factory';
-import type { RequestUser } from '../auth/interfaces/request-user.interface';
+import type { IItemsService } from './interfaces/items-service.interface';
 
 @Controller({ path: 'v1/items', version: '1' })
 @ApiTags('items')
 @ApiSecurity('bearer')
-export class PublicItemsController extends BaseController {
-  constructor(
-    @Inject(ITEMS_SERVICE) private readonly itemsService: IItemsService,
-    private readonly messages: ItemMessageFactory,
-  ) {
-    super(PublicItemsController.name);
-  }
+export class PublicItemsController {
+  constructor(@Inject(ITEMS_SERVICE) private readonly itemsService: IItemsService) {}
 
   @Get()
   @ApiOperation({
     summary: 'Get all items',
-    description: 'Retrieve a paginated list of items with optional filtering',
+    description: 'Retrieve a cursor-paginated list of items with optional filtering',
   })
   @ApiOkResponse({
     description: 'Items successfully retrieved',
-    type: PagOffsetResultDto<PublicItemResponseDto>,
+    type: PagCursorResultDto,
   })
   @ApiQuery({ type: () => PublicItemQueryDto })
-  async findAll(@Query() queryDto: PublicItemQueryDto) {
-    const result = await this.itemsService.publicFindAll(queryDto);
-
-    return this.paginateOffset(result);
+  @ApiQuery({ name: 'cursor', required: false, type: String })
+  findAll(
+    @Query() queryDto: PublicItemQueryDto,
+    @Query('cursor', CursorParamsPipe) cursor: CursorParams,
+  ) {
+    return this.itemsService.publicFindAll(queryDto, cursor);
   }
 
   @Get(':id')
@@ -64,13 +59,7 @@ export class PublicItemsController extends BaseController {
     type: PublicItemResponseDto,
   })
   @ApiNotFoundResponse({ description: 'Item not found' })
-  async findOne(
-    @Param('id', ParseUUIDPipe) id: string,
-    @GetUser() user: RequestUser,
-  ) {
-    const result = await this.itemsService.publicFindOne(id);
-
-    const message = await this.messages.responses.findOne(user.language);
-    return this.success(result, message);
+  findOne(@Param('id', ParseUUIDPipe) id: string) {
+    return this.itemsService.publicFindOne(id);
   }
 }

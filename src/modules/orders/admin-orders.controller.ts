@@ -1,69 +1,68 @@
+import { ROLE_GROUPS } from '@/shared/constants/role-groups.constant';
+import { ErrorResponseDto } from '@/shared/dto/error-response.dto';
+import { PagCursorResultDto } from '@/shared/dto/pag-cursor-result.dto';
+import { CursorParamsPipe } from '@/shared/pipes/cursor-params.pipe';
+import type { CursorParams } from '@/shared/types/cursor-params.type';
 import {
-  Controller,
-  Get,
   Body,
-  Patch,
-  Param,
+  Controller,
   Delete,
-  Query,
-  ParseUUIDPipe,
+  Get,
   HttpCode,
   HttpStatus,
   Inject,
+  Param,
+  ParseUUIDPipe,
+  Patch,
+  Query,
 } from '@nestjs/common';
 import {
-  ApiTags,
-  ApiOperation,
-  ApiParam,
-  ApiBody,
   ApiBadRequestResponse,
+  ApiBody,
   ApiNotFoundResponse,
   ApiOkResponse,
-  ApiSecurity,
+  ApiOperation,
+  ApiParam,
+  ApiQuery,
   ApiResponse,
+  ApiSecurity,
+  ApiTags,
 } from '@nestjs/swagger';
-import type { IOrdersService } from './interfaces/orders-service.interface';
-import { ORDERS_SERVICE } from './constants/orders.token';
-import { UpdateOrderDto } from './dto/update-order.dto';
-import { ShipOrderDto } from './dto/ship-order.dto';
-import { OrderQueryDto } from './dto/order-query.dto';
-import { Roles } from '../auth/decorators/roles.decorator';
-import { ROLE_GROUPS } from '@/shared/constants/role-groups.constant';
-import { PagOffsetResultDto } from '@/shared/dto/pag-offset-result.dto';
-import { GetUser } from '@/shared/decorators/get-user.decorator';
-import { OrderResponseDto } from './dto/order-response.dto';
-import { BaseController } from '@/shared/controllers/base.controller';
-import { ErrorResponseDto } from '@/shared/dto/error-response.dto';
-import type { RequestUser } from '../auth/interfaces/request-user.interface';
-import { OrderMessageFactory } from './factories/order-message.factory';
 import { SkipThrottle } from '@nestjs/throttler';
+import { Roles } from '../auth/decorators/roles.decorator';
+import { ORDERS_SERVICE } from './constants/orders.token';
+import { OrderQueryDto } from './dto/order-query.dto';
+import { OrderResponseDto } from './dto/order-response.dto';
+import { ShipOrderDto } from './dto/ship-order.dto';
+import { UpdateOrderDto } from './dto/update-order.dto';
+import type { IOrdersService } from './interfaces/orders-service.interface';
 
 @Controller({ path: 'v1/admin/orders', version: '1' })
 @ApiTags('orders-admin')
 @ApiSecurity('bearer')
-export class AdminOrdersController extends BaseController {
+export class AdminOrdersController {
   constructor(
     @Inject(ORDERS_SERVICE) private readonly ordersService: IOrdersService,
-    private readonly messages: OrderMessageFactory,
-  ) {
-    super(AdminOrdersController.name);
-  }
+  ) {}
 
   @Get()
   @Roles(...ROLE_GROUPS.ORDER.FINANCIAL)
   @SkipThrottle()
   @ApiOperation({
     summary: 'Get all orders',
-    description: 'Retrieve a paginated list of orders with optional filtering',
+    description:
+      'Retrieve a cursor-paginated list of orders with optional filtering',
   })
   @ApiOkResponse({
     description: 'Orders successfully retrieved',
-    type: PagOffsetResultDto<OrderResponseDto>,
+    type: PagCursorResultDto,
   })
-  async findAll(@Query() queryDto: OrderQueryDto) {
-    const result = await this.ordersService.adminFindAll(queryDto);
-
-    return this.paginateOffset(result);
+  @ApiQuery({ name: 'cursor', required: false, type: String })
+  findAll(
+    @Query() queryDto: OrderQueryDto,
+    @Query('cursor', CursorParamsPipe) cursor: CursorParams,
+  ) {
+    return this.ordersService.adminFindAll(queryDto, cursor);
   }
 
   @Get(':id')
@@ -84,14 +83,8 @@ export class AdminOrdersController extends BaseController {
   @ApiNotFoundResponse({
     description: 'Order not found',
   })
-  async findOne(
-    @Param('id', ParseUUIDPipe) id: string,
-    @GetUser() user: RequestUser,
-  ) {
-    const result = await this.ordersService.adminFindOne(id);
-
-    const message = await this.messages.responses.findOne(user.language);
-    return this.success(result, message);
+  findOne(@Param('id', ParseUUIDPipe) id: string) {
+    return this.ordersService.adminFindOne(id);
   }
 
   @Patch(':id')
@@ -118,18 +111,11 @@ export class AdminOrdersController extends BaseController {
     type: UpdateOrderDto,
     description: 'Order update data',
   })
-  async update(
+  update(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() updateOrderDto: UpdateOrderDto,
-    @GetUser() user: RequestUser,
   ) {
-    const result = await this.ordersService.adminUpdate(id, updateOrderDto);
-
-    const message = await this.messages.responses.update(
-      user.language,
-      result.status,
-    );
-    return this.success(result, message);
+    return this.ordersService.adminUpdate(id, updateOrderDto);
   }
 
   @Delete(':id')
@@ -155,14 +141,8 @@ export class AdminOrdersController extends BaseController {
     description: 'Invalid UUID format',
     type: ErrorResponseDto,
   })
-  async remove(
-    @Param('id', ParseUUIDPipe) id: string,
-    @GetUser() user: RequestUser,
-  ) {
+  async remove(@Param('id', ParseUUIDPipe) id: string) {
     await this.ordersService.adminRemove(id);
-
-    const message = await this.messages.responses.remove(user.language);
-    return this.success({}, message);
   }
 
   @Patch(':id/ship')
@@ -184,15 +164,8 @@ export class AdminOrdersController extends BaseController {
   @ApiBadRequestResponse({
     description: 'Order is not in a valid status for shipping',
   })
-  async ship(
-    @Param('id', ParseUUIDPipe) id: string,
-    @Body() shipOrderDto: ShipOrderDto,
-    @GetUser() user: RequestUser,
-  ) {
-    const result = await this.ordersService.ship(id, shipOrderDto);
-
-    const message = await this.messages.responses.ship(user.language);
-    return this.success(result, message);
+  ship(@Param('id', ParseUUIDPipe) id: string, @Body() shipOrderDto: ShipOrderDto) {
+    return this.ordersService.ship(id, shipOrderDto);
   }
 
   @Patch(':id/deliver')
@@ -211,14 +184,8 @@ export class AdminOrdersController extends BaseController {
   @ApiBadRequestResponse({
     description: 'Order is not in a valid status for delivery',
   })
-  async deliver(
-    @Param('id', ParseUUIDPipe) id: string,
-    @GetUser() user: RequestUser,
-  ) {
-    const result = await this.ordersService.deliver(id);
-
-    const message = await this.messages.responses.deliver(user.language);
-    return this.success(result, message);
+  deliver(@Param('id', ParseUUIDPipe) id: string) {
+    return this.ordersService.deliver(id);
   }
 
   @Patch(':id/cancel')
@@ -236,14 +203,8 @@ export class AdminOrdersController extends BaseController {
   @ApiBadRequestResponse({
     description: 'Order is not in a valid status for cancellation',
   })
-  async cancel(
-    @Param('id', ParseUUIDPipe) id: string,
-    @GetUser() user: RequestUser,
-  ) {
+  async cancel(@Param('id', ParseUUIDPipe) id: string) {
     await this.ordersService.cancel(id);
-
-    const message = await this.messages.responses.cancel(user.language);
-    return this.success({}, message);
   }
 
   @Patch(':id/refund')
@@ -261,13 +222,7 @@ export class AdminOrdersController extends BaseController {
   @ApiBadRequestResponse({
     description: 'Order is not in a valid status for refunding',
   })
-  async refund(
-    @Param('id', ParseUUIDPipe) id: string,
-    @GetUser() user: RequestUser,
-  ) {
+  async refund(@Param('id', ParseUUIDPipe) id: string) {
     await this.ordersService.refund(id);
-
-    const message = await this.messages.responses.refund(user.language);
-    return this.success({}, message);
   }
 }

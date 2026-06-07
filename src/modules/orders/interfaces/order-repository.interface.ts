@@ -1,8 +1,8 @@
+import { PagCursorResultDto } from '@/shared/dto/pag-cursor-result.dto';
 import { IBaseRepository } from '@/shared/repositories/base-repository.interface';
-import { PagOffsetResultDto } from '@/shared/dto/pag-offset-result.dto';
+import { OrderCursorQueryDto } from '../dto/order-cursor-query.dto';
 import { Order } from '../entities/order.entity';
-import { OrderQueryDto } from '../dto/order-query.dto';
 
 export interface IOrderRepository extends IBaseRepository<Order> {
-  filter(query: Partial<OrderQueryDto>): Promise<PagOffsetResultDto<Order>>;
+  filter(query: OrderCursorQueryDto): Promise<PagCursorResultDto<Order>>;
 }

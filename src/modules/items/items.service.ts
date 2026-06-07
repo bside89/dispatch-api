@@ -10,7 +10,8 @@ import { CreateItemDto } from './dto/create-item.dto';
 import { UpdateItemDto } from './dto/update-item.dto';
 import { ItemQueryDto, PublicItemQueryDto } from './dto/item-query.dto';
 import { ItemResponseDto, PublicItemResponseDto } from './dto/item-response.dto';
-import { PagOffsetResultDto } from '@/shared/dto/pag-offset-result.dto';
+import { PagCursorResultDto } from '@/shared/dto/pag-cursor-result.dto';
+import type { CursorParams } from '@/shared/types/cursor-params.type';
 import { EntityMapper } from '@/shared/utils/entity-mapper.utils';
 import { Item } from './entities/item.entity';
 import type { ICacheService } from '@/shared/modules/cache/interfaces/cache-service.interface';
@@ -42,11 +43,12 @@ export class ItemsService extends BaseService implements IItemsService {
 
   async publicFindAll(
     query: PublicItemQueryDto,
-  ): Promise<PagOffsetResultDto<PublicItemResponseDto>> {
-    const cacheKey = ITEM_KEY.CACHE_FIND_ALL(query);
+    cursor?: CursorParams,
+  ): Promise<PagCursorResultDto<PublicItemResponseDto>> {
+    const cacheKey = ITEM_KEY.CACHE_FIND_ALL({ ...query, cursor });
     const cachedResult = await runAndIgnoreError(
       () =>
-        this.cacheService.get<PagOffsetResultDto<PublicItemResponseDto>>(cacheKey),
+        this.cacheService.get<PagCursorResultDto<PublicItemResponseDto>>(cacheKey),
       `fetching items list from cache with key: ${cacheKey}`,
       this.logger,
     );
@@ -55,12 +57,11 @@ export class ItemsService extends BaseService implements IItemsService {
       return cachedResult;
     }
 
-    const result = await this.itemRepository.filter(query);
-    const resultMapped = new PagOffsetResultDto<PublicItemResponseDto>(
-      result.meta.total,
-      result.meta.page,
-      result.meta.limit,
+    const result = await this.itemRepository.filter({ ...query, cursor });
+    const resultMapped = new PagCursorResultDto<PublicItemResponseDto>(
       EntityMapper.mapArray(result.items, PublicItemResponseDto),
+      result.nextCursor,
+      result.hasMore,
     );
 
     await runAndIgnoreError(
@@ -150,10 +151,11 @@ export class ItemsService extends BaseService implements IItemsService {
 
   async adminFindAll(
     query: ItemQueryDto,
-  ): Promise<PagOffsetResultDto<ItemResponseDto>> {
-    const cacheKey = ITEM_KEY.CACHE_FIND_ALL(query);
+    cursor?: CursorParams,
+  ): Promise<PagCursorResultDto<ItemResponseDto>> {
+    const cacheKey = ITEM_KEY.CACHE_FIND_ALL({ ...query, cursor });
     const cachedResult = await runAndIgnoreError(
-      () => this.cacheService.get<PagOffsetResultDto<ItemResponseDto>>(cacheKey),
+      () => this.cacheService.get<PagCursorResultDto<ItemResponseDto>>(cacheKey),
       `fetching items list from cache with key: ${cacheKey}`,
       this.logger,
     );
@@ -162,12 +164,11 @@ export class ItemsService extends BaseService implements IItemsService {
       return cachedResult;
     }
 
-    const result = await this.itemRepository.filter(query);
-    const resultMapped = new PagOffsetResultDto<ItemResponseDto>(
-      result.meta.total,
-      result.meta.page,
-      result.meta.limit,
+    const result = await this.itemRepository.filter({ ...query, cursor });
+    const resultMapped = new PagCursorResultDto<ItemResponseDto>(
       EntityMapper.mapArray(result.items, ItemResponseDto),
+      result.nextCursor,
+      result.hasMore,
     );
 
     await runAndIgnoreError(

@@ -1,25 +1,25 @@
 /*eslint-disable @typescript-eslint/no-explicit-any */
-import { Test, TestingModule } from '@nestjs/testing';
 import { AppModule } from '@/app.module';
-import { DataSource } from 'typeorm';
-import Redis from 'ioredis';
-import { REDIS_CLIENT } from '@/shared/modules/cache/constants/redis-client.token';
-import { IUsersService } from '@/modules/users/interfaces/users-service.interface';
-import { USERS_SERVICE } from '@/modules/users/constants/users.token';
-import { IOrdersService } from '@/modules/orders/interfaces/orders-service.interface';
-import { ORDERS_SERVICE } from '@/modules/orders/constants/orders.token';
-import { IItemsService } from '@/modules/items/interfaces/items-service.interface';
 import { ITEMS_SERVICE } from '@/modules/items/constants/items.token';
-import { IOutboxRepository } from '@/shared/modules/outbox/interfaces/outbox-repository.interface';
+import { IItemsService } from '@/modules/items/interfaces/items-service.interface';
+import { ORDERS_SERVICE } from '@/modules/orders/constants/orders.token';
+import { IOrdersService } from '@/modules/orders/interfaces/orders-service.interface';
+import { OrderProcessor } from '@/modules/orders/providers/processors/order.processor';
+import { ProcessOrderJobStrategy } from '@/modules/orders/providers/strategies/process-order-job.strategy';
+import { PAYMENTS_GATEWAY_ADAPTER } from '@/modules/payments/constants/payments.token';
+import { USERS_SERVICE } from '@/modules/users/constants/users.token';
+import { IUsersService } from '@/modules/users/interfaces/users-service.interface';
+import { REDIS_CLIENT } from '@/shared/modules/cache/constants/redis-client.token';
 import { OUTBOX_REPOSITORY } from '@/shared/modules/outbox/constants/outbox.token';
+import { IOutboxRepository } from '@/shared/modules/outbox/interfaces/outbox-repository.interface';
+import { INestApplication } from '@nestjs/common';
+import { Test, TestingModule } from '@nestjs/testing';
+import { Job } from 'bullmq';
+import Redis from 'ioredis';
+import { DataSource } from 'typeorm';
 import { cleanDatabase, cleanRedis } from './utils/database-cleaner';
 import { paymentsGatewayServiceMock } from './utils/mock-payments-gateway-service';
-import { INestApplication } from '@nestjs/common';
-import { Job } from 'bullmq';
 import { waitFor } from './utils/wait-for';
-import { ProcessOrderJobStrategy } from '@/modules/orders/strategies/process-order-job.strategy';
-import { OrderProcessor } from '@/modules/orders/processors/order.processor';
-import { PAYMENTS_GATEWAY_SERVICE } from '@/modules/payment-gateways/constants/payments-gateway.token';
 
 // Mock the delay function to resolve almost instantly.
 // This eliminates the simulated processing delays (1s-3s) used by
@@ -53,7 +53,7 @@ describe('Orders (Integration)', () => {
     const module: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
     })
-      .overrideProvider(PAYMENTS_GATEWAY_SERVICE)
+      .overrideProvider(PAYMENTS_GATEWAY_ADAPTER)
       .useValue(paymentsGatewayServiceMock)
       .compile();
 
@@ -199,12 +199,8 @@ describe('Orders (Integration)', () => {
         'idempotency-key-query-order-two',
       );
 
-      const result = await ordersService.publicFindByUser(
-        { page: 1, limit: 10 },
-        firstUser.id,
-      );
+      const result = await ordersService.publicFindByUser({}, firstUser.id);
 
-      expect(result.meta.total).toBe(1);
       expect(result.items).toHaveLength(1);
       expect(result.items[0].id).toBe(firstOrder.id);
     });

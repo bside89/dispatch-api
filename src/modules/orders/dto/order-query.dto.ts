@@ -1,9 +1,8 @@
-import { IsOptional, IsEnum, IsDateString, IsUUID } from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
+import { IsDateString, IsEnum, IsOptional, IsUUID } from 'class-validator';
 import { OrderStatus } from '../enums/order-status.enum';
-import { BaseQueryDto } from '@/shared/dto/base-query.dto';
 
-export class OrderQueryDto extends BaseQueryDto {
+export class OrderQueryDto {
   @ApiPropertyOptional({
     description: 'User ID to filter orders',
     example: '550e8400-e29b-41d4-a716-446655440001',

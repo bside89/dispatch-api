@@ -9,6 +9,7 @@ import {
   ORDER_QUEUE,
   PAYMENT_QUEUE,
   EFFECTS_QUEUE,
+  USER_QUEUE,
 } from '@/shared/constants/queues.token';
 import { OUTBOX_SERVICE, OUTBOX_REPOSITORY } from './constants/outbox.token';
 import { EffectsModule } from '@/modules/effects/effects.module';
@@ -29,6 +30,11 @@ import { EffectsModule } from '@/modules/effects/effects.module';
     }),
     BullModule.registerQueue({
       name: EFFECTS_QUEUE,
+      defaultJobOptions: bullmqDefaultJobOptions,
+      forceDisconnectOnShutdown: true,
+    }),
+    BullModule.registerQueue({
+      name: USER_QUEUE,
       defaultJobOptions: bullmqDefaultJobOptions,
       forceDisconnectOnShutdown: true,
     }),

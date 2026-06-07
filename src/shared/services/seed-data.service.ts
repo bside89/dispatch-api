@@ -1,14 +1,14 @@
-import { Inject, Injectable } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import { DataSource } from 'typeorm';
 import { Item } from '@/modules/items/entities/item.entity';
-import { PAYMENTS_GATEWAY_SERVICE } from '@/modules/payment-gateways/constants/payments-gateway.token';
-import { GatewayCreateCustomerDto } from '@/modules/payment-gateways/dto/gateway-customer.dto';
-import type { IPaymentGatewaysService } from '@/modules/payment-gateways/interfaces/payment-gateways-service.interface';
+import { PAYMENTS_SERVICE } from '@/modules/payments/constants/payments.token';
+import { CreateCustomerDto } from '@/modules/payments/dto/create-customer.dto';
+import type { IPaymentsService } from '@/modules/payments/interfaces/payments-service.interface';
 import { User } from '@/modules/users/entities/user.entity';
 import { UserRole } from '@/shared/enums/user-role.enum';
 import { HashAdapter } from '@/shared/utils/hash-adapter.utils';
+import { Inject, Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { Logger } from 'nestjs-pino';
+import { DataSource } from 'typeorm';
 
 const MOCK_ADMIN_USER = {
   id: 'c6d77b5d-1d3f-4c91-9e9d-9b7a8f7c4b21',
@@ -18,17 +18,18 @@ const MOCK_ADMIN_USER = {
   role: UserRole.ADMIN,
 } as const;
 
-const MOCK_ADMIN_CUSTOMER: GatewayCreateCustomerDto = {
+const MOCK_ADMIN_CUSTOMER: CreateCustomerDto = {
+  userId: MOCK_ADMIN_USER.id,
   name: MOCK_ADMIN_USER.name,
   email: MOCK_ADMIN_USER.email,
-  address: {
-    line1: 'Av. Paulista, 1000',
-    line2: 'Apto 101',
-    city: 'São Paulo',
-    state: 'SP',
-    postalCode: '01000-000',
-    country: 'BR',
-  },
+  // address: {
+  //   line1: 'Av. Paulista, 1000',
+  //   line2: 'Apto 101',
+  //   city: 'São Paulo',
+  //   state: 'SP',
+  //   postalCode: '01000-000',
+  //   country: 'BR',
+  // },
 };
 
 const MOCK_ITEMS = [
@@ -71,8 +72,8 @@ export class SeedDataService {
     private readonly configService: ConfigService,
     private readonly dataSource: DataSource,
     private readonly logger: Logger,
-    @Inject(PAYMENTS_GATEWAY_SERVICE)
-    private readonly paymentsGatewayService: IPaymentGatewaysService,
+    @Inject(PAYMENTS_SERVICE)
+    private readonly paymentsService: IPaymentsService,
   ) {}
 
   async run(): Promise<void> {
@@ -147,20 +148,15 @@ export class SeedDataService {
   }
 
   private async ensureMockAdminCustomer(): Promise<string> {
-    const customers = await this.paymentsGatewayService.customers.list();
-    const existingCustomer = customers.find(
-      (customer) => customer.email === MOCK_ADMIN_USER.email,
+    let customer = await this.paymentsService.findCustomerByUserId(
+      MOCK_ADMIN_USER.id,
     );
-
-    if (existingCustomer) {
-      return existingCustomer.id;
+    if (!customer) {
+      customer = await this.paymentsService.createCustomer(
+        MOCK_ADMIN_CUSTOMER,
+        `seed-mock-admin-user-${MOCK_ADMIN_USER.id}`,
+      );
     }
-
-    const createdCustomer = await this.paymentsGatewayService.customers.create(
-      MOCK_ADMIN_CUSTOMER,
-      `seed-mock-admin-user-${MOCK_ADMIN_USER.id}`,
-    );
-
-    return createdCustomer.id;
+    return customer.id;
   }
 }

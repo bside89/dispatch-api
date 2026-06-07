@@ -7,14 +7,18 @@ import { randomUUID } from 'crypto';
 import { Queue } from 'bullmq';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Cron, CronExpression } from '@nestjs/schedule';
-import { ORDER_QUEUE, PAYMENT_QUEUE } from '@/shared/constants/queues.token';
+import {
+  ORDER_QUEUE,
+  PAYMENT_QUEUE,
+  EFFECTS_QUEUE,
+  USER_QUEUE,
+} from '@/shared/constants/queues.token';
 import { ensureError } from '@/shared/utils/functions.utils';
 import { IOutboxService } from './interfaces/outbox-service.interface';
 import { BaseService } from '@/shared/services/base.service';
 import { DbGuardService } from '../db-guard/db-guard.service';
 import { BaseOutboxJobPayload } from './payloads/outbox.payload';
 import { OutboxDispatcher } from './helpers/outbox-dispatcher';
-import { EFFECTS_QUEUE } from '@/shared/constants/queues.token';
 
 @Injectable()
 export class OutboxService
@@ -29,6 +33,7 @@ export class OutboxService
     @InjectQueue(ORDER_QUEUE) private readonly orderQueue: Queue,
     @InjectQueue(PAYMENT_QUEUE) private readonly paymentQueue: Queue,
     @InjectQueue(EFFECTS_QUEUE) private readonly effectQueue: Queue,
+    @InjectQueue(USER_QUEUE) private readonly userQueue: Queue,
     @Inject(OUTBOX_REPOSITORY) private readonly outboxRepository: IOutboxRepository,
     private readonly guard: DbGuardService,
   ) {
@@ -87,7 +92,7 @@ export class OutboxService
   private async dispatch(messages: Outbox[]): Promise<void> {
     if (messages.length === 0) return;
 
-    const { orderQueueMsg, paymentQueueMsg, effectQueueMsg } =
+    const { orderQueueMsg, paymentQueueMsg, effectQueueMsg, userQueueMsg } =
       OutboxDispatcher.partition(messages);
 
     if (orderQueueMsg.length > 0) {
@@ -98,6 +103,9 @@ export class OutboxService
     }
     if (effectQueueMsg.length > 0) {
       await this.effectQueue.addBulk(effectQueueMsg);
+    }
+    if (userQueueMsg.length > 0) {
+      await this.userQueue.addBulk(userQueueMsg);
     }
   }
 

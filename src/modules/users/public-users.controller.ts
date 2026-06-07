@@ -1,60 +1,55 @@
+import { I18N_COMMON } from '@/shared/constants/i18n';
+import { GetUser } from '@/shared/decorators/get-user.decorator';
+import { PagCursorResultDto } from '@/shared/dto/pag-cursor-result.dto';
+import { CursorParamsPipe } from '@/shared/pipes/cursor-params.pipe';
+import type { CursorParams } from '@/shared/types/cursor-params.type';
+import { template } from '@/shared/utils/functions.utils';
 import {
-  Controller,
-  Get,
-  Post,
+  BadRequestException,
   Body,
-  Patch,
-  Param,
+  Controller,
   Delete,
-  Query,
+  Get,
   Headers,
-  ParseUUIDPipe,
   HttpCode,
   HttpStatus,
-  BadRequestException,
   Inject,
+  Param,
+  ParseUUIDPipe,
+  Patch,
+  Post,
+  Query,
 } from '@nestjs/common';
 import {
-  ApiTags,
-  ApiOperation,
-  ApiResponse,
-  ApiParam,
-  ApiBody,
-  ApiHeader,
   ApiBadRequestResponse,
-  ApiNotFoundResponse,
-  ApiCreatedResponse,
-  ApiOkResponse,
+  ApiBody,
   ApiConflictResponse,
+  ApiCreatedResponse,
+  ApiHeader,
+  ApiNotFoundResponse,
+  ApiOkResponse,
+  ApiOperation,
+  ApiParam,
+  ApiQuery,
+  ApiResponse,
   ApiSecurity,
+  ApiTags,
 } from '@nestjs/swagger';
-import type { IUsersService } from './interfaces/users-service.interface';
+import { SkipThrottle, Throttle } from '@nestjs/throttler';
+import { resolveThrottleLimit } from '../../config/throttle.config';
+import { Public } from '../auth/decorators/public.decorator';
+import type { RequestUser } from '../auth/interfaces/request-user.interface';
 import { USERS_SERVICE } from './constants/users.token';
 import { PublicCreateUserDto } from './dto/create-user.dto';
 import { PublicUpdateUserDto } from './dto/update-user.dto';
-import { UserQueryDto } from './dto/user-query.dto';
-import { Public } from '../auth/decorators/public.decorator';
+import { PublicUserQueryDto } from './dto/user-query.dto';
 import { PublicUserResponseDto, UserSelfResponseDto } from './dto/user-response.dto';
-import { BaseController } from '@/shared/controllers/base.controller';
-import { GetUser } from '@/shared/decorators/get-user.decorator';
-import type { RequestUser } from '../auth/interfaces/request-user.interface';
-import { UserMessageFactory } from './factories/user-message.factory';
-import { I18N_COMMON } from '@/shared/constants/i18n';
-import { template } from '@/shared/utils/functions.utils';
-import { PagOffsetResultDto } from '@/shared/dto/pag-offset-result.dto';
-import { SkipThrottle, Throttle } from '@nestjs/throttler';
-import { resolveThrottleLimit } from '../../config/throttle.config';
-
+import type { IUsersService } from './interfaces/users-service.interface';
 @Controller({ path: 'v1/users', version: '1' })
 @ApiTags('users')
 @ApiSecurity('bearer')
-export class PublicUsersController extends BaseController {
-  constructor(
-    @Inject(USERS_SERVICE) private readonly usersService: IUsersService,
-    private readonly messages: UserMessageFactory,
-  ) {
-    super(PublicUsersController.name);
-  }
+export class PublicUsersController {
+  constructor(@Inject(USERS_SERVICE) private readonly usersService: IUsersService) {}
 
   @Post()
   @Public()
@@ -87,7 +82,7 @@ export class PublicUsersController extends BaseController {
     type: PublicCreateUserDto,
     description: 'User data to create a new user',
   })
-  async create(
+  create(
     @Body() dto: PublicCreateUserDto,
     @Headers('idempotency-key') idempotencyKey: string,
   ) {
@@ -97,10 +92,7 @@ export class PublicUsersController extends BaseController {
       );
     }
 
-    const result = await this.usersService.publicCreate(dto, idempotencyKey);
-
-    const message = await this.messages.responses.create(result.language);
-    return this.success(result, message);
+    return this.usersService.publicCreate(dto, idempotencyKey);
   }
 
   @Get()
@@ -108,16 +100,18 @@ export class PublicUsersController extends BaseController {
   @ApiOperation({
     summary: 'Get all users',
     description:
-      'Retrieves a list of all users with optional filtering and pagination.',
+      'Retrieves a cursor-paginated list of users with optional filtering.',
   })
   @ApiOkResponse({
     description: 'List of users retrieved successfully',
-    type: PagOffsetResultDto<PublicUserResponseDto>,
+    type: PagCursorResultDto,
   })
-  async findAll(@Query() queryDto: UserQueryDto) {
-    const result = await this.usersService.publicFindAll(queryDto);
-
-    return this.paginateOffset(result);
+  @ApiQuery({ name: 'cursor', required: false, type: String })
+  findAll(
+    @Query() queryDto: PublicUserQueryDto,
+    @Query('cursor', CursorParamsPipe) cursor: CursorParams,
+  ) {
+    return this.usersService.publicFindAll(queryDto, cursor);
   }
 
   @Get('me')
@@ -133,11 +127,8 @@ export class PublicUsersController extends BaseController {
   @ApiNotFoundResponse({
     description: 'User not found',
   })
-  async findMe(@GetUser() user: RequestUser) {
-    const result = await this.usersService.publicFindMe(user);
-
-    const message = await this.messages.responses.findOne(user.language);
-    return this.success(result, message);
+  findMe(@GetUser() user: RequestUser) {
+    return this.usersService.publicFindMe(user);
   }
 
   @Get(':id')
@@ -162,14 +153,8 @@ export class PublicUsersController extends BaseController {
   @ApiBadRequestResponse({
     description: 'Invalid UUID format',
   })
-  async findOne(
-    @Param('id', ParseUUIDPipe) id: string,
-    @GetUser() user: RequestUser,
-  ) {
-    const result = await this.usersService.publicFindOne(id);
-
-    const message = await this.messages.responses.findOne(user.language);
-    return this.success(result, message);
+  findOne(@Param('id', ParseUUIDPipe) id: string) {
+    return this.usersService.publicFindOne(id);
   }
 
   @Patch('me')
@@ -191,11 +176,8 @@ export class PublicUsersController extends BaseController {
     type: PublicUpdateUserDto,
     description: 'User data to update',
   })
-  async update(@Body() dto: PublicUpdateUserDto, @GetUser() user: RequestUser) {
-    const result = await this.usersService.publicUpdate(dto, user);
-
-    const message = await this.messages.responses.update(user.language);
-    return this.success(result, message);
+  update(@Body() dto: PublicUpdateUserDto, @GetUser() user: RequestUser) {
+    return this.usersService.publicUpdate(dto, user);
   }
 
   @Delete('me')
@@ -213,8 +195,5 @@ export class PublicUsersController extends BaseController {
   })
   async remove(@GetUser() user: RequestUser) {
     await this.usersService.publicRemove(user);
-
-    const message = await this.messages.responses.remove(user.language);
-    return this.success(null, message);
   }
 }

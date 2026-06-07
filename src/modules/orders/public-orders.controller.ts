@@ -1,55 +1,53 @@
+import { I18N_COMMON } from '@/shared/constants/i18n';
+import { GetUser } from '@/shared/decorators/get-user.decorator';
+import { PagCursorResultDto } from '@/shared/dto/pag-cursor-result.dto';
+import { CursorParamsPipe } from '@/shared/pipes/cursor-params.pipe';
+import type { CursorParams } from '@/shared/types/cursor-params.type';
+import { template } from '@/shared/utils/functions.utils';
 import {
+  BadRequestException,
+  Body,
   Controller,
   Get,
-  Post,
-  Body,
-  Param,
-  Query,
   Headers,
-  ParseUUIDPipe,
   HttpCode,
   HttpStatus,
-  BadRequestException,
   Inject,
+  Param,
+  ParseUUIDPipe,
+  Post,
+  Query,
 } from '@nestjs/common';
 import {
-  ApiTags,
+  ApiBadRequestResponse,
+  ApiBody,
+  ApiCreatedResponse,
+  ApiForbiddenResponse,
+  ApiHeader,
+  ApiNotFoundResponse,
+  ApiOkResponse,
   ApiOperation,
   ApiParam,
-  ApiBody,
-  ApiHeader,
-  ApiBadRequestResponse,
-  ApiNotFoundResponse,
-  ApiCreatedResponse,
-  ApiOkResponse,
+  ApiQuery,
   ApiSecurity,
-  ApiForbiddenResponse,
+  ApiTags,
 } from '@nestjs/swagger';
-import type { IOrdersService } from './interfaces/orders-service.interface';
+import { SkipThrottle, Throttle } from '@nestjs/throttler';
+import { resolveThrottleLimit } from '../../config/throttle.config';
+import type { RequestUser } from '../auth/interfaces/request-user.interface';
 import { ORDERS_SERVICE } from './constants/orders.token';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { OrderByUserQueryDto } from './dto/order-by-user-query.dto';
-import { PagOffsetResultDto } from '@/shared/dto/pag-offset-result.dto';
-import { GetUser } from '@/shared/decorators/get-user.decorator';
 import { PublicOrderResponseDto } from './dto/order-response.dto';
-import { BaseController } from '@/shared/controllers/base.controller';
-import type { RequestUser } from '../auth/interfaces/request-user.interface';
-import { OrderMessageFactory } from './factories/order-message.factory';
-import { template } from '@/shared/utils/functions.utils';
-import { I18N_COMMON } from '@/shared/constants/i18n';
-import { SkipThrottle, Throttle } from '@nestjs/throttler';
-import { resolveThrottleLimit } from '../../config/throttle.config';
+import type { IOrdersService } from './interfaces/orders-service.interface';
 
 @Controller({ path: 'v1/orders', version: '1' })
 @ApiTags('orders')
 @ApiSecurity('bearer')
-export class PublicOrdersController extends BaseController {
+export class PublicOrdersController {
   constructor(
     @Inject(ORDERS_SERVICE) private readonly ordersService: IOrdersService,
-    private readonly messages: OrderMessageFactory,
-  ) {
-    super(PublicOrdersController.name);
-  }
+  ) {}
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
@@ -77,7 +75,7 @@ export class PublicOrdersController extends BaseController {
     type: CreateOrderDto,
     description: 'Order creation data',
   })
-  async create(
+  create(
     @Body() createOrderDto: CreateOrderDto,
     @Headers('idempotency-key') idempotencyKey: string,
     @GetUser() user: RequestUser,
@@ -88,14 +86,7 @@ export class PublicOrdersController extends BaseController {
       );
     }
 
-    const result = await this.ordersService.publicCreate(
-      createOrderDto,
-      user.id,
-      idempotencyKey,
-    );
-
-    const message = await this.messages.responses.create(user.language);
-    return this.success(result, message);
+    return this.ordersService.publicCreate(createOrderDto, user.id, idempotencyKey);
   }
 
   @Get('me')
@@ -103,19 +94,19 @@ export class PublicOrdersController extends BaseController {
   @ApiOperation({
     summary: 'Get orders for the authenticated user',
     description:
-      'Retrieve a paginated list of orders belonging to the authenticated user',
+      'Retrieve a cursor-paginated list of orders belonging to the authenticated user',
   })
   @ApiOkResponse({
     description: 'Orders successfully retrieved',
-    type: PagOffsetResultDto<PublicOrderResponseDto>,
+    type: PagCursorResultDto,
   })
-  async findByUser(
+  @ApiQuery({ name: 'cursor', required: false, type: String })
+  findByUser(
     @Query() queryDto: OrderByUserQueryDto,
+    @Query('cursor', CursorParamsPipe) cursor: CursorParams,
     @GetUser() user: RequestUser,
   ) {
-    const result = await this.ordersService.publicFindByUser(queryDto, user.id);
-
-    return this.paginateOffset(result);
+    return this.ordersService.publicFindByUser(queryDto, user.id, cursor);
   }
 
   @Get(':id')
@@ -139,13 +130,7 @@ export class PublicOrdersController extends BaseController {
   @ApiForbiddenResponse({
     description: 'Access to this order is not allowed',
   })
-  async findOne(
-    @Param('id', ParseUUIDPipe) id: string,
-    @GetUser() user: RequestUser,
-  ) {
-    const result = await this.ordersService.publicFindOne(id, user);
-
-    const message = await this.messages.responses.findOne(user.language);
-    return this.success(result, message);
+  findOne(@Param('id', ParseUUIDPipe) id: string, @GetUser() user: RequestUser) {
+    return this.ordersService.publicFindOne(id, user);
   }
 }

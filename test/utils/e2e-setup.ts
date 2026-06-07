@@ -1,7 +1,7 @@
 import { AppModule } from '@/app.module';
-import { PAYMENTS_GATEWAY_SERVICE } from '@/modules/payment-gateways/constants/payments-gateway.token';
-import { OUTBOX_SERVICE } from '@/shared/modules/outbox/constants/outbox.token';
+import { PAYMENTS_GATEWAY_ADAPTER } from '@/modules/payments/constants/payments.token';
 import { REDIS_CLIENT } from '@/shared/modules/cache/constants/redis-client.token';
+import { OUTBOX_SERVICE } from '@/shared/modules/outbox/constants/outbox.token';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { Test, TestingModule } from '@nestjs/testing';
@@ -37,7 +37,7 @@ export async function createTestApp(): Promise<TestAppContext> {
   const module: TestingModule = await Test.createTestingModule({
     imports: [AppModule],
   })
-    .overrideProvider(PAYMENTS_GATEWAY_SERVICE)
+    .overrideProvider(PAYMENTS_GATEWAY_ADAPTER)
     .useValue(paymentsGatewayServiceMock)
     .overrideProvider(OUTBOX_SERVICE)
     .useValue(outboxServiceMock)

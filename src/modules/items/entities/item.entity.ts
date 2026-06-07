@@ -1,8 +1,8 @@
-import { Entity, Column } from 'typeorm';
-import { DeactivatableEntity } from '@/shared/entities/deactivatable.entity';
+import { BaseEntity } from '@/shared/entities/base.entity';
+import { Column, Entity } from 'typeorm';
 
 @Entity('items')
-export class Item extends DeactivatableEntity {
+export class Item extends BaseEntity {
   @Column({ nullable: false })
   name: string;
 

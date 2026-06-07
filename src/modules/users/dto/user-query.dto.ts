@@ -1,8 +1,7 @@
-import { IsOptional, IsString, IsEmail } from 'class-validator';
 import { ApiPropertyOptional, PickType } from '@nestjs/swagger';
-import { BaseQueryDto } from '@/shared/dto/base-query.dto';
+import { IsEmail, IsOptional, IsString } from 'class-validator';
 
-export class UserQueryDto extends BaseQueryDto {
+export class UserQueryDto {
   @ApiPropertyOptional({
     description: 'Filter users by name (partial match)',
     example: 'João',

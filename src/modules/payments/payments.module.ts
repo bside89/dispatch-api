@@ -1,23 +1,45 @@
 import { Module } from '@nestjs/common';
-import { PaymentsController } from './payments.controller';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { CacheModule } from '@/shared/modules/cache/cache.module';
+import { DbGuardModule } from '@/shared/modules/db-guard/db-guard.module';
+import {
+  CUSTOMER_REPOSITORY,
+  PAYMENT_REPOSITORY,
+  PAYMENTS_GATEWAY_ADAPTER,
+  PAYMENTS_SERVICE,
+  REFUND_REPOSITORY,
+} from './constants/payments.token';
+import { Customer } from './entities/customer.entity';
+import { Payment } from './entities/payment.entity';
+import { Refund } from './entities/refund.entity';
+import { StripeAdapter } from './gateways/stripe/providers/stripe.adapter';
+import { StripeModule } from './gateways/stripe/stripe.module';
 import { PaymentsService } from './payments.service';
-import { PaymentsProcessor } from './processors/payments.processor';
-import { UsersModule } from '../users/users.module';
-import { OrdersModule } from '../orders/orders.module';
+import { PaymentJobHandlerFactory } from './providers/factories/payment-job-handler.factory';
+import { PaymentsProcessor } from './providers/processors/payments.processor';
+import { CustomerRepository } from './providers/repositories/customer.repository';
+import { PaymentRepository } from './providers/repositories/payment.repository';
+import { RefundRepository } from './providers/repositories/refund.repository';
 import {
   CreateCustomerJobStrategy,
   DeleteCustomerJobStrategy,
   UpdateCustomerJobStrategy,
-} from './strategies';
-import { PaymentJobHandlerFactory } from './factories/payment-job-handler.factory';
-import { PaymentGatewaysModule } from '../payment-gateways/payment-gateways.module';
-import { PAYMENTS_SERVICE } from './constants/payments.token';
+} from './providers/strategies';
 
 @Module({
-  imports: [UsersModule, OrdersModule, PaymentGatewaysModule],
-  controllers: [PaymentsController],
+  imports: [
+    StripeModule,
+    TypeOrmModule.forFeature([Customer, Payment, Refund]),
+    CacheModule,
+    DbGuardModule,
+  ],
+  exports: [PAYMENTS_SERVICE, PAYMENTS_GATEWAY_ADAPTER],
   providers: [
+    { provide: PAYMENTS_GATEWAY_ADAPTER, useExisting: StripeAdapter },
     { provide: PAYMENTS_SERVICE, useClass: PaymentsService },
+    { provide: CUSTOMER_REPOSITORY, useClass: CustomerRepository },
+    { provide: PAYMENT_REPOSITORY, useClass: PaymentRepository },
+    { provide: REFUND_REPOSITORY, useClass: RefundRepository },
     PaymentsProcessor,
     PaymentJobHandlerFactory,
     CreateCustomerJobStrategy,

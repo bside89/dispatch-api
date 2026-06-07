@@ -1,22 +1,22 @@
-import { Test, TestingModule } from '@nestjs/testing';
 import { AppModule } from '@/app.module';
-import { DataSource } from 'typeorm';
-import Redis from 'ioredis';
-import { REDIS_CLIENT } from '@/shared/modules/cache/constants/redis-client.token';
-import { IItemsService } from '@/modules/items/interfaces/items-service.interface';
 import {
   ITEMS_SERVICE,
   ITEM_REPOSITORY,
 } from '@/modules/items/constants/items.token';
 import { IItemRepository } from '@/modules/items/interfaces/item-repository.interface';
-import { PAYMENTS_GATEWAY_SERVICE } from '@/modules/payment-gateways/constants/payments-gateway.token';
-import { cleanDatabase, cleanRedis } from './utils/database-cleaner';
-import { paymentsGatewayServiceMock } from './utils/mock-payments-gateway-service';
+import { IItemsService } from '@/modules/items/interfaces/items-service.interface';
+import { PAYMENTS_GATEWAY_ADAPTER } from '@/modules/payments/constants/payments.token';
+import { REDIS_CLIENT } from '@/shared/modules/cache/constants/redis-client.token';
 import {
-  INestApplication,
   ForbiddenException,
+  INestApplication,
   NotFoundException,
 } from '@nestjs/common';
+import { Test, TestingModule } from '@nestjs/testing';
+import Redis from 'ioredis';
+import { DataSource } from 'typeorm';
+import { cleanDatabase, cleanRedis } from './utils/database-cleaner';
+import { paymentsGatewayServiceMock } from './utils/mock-payments-gateway-service';
 
 // Mock the delay function to resolve almost instantly.
 jest.mock('@/shared/utils/functions.utils', () => ({
@@ -45,7 +45,7 @@ describe('Items (Integration)', () => {
     const module: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
     })
-      .overrideProvider(PAYMENTS_GATEWAY_SERVICE)
+      .overrideProvider(PAYMENTS_GATEWAY_ADAPTER)
       .useValue(paymentsGatewayServiceMock)
       .compile();
 

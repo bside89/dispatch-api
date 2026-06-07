@@ -1,60 +1,59 @@
+import { I18N_ORDERS } from '@/shared/constants/i18n';
+import { LOCK_KEY } from '@/shared/constants/lock.key';
+import { PagCursorResultDto } from '@/shared/dto/pag-cursor-result.dto';
+import { DbGuardService } from '@/shared/modules/db-guard/db-guard.service';
+import { OUTBOX_SERVICE } from '@/shared/modules/outbox/constants/outbox.token';
+import type { IOutboxService } from '@/shared/modules/outbox/interfaces/outbox-service.interface';
+import { NotifyUserJobPayload } from '@/shared/payloads/effects-job.payload';
+import {
+  CancelOrderJobPayload,
+  ProcessOrderJobPayload,
+  RefundOrderJobPayload,
+} from '@/shared/payloads/orders-job.payload';
+import { BaseService } from '@/shared/services/base.service';
+import type { CursorParams } from '@/shared/types/cursor-params.type';
+import { EntityMapper } from '@/shared/utils/entity-mapper.utils';
+import { template } from '@/shared/utils/functions.utils';
 import {
   BadRequestException,
   ForbiddenException,
-  Injectable,
   Inject,
+  Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { User } from '../users/entities/user.entity';
-import { CreateOrderDto } from './dto/create-order.dto';
-import { UpdateOrderDto } from './dto/update-order.dto';
-import { OrderQueryDto } from './dto/order-query.dto';
-import { OrderStatus } from './enums/order-status.enum';
 import { IDEMPOTENCY_SERVICE } from '../../shared/modules/cache/constants/idempotency.token';
+import { ORDER_KEY } from '../../shared/modules/cache/constants/order.key';
 import type { IIdempotencyService } from '../../shared/modules/cache/interfaces/idempotency-service.interface';
-import { NotifyUserJobPayload } from '@/shared/payloads/effects-job.payload';
-import type { IOrderRepository } from './interfaces/order-repository.interface';
-import { ORDER_REPOSITORY } from './constants/orders.token';
-import type { IOrderItemRepository } from './interfaces/order-item-repository.interface';
-import { ORDER_ITEM_REPOSITORY } from './constants/orders.token';
-import { PagOffsetResultDto } from '@/shared/dto/pag-offset-result.dto';
+import type { RequestUser } from '../auth/interfaces/request-user.interface';
+import { ITEMS_SERVICE } from '../items/constants/items.token';
+import type { IItemsService } from '../items/interfaces/items-service.interface';
+import { PAYMENTS_GATEWAY_ADAPTER } from '../payments/constants/payments.token';
+import type { IPaymentsService } from '../payments/interfaces/payments-service.interface';
+import { User } from '../users/entities/user.entity';
+import { ORDER_ITEM_REPOSITORY, ORDER_REPOSITORY } from './constants/orders.token';
+import { CreateOrderDto } from './dto/create-order.dto';
+import { OrderByUserQueryDto } from './dto/order-by-user-query.dto';
+import { UpdateOrderPaymentDto } from './dto/order-payment.dto';
+import { OrderQueryDto } from './dto/order-query.dto';
 import {
   OrderPaymentDto,
   OrderResponseDto,
   PublicOrderResponseDto,
 } from './dto/order-response.dto';
-import { EntityMapper } from '@/shared/utils/entity-mapper.utils';
-import type { IOutboxService } from '@/shared/modules/outbox/interfaces/outbox-service.interface';
-import { OUTBOX_SERVICE } from '@/shared/modules/outbox/constants/outbox.token';
-import {
-  ProcessOrderJobPayload,
-  CancelOrderJobPayload,
-  RefundOrderJobPayload,
-} from '@/shared/payloads/orders-job.payload';
 import { ShipOrderDto } from './dto/ship-order.dto';
-import { UpdateOrderPaymentDto } from './dto/order-payment.dto';
-import { template } from '@/shared/utils/functions.utils';
-import { ORDER_KEY } from '../../shared/modules/cache/constants/order.key';
-import type { RequestUser } from '../auth/interfaces/request-user.interface';
-import { LOCK_KEY } from '@/shared/constants/lock.key';
-import type { IItemsService } from '../items/interfaces/items-service.interface';
-import { ITEMS_SERVICE } from '../items/constants/items.token';
-import type { IPaymentGatewaysService } from '../payment-gateways/interfaces/payment-gateways-service.interface';
-import { PAYMENTS_GATEWAY_SERVICE } from '../payment-gateways/constants/payments-gateway.token';
-import { OrderMessageFactory } from './factories/order-message.factory';
-import { I18N_ORDERS } from '@/shared/constants/i18n';
+import { UpdateOrderDto } from './dto/update-order.dto';
+import { Order } from './entities/order.entity';
+import { OrderStatus } from './enums/order-status.enum';
 import {
   languageToCurrency,
   languageToLocale,
   toCurrencyFormatted,
 } from './helpers/order-functions';
-import { OrderByUserQueryDto } from './dto/order-by-user-query.dto';
-import { IOrdersService } from './interfaces/orders-service.interface';
-import { BaseService } from '@/shared/services/base.service';
-import { DbGuardService } from '@/shared/modules/db-guard/db-guard.service';
 import { OrderTransitionPolicy } from './helpers/order-transition-policy';
-import { Order } from './entities/order.entity';
-import { PaymentGatewayParams } from '../payment-gateways/interfaces/payment-gateways-params.interface';
+import type { IOrderItemRepository } from './interfaces/order-item-repository.interface';
+import type { IOrderRepository } from './interfaces/order-repository.interface';
+import { IOrdersService } from './interfaces/orders-service.interface';
+import { OrderMessageFactory } from './providers/factories/order-message.factory';
 
 @Injectable()
 export class OrdersService extends BaseService implements IOrdersService {
@@ -64,8 +63,8 @@ export class OrdersService extends BaseService implements IOrdersService {
     private readonly orderItemRepository: IOrderItemRepository,
     @Inject(ITEMS_SERVICE) private readonly itemsService: IItemsService,
     @Inject(OUTBOX_SERVICE) private readonly outboxService: IOutboxService,
-    @Inject(PAYMENTS_GATEWAY_SERVICE)
-    private readonly paymentsGatewayService: IPaymentGatewaysService,
+    @Inject(PAYMENTS_GATEWAY_ADAPTER)
+    private readonly paymentsService: IPaymentsService,
     @Inject(IDEMPOTENCY_SERVICE)
     private readonly idempotencyService: IIdempotencyService,
     private readonly messages: OrderMessageFactory,
@@ -83,7 +82,11 @@ export class OrdersService extends BaseService implements IOrdersService {
   ): Promise<PublicOrderResponseDto> {
     return this.guard.lockAndTransaction(
       LOCK_KEY.ORDER.CREATE(idempotencyKey),
-      async () => this._publicCreate(dto, userId, idempotencyKey),
+      async () =>
+        this.idempotencyService.getOrExecute(
+          ORDER_KEY.IDEMPOTENCY('create', idempotencyKey),
+          async () => this._publicCreate(dto, userId, idempotencyKey),
+        ),
     );
   }
 
@@ -92,48 +95,38 @@ export class OrdersService extends BaseService implements IOrdersService {
     userId: string,
     idempotencyKey: string,
   ): Promise<PublicOrderResponseDto> {
-    const idempotencyKeyFormatted = ORDER_KEY.IDEMPOTENCY('create', idempotencyKey);
-
-    return this.idempotencyService.getOrExecute(idempotencyKeyFormatted, async () =>
-      this._publicCreateWithIdempotency(dto, userId, idempotencyKeyFormatted),
-    );
-  }
-
-  private async _publicCreateWithIdempotency(
-    dto: CreateOrderDto,
-    userId: string,
-    idempotencyKey: string,
-  ): Promise<PublicOrderResponseDto> {
     const catalogItems = await this.itemsService.validateAndGetCatalogItems(
       dto.items.map((i) => i.itemId),
     );
-    const savedOrder = await this.createOrderWithItems(dto, userId, catalogItems);
+    let order = await this.createOrderWithItems(dto, userId, catalogItems);
 
     await this.decrementItemsStock(dto, catalogItems);
 
-    const completeOrder = await this.getOrderOrThrow(savedOrder.id);
+    order = await this.getOrderOrThrow(order.id);
 
-    const paymentIntentParams = this.buildPaymentParams(completeOrder, userId);
-    const paymentIntent = await this.paymentsGatewayService.payments.create(
-      paymentIntentParams,
-      idempotencyKey,
-    );
+    const payment = await this.paymentsService.createPayment({
+      orderId: order.id,
+      userId,
+      gatewayDto: {
+        amount: order.total,
+        currency: languageToCurrency(order.user.language),
+        metadata: {
+          orderId: order.id,
+        },
+        idempotencyKey: `payment-${order.id}-${idempotencyKey}`,
+      },
+    });
+    order.paymentId = payment.id;
+    await this.orderRepository.save(order);
 
-    completeOrder.paymentId = paymentIntent.id;
-    completeOrder.paymentStatus = paymentIntent.status;
-    await this.orderRepository.save(completeOrder);
+    await this.dispatchOrderCreatedNotification(order.user, order.total);
 
-    await this.dispatchOrderCreatedNotification(
-      completeOrder.user,
-      completeOrder.total,
-    );
-
-    const orderMapped = EntityMapper.map(completeOrder, PublicOrderResponseDto);
-    orderMapped.paymentData = EntityMapper.map(paymentIntent, OrderPaymentDto);
+    const orderMapped = EntityMapper.map(order, PublicOrderResponseDto);
+    orderMapped.paymentData = EntityMapper.map(payment, OrderPaymentDto);
 
     this.logger.debug('Order created', {
       idempotencyKey: idempotencyKey,
-      orderId: completeOrder.id,
+      orderId: order.id,
     });
 
     return orderMapped;
@@ -142,19 +135,20 @@ export class OrdersService extends BaseService implements IOrdersService {
   async publicFindByUser(
     queryDto: OrderByUserQueryDto,
     userId: string,
-  ): Promise<PagOffsetResultDto<PublicOrderResponseDto>> {
-    const result = await this.orderRepository.filter({ ...queryDto, userId });
-
-    this.logger.debug(`Found ${result.items.length} orders for user ${userId}`, {
-      page: queryDto.page,
-      totalPages: result.meta.totalPages,
+    cursor?: CursorParams,
+  ): Promise<PagCursorResultDto<PublicOrderResponseDto>> {
+    const result = await this.orderRepository.filter({
+      ...queryDto,
+      userId,
+      cursor,
     });
 
-    return new PagOffsetResultDto<PublicOrderResponseDto>(
-      result.meta.total,
-      result.meta.page,
-      result.meta.limit,
+    this.logger.debug(`Found ${result.items.length} orders for user ${userId}`);
+
+    return new PagCursorResultDto<PublicOrderResponseDto>(
       EntityMapper.mapArray(result.items, PublicOrderResponseDto),
+      result.nextCursor,
+      result.hasMore,
     );
   }
 
@@ -168,12 +162,10 @@ export class OrdersService extends BaseService implements IOrdersService {
       throw new ForbiddenException(template(I18N_ORDERS.ERRORS.ACCESS_DENIED));
     }
 
-    const paymentIntent = await this.paymentsGatewayService.payments.retrieve(
-      order.paymentId,
-    );
+    const payment = await this.paymentsService.findOnePayment(order.payment.id);
 
     const orderMapped = EntityMapper.map(order, PublicOrderResponseDto);
-    orderMapped.paymentData = EntityMapper.map(paymentIntent, OrderPaymentDto);
+    orderMapped.paymentData = EntityMapper.map(payment, OrderPaymentDto);
 
     this.logger.debug('Found order', { orderId: id });
 
@@ -186,31 +178,26 @@ export class OrdersService extends BaseService implements IOrdersService {
 
   async adminFindAll(
     queryDto: OrderQueryDto,
-  ): Promise<PagOffsetResultDto<OrderResponseDto>> {
-    const result = await this.orderRepository.filter(queryDto);
+    cursor?: CursorParams,
+  ): Promise<PagCursorResultDto<OrderResponseDto>> {
+    const result = await this.orderRepository.filter({ ...queryDto, cursor });
 
-    this.logger.debug(`Found ${result.items.length} orders`, {
-      page: queryDto.page,
-      totalPages: result.meta.totalPages,
-    });
+    this.logger.debug(`Found ${result.items.length} orders`);
 
-    return new PagOffsetResultDto<OrderResponseDto>(
-      result.meta.total,
-      result.meta.page,
-      result.meta.limit,
+    return new PagCursorResultDto<OrderResponseDto>(
       EntityMapper.mapArray(result.items, OrderResponseDto),
+      result.nextCursor,
+      result.hasMore,
     );
   }
 
   async adminFindOne(id: string): Promise<OrderResponseDto> {
     const order = await this.getOrderOrThrow(id);
 
-    const paymentIntent = await this.paymentsGatewayService.payments.retrieve(
-      order.paymentId,
-    );
+    const payment = await this.paymentsService.findOnePayment(order.payment.id);
 
     const orderMapped = EntityMapper.map(order, OrderResponseDto);
-    orderMapped.paymentData = EntityMapper.map(paymentIntent, OrderPaymentDto);
+    orderMapped.paymentData = EntityMapper.map(payment, OrderPaymentDto);
 
     this.logger.debug('Found order', { orderId: id });
 
@@ -386,8 +373,6 @@ export class OrdersService extends BaseService implements IOrdersService {
   ): Promise<OrderResponseDto> {
     const order = await this.getOrderOrThrow(dto.orderId);
 
-    order.paymentId = dto.paymentId;
-    order.paymentStatus = dto.paymentStatus;
     order.status = OrderStatus.PAID;
 
     await this.orderRepository.save(order);
@@ -410,13 +395,8 @@ export class OrdersService extends BaseService implements IOrdersService {
   ): Promise<OrderResponseDto> {
     const order = await this.getOrderOrThrow(dto.orderId);
 
-    order.paymentId = dto.paymentId;
-    order.paymentStatus = dto.paymentStatus;
-
-    await this.orderRepository.save(order);
-
     // Enqueue the cancellation job (restores stock and updates status)
-    await this.outboxService.add(new CancelOrderJobPayload(dto.orderId));
+    await this.outboxService.add(new CancelOrderJobPayload(order.id));
 
     return EntityMapper.map(order, OrderResponseDto);
   }
@@ -473,23 +453,6 @@ export class OrdersService extends BaseService implements IOrdersService {
         return this.itemsService.decrementItemStock(item, dtoItem.quantity);
       }),
     );
-  }
-
-  private buildPaymentParams(
-    order: {
-      total: number;
-      user?: { customerId?: string; email?: string };
-      id: string;
-    },
-    userId: string,
-  ): PaymentGatewayParams {
-    return {
-      amount: order.total,
-      currency: 'brl',
-      customerId: order.user?.customerId,
-      receiptEmail: order.user?.email,
-      metadata: { orderId: order.id, userId },
-    };
   }
 
   private async dispatchOrderCreatedNotification(

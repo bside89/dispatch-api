@@ -1,10 +1,10 @@
-import { Entity, Column, ManyToOne, JoinColumn } from 'typeorm';
-import { Order } from './order.entity';
+import { BaseEntity } from '@/shared/entities/base.entity';
+import { Column, Entity, JoinColumn, ManyToOne } from 'typeorm';
 import { Item } from '../../items/entities/item.entity';
-import { DeactivatableEntity } from '@/shared/entities/deactivatable.entity';
+import { Order } from './order.entity';
 
 @Entity('order_items')
-export class OrderItem extends DeactivatableEntity {
+export class OrderItem extends BaseEntity {
   @Column('uuid')
   orderId: string;
 

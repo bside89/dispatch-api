@@ -1,20 +1,20 @@
-import { Test, TestingModule } from '@nestjs/testing';
 import { AppModule } from '@/app.module';
-import { DataSource } from 'typeorm';
-import Redis from 'ioredis';
-import { REDIS_CLIENT } from '@/shared/modules/cache/constants/redis-client.token';
-import { IUsersService } from '@/modules/users/interfaces/users-service.interface';
+import type { RequestUser } from '@/modules/auth/interfaces/request-user.interface';
+import { PAYMENTS_GATEWAY_ADAPTER } from '@/modules/payments/constants/payments.token';
 import { USERS_SERVICE } from '@/modules/users/constants/users.token';
-import { IOutboxRepository } from '@/shared/modules/outbox/interfaces/outbox-repository.interface';
+import { IUsersService } from '@/modules/users/interfaces/users-service.interface';
+import { UserRole } from '@/shared/enums/user-role.enum';
+import { REDIS_CLIENT } from '@/shared/modules/cache/constants/redis-client.token';
 import { OUTBOX_REPOSITORY } from '@/shared/modules/outbox/constants/outbox.token';
-import { PAYMENTS_GATEWAY_SERVICE } from '@/modules/payment-gateways/constants/payments-gateway.token';
+import { IOutboxRepository } from '@/shared/modules/outbox/interfaces/outbox-repository.interface';
+import { ConflictException, INestApplication } from '@nestjs/common';
+import { Test, TestingModule } from '@nestjs/testing';
+import Redis from 'ioredis';
+import { DataSource } from 'typeorm';
+import { ADMIN_USER } from './constants/admin-user.constant';
 import { cleanDatabase, cleanRedis } from './utils/database-cleaner';
 import { paymentsGatewayServiceMock } from './utils/mock-payments-gateway-service';
 import { waitFor } from './utils/wait-for';
-import { ADMIN_USER } from './constants/admin-user.constant';
-import { INestApplication, ConflictException } from '@nestjs/common';
-import { UserRole } from '@/shared/enums/user-role.enum';
-import type { RequestUser } from '@/modules/auth/interfaces/request-user.interface';
 
 // Mock the delay function to resolve almost instantly.
 jest.mock('@/shared/utils/functions.utils', () => ({
@@ -51,7 +51,7 @@ describe('Users (Integration)', () => {
     const module: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
     })
-      .overrideProvider(PAYMENTS_GATEWAY_SERVICE)
+      .overrideProvider(PAYMENTS_GATEWAY_ADAPTER)
       .useValue(paymentsGatewayServiceMock)
       .compile();
 
@@ -277,7 +277,9 @@ describe('Users (Integration)', () => {
       );
 
       // Track the specific call for this test
-      const deleteSpy = jest.spyOn(paymentsGatewayServiceMock.customers, 'delete');
+      const deleteSpy = jest
+        .spyOn(paymentsGatewayServiceMock, 'deleteCustomer')
+        .mockResolvedValue(undefined);
 
       try {
         // Use adminRemove: the admin actor (higher role) removes the regular user (lower role)

@@ -1,4 +1,5 @@
 export type CursorParams = {
-  createdAt: string;
-  id: string;
+  startingAfter?: string;
+
+  limit?: number;
 };

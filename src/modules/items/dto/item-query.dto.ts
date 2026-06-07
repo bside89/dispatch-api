@@ -1,9 +1,7 @@
-import { ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiPropertyOptional, PickType } from '@nestjs/swagger';
 import { IsOptional, IsString } from 'class-validator';
-import { BaseQueryDto } from '@/shared/dto/base-query.dto';
-import { PickType } from '@nestjs/swagger';
 
-export class ItemQueryDto extends BaseQueryDto {
+export class ItemQueryDto {
   @ApiPropertyOptional({
     description: 'Filter items by name (partial match)',
     example: 'Headphones',
@@ -21,8 +19,4 @@ export class ItemQueryDto extends BaseQueryDto {
   description?: string;
 }
 
-export class PublicItemQueryDto extends PickType(ItemQueryDto, [
-  'name',
-  'page',
-  'limit',
-] as const) {}
+export class PublicItemQueryDto extends PickType(ItemQueryDto, ['name'] as const) {}

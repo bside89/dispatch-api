@@ -1,11 +1,12 @@
-import { Entity, Column, OneToMany, ManyToOne, JoinColumn } from 'typeorm';
+import { Payment } from '@/modules/payments/entities/payment.entity';
+import { BaseEntity } from '@/shared/entities/base.entity';
+import { Column, Entity, JoinColumn, ManyToOne, OneToMany, OneToOne } from 'typeorm';
+import { User } from '../../users/entities/user.entity';
 import { OrderStatus } from '../enums/order-status.enum';
 import { OrderItem } from './order-item.entity';
-import { User } from '../../users/entities/user.entity';
-import { DeactivatableEntity } from '@/shared/entities/deactivatable.entity';
 
 @Entity('orders')
-export class Order extends DeactivatableEntity {
+export class Order extends BaseEntity {
   @ManyToOne(() => User, (user) => user.orders, {
     onDelete: 'CASCADE',
   })
@@ -25,22 +26,19 @@ export class Order extends DeactivatableEntity {
   @Column('integer')
   total: number;
 
-  @Column({ nullable: true, default: null })
-  paymentId?: string;
+  @Column({ nullable: true })
+  paymentId: string;
 
-  @Column({ nullable: true, default: null })
-  paymentStatus?: string;
-
-  @Column({ nullable: true, default: null })
+  @Column({ nullable: true })
   trackingNumber?: string;
 
-  @Column({ nullable: true, default: null })
+  @Column({ nullable: true })
   carrier?: string;
 
-  @Column({ type: 'timestamp', nullable: true, default: null })
+  @Column({ type: 'timestamp', nullable: true })
   shippedAt?: Date;
 
-  @Column({ type: 'timestamp', nullable: true, default: null })
+  @Column({ type: 'timestamp', nullable: true })
   deliveredAt?: Date;
 
   @OneToMany(() => OrderItem, (item) => item.order, {
@@ -48,4 +46,8 @@ export class Order extends DeactivatableEntity {
     eager: true,
   })
   items: OrderItem[];
+
+  @OneToOne(() => Payment, (payment) => payment.order)
+  @JoinColumn({ name: 'paymentId' })
+  payment: Payment;
 }

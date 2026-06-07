@@ -73,7 +73,7 @@ export class NotificationsService
   }
 
   async findByUser(userId: string, cursor?: CursorParams) {
-    return this.notificationRepository.filterByUser(userId, cursor);
+    return this.notificationRepository.filterByUser({ userId, cursor });
   }
 
   async hasNewNotifications(userId: string): Promise<boolean> {

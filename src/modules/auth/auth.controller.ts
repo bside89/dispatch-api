@@ -1,7 +1,5 @@
+import { GetUser } from '@/shared/decorators/get-user.decorator';
 import { Body, Controller, Inject, Post, UseGuards } from '@nestjs/common';
-import type { IAuthService } from './interfaces/auth-service.interface';
-import { AUTH_SERVICE } from './constants/auth.token';
-import { LoginDto } from './dto/login.dto';
 import {
   ApiBadRequestResponse,
   ApiBody,
@@ -10,26 +8,21 @@ import {
   ApiSecurity,
   ApiTags,
 } from '@nestjs/swagger';
-import { Public } from './decorators/public.decorator';
-import { JwtRefreshAuthGuard } from './guards/jwt-refresh.guard';
-import { GetUser } from '@/shared/decorators/get-user.decorator';
-import { BaseController } from '@/shared/controllers/base.controller';
-import { LoginResponseDto } from './dto/login-response.dto';
-import type { RequestUser } from './interfaces/request-user.interface';
-import { AuthMessageFactory } from './factories/auth-message.factory';
 import { Throttle } from '@nestjs/throttler';
 import { resolveThrottleLimit } from '../../config/throttle.config';
+import { AUTH_SERVICE } from './constants/auth.token';
+import { Public } from './decorators/public.decorator';
+import { LoginResponseDto } from './dto/login-response.dto';
+import { LoginDto } from './dto/login.dto';
+import { JwtRefreshAuthGuard } from './guards/jwt-refresh.guard';
+import type { IAuthService } from './interfaces/auth-service.interface';
+import type { RequestUser } from './interfaces/request-user.interface';
 
 @Controller({ path: 'v1/auth', version: '1' })
 @ApiTags('auth')
 @ApiSecurity('bearer')
-export class AuthController extends BaseController {
-  constructor(
-    @Inject(AUTH_SERVICE) private readonly authService: IAuthService,
-    private readonly messages: AuthMessageFactory,
-  ) {
-    super(AuthController.name);
-  }
+export class AuthController {
+  constructor(@Inject(AUTH_SERVICE) private readonly authService: IAuthService) {}
 
   @Post('login')
   @Public()
@@ -51,11 +44,8 @@ export class AuthController extends BaseController {
     type: LoginDto,
     description: 'Login credentials',
   })
-  async login(@Body() dto: LoginDto) {
-    const result = await this.authService.login(dto.email, dto.password);
-
-    const message = await this.messages.responses.login(result.language);
-    return this.success(result, message);
+  login(@Body() dto: LoginDto) {
+    return this.authService.login(dto.email, dto.password);
   }
 
   @Post('refresh')
@@ -73,11 +63,8 @@ export class AuthController extends BaseController {
   @ApiBadRequestResponse({
     description: 'Invalid refresh token',
   })
-  async refresh(@GetUser() user: RequestUser) {
-    const result = await this.authService.refresh(user);
-
-    const message = await this.messages.responses.refresh(result.language);
-    return this.success(result, message);
+  refresh(@GetUser() user: RequestUser) {
+    return this.authService.refresh(user);
   }
 
   @Post('logout')
@@ -91,8 +78,5 @@ export class AuthController extends BaseController {
   })
   async logout(@GetUser() user: RequestUser) {
     await this.authService.logout(user);
-
-    const message = await this.messages.responses.logout(user.language);
-    return this.success({}, message);
   }
 }

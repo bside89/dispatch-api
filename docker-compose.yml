@@ -1,7 +1,7 @@
 services:
   postgres:
     image: postgres:15
-    container_name: postgres
+    container_name: dispatch-postgres
     restart: always
     env_file:
       - .env.production
@@ -14,7 +14,7 @@ services:
       - '${DB_PORT}:${DB_PORT}'
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
+      - ./scripts/init-db.sh:/docker-entrypoint-initdb.d/init-db.sh
     networks:
       - dispatch-network
     healthcheck:
@@ -26,7 +26,7 @@ services:
 
   redis:
     image: redis:7-alpine
-    container_name: redis
+    container_name: dispatch-redis
     restart: always
     env_file:
       - .env.production
@@ -39,7 +39,7 @@ services:
 
   promtail:
     image: grafana/promtail:3.6.8
-    container_name: grafana-promtail
+    container_name: dispatch-promtail
     environment:
       - DOCKER_API_VERSION=1.44
     volumes:
@@ -51,7 +51,7 @@ services:
 
   loki:
     image: grafana/loki:2.9.0
-    container_name: grafana-loki
+    container_name: dispatch-loki
     ports:
       - '3100:3100'
     volumes:
@@ -61,7 +61,7 @@ services:
 
   grafana:
     image: grafana/grafana:12.4.2
-    container_name: grafana
+    container_name: dispatch-grafana
     ports:
       - '3001:3000'
     environment:
@@ -73,7 +73,7 @@ services:
 
   stripe-mock:
     image: stripe/stripe-mock:v0.197.0
-    container_name: stripe-mock
+    container_name: dispatch-stripe-mock
     ports:
       - '12111:12111'
     networks:

@@ -1,4 +1,7 @@
-import { PagOffsetResultDto } from '@/shared/dto/pag-offset-result.dto';
+import { PagCursorResultDto } from '@/shared/dto/pag-cursor-result.dto';
+import type { CursorParams } from '@/shared/types/cursor-params.type';
+import type { RequestUser } from '@/modules/auth/interfaces/request-user.interface';
+import { IBaseService } from '@/shared/services/base-service.interface';
 import { CreateUserDto, PublicCreateUserDto } from '../dto/create-user.dto';
 import { PublicUpdateUserDto, UpdateUserDto } from '../dto/update-user.dto';
 import { PublicUserQueryDto, UserQueryDto } from '../dto/user-query.dto';
@@ -7,8 +10,6 @@ import {
   UserResponseDto,
   UserSelfResponseDto,
 } from '../dto/user-response.dto';
-import type { RequestUser } from '@/modules/auth/interfaces/request-user.interface';
-import { IBaseService } from '@/shared/services/base-service.interface';
 
 export interface IUsersService extends IBaseService {
   publicCreate(
@@ -22,7 +23,8 @@ export interface IUsersService extends IBaseService {
 
   publicFindAll(
     query: PublicUserQueryDto,
-  ): Promise<PagOffsetResultDto<PublicUserResponseDto>>;
+    cursor?: CursorParams,
+  ): Promise<PagCursorResultDto<PublicUserResponseDto>>;
 
   publicUpdate(
     dto: PublicUpdateUserDto,
@@ -37,7 +39,10 @@ export interface IUsersService extends IBaseService {
     requestUser: RequestUser,
   ): Promise<UserResponseDto>;
 
-  adminFindAll(query: UserQueryDto): Promise<PagOffsetResultDto<UserResponseDto>>;
+  adminFindAll(
+    query: UserQueryDto,
+    cursor?: CursorParams,
+  ): Promise<PagCursorResultDto<UserResponseDto>>;
 
   adminFindOne(id: string): Promise<UserResponseDto>;
 

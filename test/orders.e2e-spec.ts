@@ -1,11 +1,11 @@
+import { OrderStatus } from '@/modules/orders/enums/order-status.enum';
 import { HttpStatus, INestApplication } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
+import Redis from 'ioredis';
 import request from 'supertest';
+import { DataSource } from 'typeorm';
 import { ADMIN_USER } from './constants/admin-user.constant';
 import { cleanDatabase, cleanRedis } from './utils/database-cleaner';
-import { DataSource } from 'typeorm';
-import Redis from 'ioredis';
-import { OrderStatus } from '@/modules/orders/enums/order-status.enum';
 import {
   createAccessToken,
   createFixtureItem,
@@ -13,8 +13,8 @@ import {
   getAdminFixture,
 } from './utils/e2e-fixtures';
 import { createTestApp } from './utils/e2e-setup';
-import { withRolesEnabled } from './utils/with-roles-enabled';
 import { paymentsGatewayServiceMock } from './utils/mock-payments-gateway-service';
+import { withRolesEnabled } from './utils/with-roles-enabled';
 
 jest.mock('@/config/bullmq.config', () => ({
   ...jest.requireActual('@/config/bullmq.config'),
@@ -140,9 +140,9 @@ describe('Orders (E2E)', () => {
       // Arrange: force paymentIntentsCreate to throw for this one call.
       // create() runs inside @Transactional(), so all DB writes (order +
       // order_items + stock decrement) must be rolled back.
-      (
-        paymentsGatewayServiceMock.payments.create as jest.Mock
-      ).mockRejectedValueOnce(new Error('Simulated Stripe error'));
+      (paymentsGatewayServiceMock.createPayment as jest.Mock).mockRejectedValueOnce(
+        new Error('Simulated Stripe error'),
+      );
 
       const payload = {
         items: [{ itemId: testItemId, quantity: 1 }],

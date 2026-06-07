@@ -1,61 +1,56 @@
+import { I18N_COMMON } from '@/shared/constants/i18n/i18n-common.constant';
+import { ROLE_GROUPS } from '@/shared/constants/role-groups.constant';
+import { GetUser } from '@/shared/decorators/get-user.decorator';
+import { PagCursorResultDto } from '@/shared/dto/pag-cursor-result.dto';
+import { CursorParamsPipe } from '@/shared/pipes/cursor-params.pipe';
+import type { CursorParams } from '@/shared/types/cursor-params.type';
+import { template } from '@/shared/utils/functions.utils';
 import {
-  Controller,
-  Get,
+  BadRequestException,
   Body,
-  Patch,
-  Param,
+  Controller,
   Delete,
-  Query,
+  Get,
   Headers,
-  ParseUUIDPipe,
   HttpCode,
   HttpStatus,
-  Post,
-  BadRequestException,
   Inject,
+  Param,
+  ParseUUIDPipe,
+  Patch,
+  Post,
+  Query,
 } from '@nestjs/common';
 import {
-  ApiTags,
-  ApiOperation,
-  ApiResponse,
-  ApiParam,
-  ApiBody,
   ApiBadRequestResponse,
+  ApiBody,
+  ApiConflictResponse,
+  ApiCreatedResponse,
+  ApiHeader,
   ApiNotFoundResponse,
   ApiOkResponse,
-  ApiConflictResponse,
+  ApiOperation,
+  ApiParam,
+  ApiQuery,
+  ApiResponse,
   ApiSecurity,
-  ApiHeader,
-  ApiCreatedResponse,
+  ApiTags,
 } from '@nestjs/swagger';
-import type { IUsersService } from './interfaces/users-service.interface';
+import { SkipThrottle, Throttle } from '@nestjs/throttler';
+import { resolveThrottleLimit } from '../../config/throttle.config';
+import { Roles } from '../auth/decorators/roles.decorator';
+import type { RequestUser } from '../auth/interfaces/request-user.interface';
 import { USERS_SERVICE } from './constants/users.token';
+import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { UserQueryDto } from './dto/user-query.dto';
 import { UserResponseDto } from './dto/user-response.dto';
-import { BaseController } from '@/shared/controllers/base.controller';
-import { GetUser } from '@/shared/decorators/get-user.decorator';
-import type { RequestUser } from '../auth/interfaces/request-user.interface';
-import { UserMessageFactory } from './factories/user-message.factory';
-import { Roles } from '../auth/decorators/roles.decorator';
-import { CreateUserDto } from './dto/create-user.dto';
-import { I18N_COMMON } from '@/shared/constants/i18n/i18n-common.constant';
-import { template } from '@/shared/utils/functions.utils';
-import { PagOffsetResultDto } from '@/shared/dto/pag-offset-result.dto';
-import { ROLE_GROUPS } from '@/shared/constants/role-groups.constant';
-import { SkipThrottle, Throttle } from '@nestjs/throttler';
-import { resolveThrottleLimit } from '../../config/throttle.config';
-
+import type { IUsersService } from './interfaces/users-service.interface';
 @Controller({ path: 'v1/admin/users', version: '1' })
 @ApiTags('users-admin')
 @ApiSecurity('bearer')
-export class AdminUsersController extends BaseController {
-  constructor(
-    @Inject(USERS_SERVICE) private readonly usersService: IUsersService,
-    private readonly messages: UserMessageFactory,
-  ) {
-    super(AdminUsersController.name);
-  }
+export class AdminUsersController {
+  constructor(@Inject(USERS_SERVICE) private readonly usersService: IUsersService) {}
 
   @Post()
   @Roles(...ROLE_GROUPS.COMMON.ADMIN_MANAGEMENT)
@@ -88,7 +83,7 @@ export class AdminUsersController extends BaseController {
     type: CreateUserDto,
     description: 'User data to create a new user',
   })
-  async create(
+  create(
     @Body() dto: CreateUserDto,
     @Headers('idempotency-key') idempotencyKey: string,
     @GetUser() requestUser: RequestUser,
@@ -99,14 +94,7 @@ export class AdminUsersController extends BaseController {
       );
     }
 
-    const result = await this.usersService.adminCreate(
-      dto,
-      idempotencyKey,
-      requestUser,
-    );
-
-    const message = await this.messages.responses.create(result.language);
-    return this.success(result, message);
+    return this.usersService.adminCreate(dto, idempotencyKey, requestUser);
   }
 
   @Get()
@@ -115,16 +103,18 @@ export class AdminUsersController extends BaseController {
   @ApiOperation({
     summary: 'Get all users',
     description:
-      'Retrieves a list of all users with optional filtering and pagination.',
+      'Retrieves a cursor-paginated list of users with optional filtering.',
   })
   @ApiOkResponse({
     description: 'List of users retrieved successfully',
-    type: PagOffsetResultDto<UserResponseDto>,
+    type: PagCursorResultDto,
   })
-  async findAll(@Query() queryDto: UserQueryDto) {
-    const result = await this.usersService.adminFindAll(queryDto);
-
-    return this.paginateOffset(result);
+  @ApiQuery({ name: 'cursor', required: false, type: String })
+  findAll(
+    @Query() queryDto: UserQueryDto,
+    @Query('cursor', CursorParamsPipe) cursor: CursorParams,
+  ) {
+    return this.usersService.adminFindAll(queryDto, cursor);
   }
 
   @Get(':id')
@@ -150,14 +140,8 @@ export class AdminUsersController extends BaseController {
   @ApiBadRequestResponse({
     description: 'Invalid UUID format',
   })
-  async findOne(
-    @Param('id', ParseUUIDPipe) id: string,
-    @GetUser() user: RequestUser,
-  ) {
-    const result = await this.usersService.adminFindOne(id);
-
-    const message = await this.messages.responses.findOne(user.language);
-    return this.success(result, message);
+  findOne(@Param('id', ParseUUIDPipe) id: string) {
+    return this.usersService.adminFindOne(id);
   }
 
   @Patch(':id')
@@ -191,15 +175,12 @@ export class AdminUsersController extends BaseController {
     type: UpdateUserDto,
     description: 'User data to update (name and email only)',
   })
-  async update(
+  update(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() updateUserDto: UpdateUserDto,
     @GetUser() user: RequestUser,
   ) {
-    const result = await this.usersService.adminUpdate(id, updateUserDto, user);
-
-    const message = await this.messages.responses.update(user.language);
-    return this.success(result, message);
+    return this.usersService.adminUpdate(id, updateUserDto, user);
   }
 
   @Delete(':id')
@@ -230,8 +211,5 @@ export class AdminUsersController extends BaseController {
     @GetUser() user: RequestUser,
   ) {
     await this.usersService.adminRemove(id, user);
-
-    const message = await this.messages.responses.remove(user.language);
-    return this.success(null, message);
   }
 }

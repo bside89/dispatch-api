@@ -7,6 +7,7 @@ type OutboxDispatchPlan = {
   orderQueueMsg: QueueJob<BaseOutboxJobPayload>[];
   paymentQueueMsg: QueueJob<BaseOutboxJobPayload>[];
   effectQueueMsg: QueueJob<BaseOutboxJobPayload>[];
+  userQueueMsg: QueueJob<BaseOutboxJobPayload>[];
 };
 
 export class OutboxDispatcher {
@@ -26,6 +27,10 @@ export class OutboxDispatcher {
     OutboxType.EFFECTS_NOTIFY_USER,
   ]);
 
+  private static readonly USER_TYPES = new Set<OutboxType>([
+    OutboxType.USER_UPDATE_CUSTOMER_ID,
+  ]);
+
   static partition(messages: Outbox[]): OutboxDispatchPlan {
     return {
       orderQueueMsg: messages
@@ -36,6 +41,9 @@ export class OutboxDispatcher {
         .map((message) => OutboxDispatcher.toQueueJob(message)),
       effectQueueMsg: messages
         .filter((message) => OutboxDispatcher.EFFECTS_TYPES.has(message.type))
+        .map((message) => OutboxDispatcher.toQueueJob(message)),
+      userQueueMsg: messages
+        .filter((message) => OutboxDispatcher.USER_TYPES.has(message.type))
         .map((message) => OutboxDispatcher.toQueueJob(message)),
     };
   }

@@ -1,44 +1,43 @@
-import { Module } from '@nestjs/common';
-import { ConfigModule, ConfigService } from '@nestjs/config';
-import { TypeOrmModule } from '@nestjs/typeorm';
-import { BullModule } from '@nestjs/bullmq';
-import { typeOrmConfig } from './config/typeorm.config';
-import { bullmqConfig } from './config/bullmq.config';
-import { OrdersModule } from './modules/orders/orders.module';
-import { UsersModule } from './modules/users/users.module';
-import { CacheModule } from './shared/modules/cache/cache.module';
-import { BullBoardModule } from '@bull-board/nestjs';
-import { ExpressAdapter } from '@bull-board/express';
 import { BullMQAdapter } from '@bull-board/api/bullMQAdapter';
-import { AppController } from './app.controller';
+import { ExpressAdapter } from '@bull-board/express';
+import { BullBoardModule } from '@bull-board/nestjs';
+import { BullModule } from '@nestjs/bullmq';
+import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
-import { JwtAuthGuard } from './modules/auth/guards/jwt.guard';
-import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
-import { RolesGuard } from './modules/auth/guards/roles.guard';
-import { EffectsModule } from './modules/effects/effects.module';
-import { AuthModule } from './modules/auth/auth.module';
-import { loggerConfig } from './config/logger.config';
-import { LoggerModule } from 'nestjs-pino';
-import { OutboxModule } from './shared/modules/outbox/outbox.module';
 import { ScheduleModule } from '@nestjs/schedule';
-import { MiddlewareConsumer, NestModule } from '@nestjs/common';
+import { TerminusModule } from '@nestjs/terminus';
+import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { existsSync } from 'fs';
+import { AcceptLanguageResolver, I18nModule, QueryResolver } from 'nestjs-i18n';
+import { LoggerModule } from 'nestjs-pino';
+import * as path from 'path';
+import { AppController } from './app.controller';
+import { bullmqConfig } from './config/bullmq.config';
+import { loggerConfig } from './config/logger.config';
+import { throttleConfig } from './config/throttle.config';
+import { typeOrmConfig } from './config/typeorm.config';
 import { CorrelationIdMiddleware } from './middleware/correlation-id.middleware';
 import { LoggingMiddleware } from './middleware/logging.middleware';
-import { TerminusModule } from '@nestjs/terminus';
-import { throttleConfig } from './config/throttle.config';
+import { AuthModule } from './modules/auth/auth.module';
+import { JwtAuthGuard } from './modules/auth/guards/jwt.guard';
+import { RolesGuard } from './modules/auth/guards/roles.guard';
+import { EffectsModule } from './modules/effects/effects.module';
+import { ItemsModule } from './modules/items/items.module';
+import { NotificationsModule } from './modules/notifications/notifications.module';
+import { OrdersModule } from './modules/orders/orders.module';
+import { PaymentsModule } from './modules/payments/payments.module';
+import { UsersModule } from './modules/users/users.module';
 import {
   EFFECTS_QUEUE,
   ORDER_QUEUE,
   PAYMENT_QUEUE,
+  USER_QUEUE,
 } from './shared/constants/queues.token';
-import { PaymentsModule } from './modules/payments/payments.module';
-import { PaymentGatewaysModule } from './modules/payment-gateways/payment-gateways.module';
-import { ItemsModule } from './modules/items/items.module';
-import * as path from 'path';
-import { existsSync } from 'fs';
-import { AcceptLanguageResolver, I18nModule, QueryResolver } from 'nestjs-i18n';
+import { CacheModule } from './shared/modules/cache/cache.module';
 import { DbGuardModule } from './shared/modules/db-guard/db-guard.module';
-import { NotificationsModule } from './modules/notifications/notifications.module';
+import { OutboxModule } from './shared/modules/outbox/outbox.module';
 import { SeedDataService } from './shared/services/seed-data.service';
 
 const i18nPath = [
@@ -104,6 +103,10 @@ const envFilePath = `.env.${process.env.NODE_ENV || 'local'}`;
         name: PAYMENT_QUEUE,
         adapter: BullMQAdapter,
       },
+      {
+        name: USER_QUEUE,
+        adapter: BullMQAdapter,
+      },
     ),
 
     // Internationalization (i18n)
@@ -130,7 +133,6 @@ const envFilePath = `.env.${process.env.NODE_ENV || 'local'}`;
     OutboxModule,
     TerminusModule,
     PaymentsModule,
-    PaymentGatewaysModule,
     NotificationsModule,
   ],
   controllers: [AppController],

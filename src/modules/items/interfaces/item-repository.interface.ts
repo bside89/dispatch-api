@@ -1,10 +1,10 @@
+import { PagCursorResultDto } from '@/shared/dto/pag-cursor-result.dto';
 import { IBaseRepository } from '@/shared/repositories/base-repository.interface';
-import { PagOffsetResultDto } from '@/shared/dto/pag-offset-result.dto';
+import { ItemCursorQueryDto } from '../dto/item-cursor-query.dto';
 import { Item } from '../entities/item.entity';
-import { ItemQueryDto } from '../dto/item-query.dto';
 
 export interface IItemRepository extends IBaseRepository<Item> {
-  filter(query: Partial<ItemQueryDto>): Promise<PagOffsetResultDto<Item>>;
+  filter(query: ItemCursorQueryDto): Promise<PagCursorResultDto<Item>>;
 
   findManyByIds(ids: string[]): Promise<Item[]>;
 

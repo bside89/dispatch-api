@@ -1,61 +1,54 @@
+import { I18N_COMMON } from '@/shared/constants/i18n';
+import { ROLE_GROUPS } from '@/shared/constants/role-groups.constant';
+import { PagCursorResultDto } from '@/shared/dto/pag-cursor-result.dto';
+import { CursorParamsPipe } from '@/shared/pipes/cursor-params.pipe';
+import type { CursorParams } from '@/shared/types/cursor-params.type';
+import { template } from '@/shared/utils/functions.utils';
 import {
-  Controller,
-  Get,
-  Post,
+  BadRequestException,
   Body,
-  Patch,
-  Param,
+  Controller,
   Delete,
-  Query,
+  Get,
   Headers,
-  ParseUUIDPipe,
   HttpCode,
   HttpStatus,
-  BadRequestException,
   Inject,
+  Param,
+  ParseUUIDPipe,
+  Patch,
+  Post,
+  Query,
 } from '@nestjs/common';
 import {
-  ApiTags,
-  ApiOperation,
-  ApiParam,
-  ApiBody,
   ApiBadRequestResponse,
-  ApiNotFoundResponse,
+  ApiBody,
   ApiCreatedResponse,
-  ApiOkResponse,
-  ApiSecurity,
   ApiForbiddenResponse,
   ApiHeader,
+  ApiNotFoundResponse,
+  ApiOkResponse,
+  ApiOperation,
+  ApiParam,
   ApiQuery,
+  ApiSecurity,
+  ApiTags,
 } from '@nestjs/swagger';
-import type { IItemsService } from './interfaces/items-service.interface';
-import { ITEMS_SERVICE } from './constants/items.token';
-import { CreateItemDto } from './dto/create-item.dto';
-import { UpdateItemDto } from './dto/update-item.dto';
-import { ItemQueryDto } from './dto/item-query.dto';
-import { ItemResponseDto } from './dto/item-response.dto';
-import { Roles } from '../auth/decorators/roles.decorator';
-import { PagOffsetResultDto } from '@/shared/dto/pag-offset-result.dto';
-import { BaseController } from '@/shared/controllers/base.controller';
-import { GetUser } from '@/shared/decorators/get-user.decorator';
-import { ItemMessageFactory } from './factories/item-message.factory';
-import type { RequestUser } from '../auth/interfaces/request-user.interface';
-import { I18N_COMMON } from '@/shared/constants/i18n';
-import { template } from '@/shared/utils/functions.utils';
-import { ROLE_GROUPS } from '@/shared/constants/role-groups.constant';
 import { SkipThrottle, Throttle } from '@nestjs/throttler';
 import { resolveThrottleLimit } from '../../config/throttle.config';
+import { Roles } from '../auth/decorators/roles.decorator';
+import { ITEMS_SERVICE } from './constants/items.token';
+import { CreateItemDto } from './dto/create-item.dto';
+import { ItemQueryDto } from './dto/item-query.dto';
+import { ItemResponseDto } from './dto/item-response.dto';
+import { UpdateItemDto } from './dto/update-item.dto';
+import type { IItemsService } from './interfaces/items-service.interface';
 
 @Controller({ path: 'v1/admin/items', version: '1' })
 @ApiTags('items-admin')
 @ApiSecurity('bearer')
-export class AdminItemsController extends BaseController {
-  constructor(
-    @Inject(ITEMS_SERVICE) private readonly itemsService: IItemsService,
-    private readonly messages: ItemMessageFactory,
-  ) {
-    super(AdminItemsController.name);
-  }
+export class AdminItemsController {
+  constructor(@Inject(ITEMS_SERVICE) private readonly itemsService: IItemsService) {}
 
   @Post()
   @Roles(...ROLE_GROUPS.COMMON.ADMIN_MANAGEMENT)
@@ -84,7 +77,6 @@ export class AdminItemsController extends BaseController {
   async create(
     @Body() createItemDto: CreateItemDto,
     @Headers('idempotency-key') idempotencyKey: string,
-    @GetUser() user: RequestUser,
   ) {
     if (!idempotencyKey) {
       throw new BadRequestException(
@@ -92,13 +84,7 @@ export class AdminItemsController extends BaseController {
       );
     }
 
-    const result = await this.itemsService.adminCreate(
-      createItemDto,
-      idempotencyKey,
-    );
-
-    const message = await this.messages.responses.create(user.language);
-    return this.success(result, message);
+    return this.itemsService.adminCreate(createItemDto, idempotencyKey);
   }
 
   @Get()
@@ -107,17 +93,19 @@ export class AdminItemsController extends BaseController {
   @ApiOperation({
     summary: 'Get all items (admin)',
     description:
-      'Retrieve a paginated list of items with full details including payment gateway price ID.',
+      'Retrieve a cursor-paginated list of items with full details including payment gateway price ID.',
   })
   @ApiOkResponse({
     description: 'Items successfully retrieved',
-    type: PagOffsetResultDto<ItemResponseDto>,
+    type: PagCursorResultDto,
   })
   @ApiQuery({ type: () => ItemQueryDto })
-  async findAll(@Query() queryDto: ItemQueryDto) {
-    const result = await this.itemsService.adminFindAll(queryDto);
-
-    return this.paginateOffset(result);
+  @ApiQuery({ name: 'cursor', required: false, type: String })
+  findAll(
+    @Query() queryDto: ItemQueryDto,
+    @Query('cursor', CursorParamsPipe) cursor: CursorParams,
+  ) {
+    return this.itemsService.adminFindAll(queryDto, cursor);
   }
 
   @Get(':id')
@@ -135,14 +123,8 @@ export class AdminItemsController extends BaseController {
   })
   @ApiNotFoundResponse({ description: 'Item not found' })
   @ApiForbiddenResponse({ description: 'Requires admin role' })
-  async findOne(
-    @Param('id', ParseUUIDPipe) id: string,
-    @GetUser() user: RequestUser,
-  ) {
-    const result = await this.itemsService.adminFindOne(id);
-
-    const message = await this.messages.responses.findOne(user.language);
-    return this.success(result, message);
+  findOne(@Param('id', ParseUUIDPipe) id: string) {
+    return this.itemsService.adminFindOne(id);
   }
 
   @Patch(':id')
@@ -160,15 +142,11 @@ export class AdminItemsController extends BaseController {
   @ApiNotFoundResponse({ description: 'Item not found' })
   @ApiForbiddenResponse({ description: 'Requires admin role' })
   @ApiBody({ type: UpdateItemDto, description: 'Item update data' })
-  async update(
+  update(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() updateItemDto: UpdateItemDto,
-    @GetUser() user: RequestUser,
   ) {
-    const result = await this.itemsService.adminUpdate(id, updateItemDto);
-
-    const message = await this.messages.responses.update(user.language);
-    return this.success(result, message);
+    return this.itemsService.adminUpdate(id, updateItemDto);
   }
 
   @Delete(':id')
@@ -183,13 +161,7 @@ export class AdminItemsController extends BaseController {
   @ApiOkResponse({ description: 'Item successfully deleted' })
   @ApiNotFoundResponse({ description: 'Item not found' })
   @ApiForbiddenResponse({ description: 'Requires admin role' })
-  async remove(
-    @Param('id', ParseUUIDPipe) id: string,
-    @GetUser() user: RequestUser,
-  ) {
+  async remove(@Param('id', ParseUUIDPipe) id: string) {
     await this.itemsService.adminRemove(id);
-
-    const message = await this.messages.responses.remove(user.language);
-    return this.success({}, message);
   }
 }

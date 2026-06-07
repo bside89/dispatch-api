@@ -1,21 +1,21 @@
-import { Test, TestingModule } from '@nestjs/testing';
 import { AppModule } from '@/app.module';
-import { DataSource } from 'typeorm';
-import Redis from 'ioredis';
-import { JwtService } from '@nestjs/jwt';
-import { REDIS_CLIENT } from '@/shared/modules/cache/constants/redis-client.token';
-import { IAuthService } from '@/modules/auth/interfaces/auth-service.interface';
 import { AUTH_SERVICE } from '@/modules/auth/constants/auth.token';
-import { IOutboxRepository } from '@/shared/modules/outbox/interfaces/outbox-repository.interface';
+import { IAuthService } from '@/modules/auth/interfaces/auth-service.interface';
+import type { JwtPayload } from '@/modules/auth/interfaces/jwt-payload.interface';
+import type { RequestUser } from '@/modules/auth/interfaces/request-user.interface';
+import { PAYMENTS_GATEWAY_ADAPTER } from '@/modules/payments/constants/payments.token';
+import { REDIS_CLIENT } from '@/shared/modules/cache/constants/redis-client.token';
 import { OUTBOX_REPOSITORY } from '@/shared/modules/outbox/constants/outbox.token';
-import { PAYMENTS_GATEWAY_SERVICE } from '@/modules/payment-gateways/constants/payments-gateway.token';
+import { IOutboxRepository } from '@/shared/modules/outbox/interfaces/outbox-repository.interface';
+import { HashAdapter } from '@/shared/utils/hash-adapter.utils';
+import { INestApplication, UnauthorizedException } from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
+import { Test, TestingModule } from '@nestjs/testing';
+import Redis from 'ioredis';
+import { DataSource } from 'typeorm';
 import { cleanDatabase, cleanRedis } from './utils/database-cleaner';
 import { paymentsGatewayServiceMock } from './utils/mock-payments-gateway-service';
 import { waitFor } from './utils/wait-for';
-import { INestApplication, UnauthorizedException } from '@nestjs/common';
-import type { RequestUser } from '@/modules/auth/interfaces/request-user.interface';
-import type { JwtPayload } from '@/modules/auth/interfaces/jwt-payload.interface';
-import { HashAdapter } from '@/shared/utils/hash-adapter.utils';
 
 // Mock the delay function to resolve almost instantly.
 jest.mock('@/shared/utils/functions.utils', () => ({
@@ -45,7 +45,7 @@ describe('Auth (Integration)', () => {
     const module: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
     })
-      .overrideProvider(PAYMENTS_GATEWAY_SERVICE)
+      .overrideProvider(PAYMENTS_GATEWAY_ADAPTER)
       .useValue(paymentsGatewayServiceMock)
       .compile();
 
