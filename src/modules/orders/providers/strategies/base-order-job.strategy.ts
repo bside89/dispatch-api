@@ -2,7 +2,7 @@ import { LOCK_KEY } from '@/shared/constants/lock.key';
 import type { ICacheService } from '@/shared/modules/cache/interfaces/cache-service.interface';
 import { DbGuardService } from '@/shared/modules/db-guard/db-guard.service';
 import { OrdersJobPayload } from '@/shared/payloads/orders-job.payload';
-import { BaseJobStrategy } from '@/shared/strategies/base-job.strategy';
+import { BaseJobStrategy } from '@/shared/providers/strategies/base-job.strategy';
 import { Order } from '../../entities/order.entity';
 import { OrderStatus } from '../../enums/order-status.enum';
 import { OrderTransitionPolicy } from '../../helpers/order-transition-policy';
@@ -11,7 +11,7 @@ import type { IOrderRepository } from '../../interfaces/order-repository.interfa
 export abstract class BaseOrderJobStrategy<
   T extends OrdersJobPayload,
 > extends BaseJobStrategy<T> {
-  constructor(
+  protected constructor(
     jobName: string,
     protected readonly cacheService: ICacheService,
     protected readonly orderRepository: IOrderRepository,

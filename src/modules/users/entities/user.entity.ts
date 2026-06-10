@@ -3,7 +3,7 @@ import { Customer } from '@/modules/payments/entities/customer.entity';
 import { Payment } from '@/modules/payments/entities/payment.entity';
 import { BaseEntity } from '@/shared/entities/base.entity';
 import { Column, Entity, Index, JoinColumn, OneToMany, OneToOne } from 'typeorm';
-import { UserRole } from '../../../shared/enums/user-role.enum';
+import { UserRole } from '@/shared/enums/user-role.enum';
 import { Order } from '../../orders/entities/order.entity';
 import { Address } from './address.entity';
 

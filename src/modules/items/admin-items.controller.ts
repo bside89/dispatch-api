@@ -1,7 +1,9 @@
+import { resolveThrottleLimit } from '@/config/throttle.config';
 import { I18N_COMMON } from '@/shared/constants/i18n';
 import { ROLE_GROUPS } from '@/shared/constants/role-groups.constant';
+import { ErrorResponseDto } from '@/shared/dto/error-response.dto';
 import { PagCursorResultDto } from '@/shared/dto/pag-cursor-result.dto';
-import { CursorParamsPipe } from '@/shared/pipes/cursor-params.pipe';
+import { CursorParamsPipe } from '@/shared/providers/pipes/cursor-params.pipe';
 import type { CursorParams } from '@/shared/types/cursor-params.type';
 import { template } from '@/shared/utils/functions.utils';
 import {
@@ -26,6 +28,7 @@ import {
   ApiCreatedResponse,
   ApiForbiddenResponse,
   ApiHeader,
+  ApiNoContentResponse,
   ApiNotFoundResponse,
   ApiOkResponse,
   ApiOperation,
@@ -33,9 +36,9 @@ import {
   ApiQuery,
   ApiSecurity,
   ApiTags,
+  ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
 import { SkipThrottle, Throttle } from '@nestjs/throttler';
-import { resolveThrottleLimit } from '../../config/throttle.config';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { ITEMS_SERVICE } from './constants/items.token';
 import { CreateItemDto } from './dto/create-item.dto';
@@ -47,6 +50,14 @@ import type { IItemsService } from './interfaces/items-service.interface';
 @Controller({ path: 'v1/admin/items', version: '1' })
 @ApiTags('items-admin')
 @ApiSecurity('bearer')
+@ApiUnauthorizedResponse({
+  description: 'Missing or invalid authentication token',
+  type: ErrorResponseDto,
+})
+@ApiForbiddenResponse({
+  description: 'Insufficient permissions for this operation',
+  type: ErrorResponseDto,
+})
 export class AdminItemsController {
   constructor(@Inject(ITEMS_SERVICE) private readonly itemsService: IItemsService) {}
 
@@ -71,8 +82,10 @@ export class AdminItemsController {
     description: 'Item successfully created',
     type: ItemResponseDto,
   })
-  @ApiBadRequestResponse({ description: 'Invalid input data' })
-  @ApiForbiddenResponse({ description: 'Requires admin role' })
+  @ApiBadRequestResponse({
+    description: 'Invalid input data',
+    type: ErrorResponseDto,
+  })
   @ApiBody({ type: CreateItemDto, description: 'Item creation data' })
   async create(
     @Body() createItemDto: CreateItemDto,
@@ -121,8 +134,7 @@ export class AdminItemsController {
     description: 'Item successfully retrieved',
     type: ItemResponseDto,
   })
-  @ApiNotFoundResponse({ description: 'Item not found' })
-  @ApiForbiddenResponse({ description: 'Requires admin role' })
+  @ApiNotFoundResponse({ description: 'Item not found', type: ErrorResponseDto })
   findOne(@Param('id', ParseUUIDPipe) id: string) {
     return this.itemsService.adminFindOne(id);
   }
@@ -139,8 +151,7 @@ export class AdminItemsController {
     description: 'Item successfully updated',
     type: ItemResponseDto,
   })
-  @ApiNotFoundResponse({ description: 'Item not found' })
-  @ApiForbiddenResponse({ description: 'Requires admin role' })
+  @ApiNotFoundResponse({ description: 'Item not found', type: ErrorResponseDto })
   @ApiBody({ type: UpdateItemDto, description: 'Item update data' })
   update(
     @Param('id', ParseUUIDPipe) id: string,
@@ -152,15 +163,17 @@ export class AdminItemsController {
   @Delete(':id')
   @Roles(...ROLE_GROUPS.COMMON.ADMIN_MANAGEMENT)
   @HttpCode(HttpStatus.NO_CONTENT)
-  @ApiOperation({ summary: 'Delete an item', description: 'Requires admin role.' })
+  @ApiOperation({
+    summary: 'Delete an item',
+    description: 'Soft-deletes a catalog item. Requires admin role.',
+  })
   @ApiParam({
     name: 'id',
     description: 'Item unique identifier (UUID)',
     example: '550e8400-e29b-41d4-a716-446655440000',
   })
-  @ApiOkResponse({ description: 'Item successfully deleted' })
-  @ApiNotFoundResponse({ description: 'Item not found' })
-  @ApiForbiddenResponse({ description: 'Requires admin role' })
+  @ApiNoContentResponse({ description: 'Item successfully deleted' })
+  @ApiNotFoundResponse({ description: 'Item not found', type: ErrorResponseDto })
   async remove(@Param('id', ParseUUIDPipe) id: string) {
     await this.itemsService.adminRemove(id);
   }

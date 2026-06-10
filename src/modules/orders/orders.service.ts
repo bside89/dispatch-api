@@ -10,7 +10,7 @@ import {
   ProcessOrderJobPayload,
   RefundOrderJobPayload,
 } from '@/shared/payloads/orders-job.payload';
-import { BaseService } from '@/shared/services/base.service';
+import { BaseService } from '@/shared/providers/services/base.service';
 import type { CursorParams } from '@/shared/types/cursor-params.type';
 import { EntityMapper } from '@/shared/utils/entity-mapper.utils';
 import { template } from '@/shared/utils/functions.utils';
@@ -21,9 +21,9 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { IDEMPOTENCY_SERVICE } from '../../shared/modules/cache/constants/idempotency.token';
-import { ORDER_KEY } from '../../shared/modules/cache/constants/order.key';
-import type { IIdempotencyService } from '../../shared/modules/cache/interfaces/idempotency-service.interface';
+import { IDEMPOTENCY_SERVICE } from '@/shared/modules/cache/constants/idempotency.token';
+import { ORDER_KEY } from '@/shared/modules/cache/constants/order.key';
+import type { IIdempotencyService } from '@/shared/modules/cache/interfaces/idempotency-service.interface';
 import type { RequestUser } from '../auth/interfaces/request-user.interface';
 import { ITEMS_SERVICE } from '../items/constants/items.token';
 import type { IItemsService } from '../items/interfaces/items-service.interface';

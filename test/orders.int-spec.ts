@@ -1,4 +1,3 @@
-/*eslint-disable @typescript-eslint/no-explicit-any */
 import { AppModule } from '@/app.module';
 import { ITEMS_SERVICE } from '@/modules/items/constants/items.token';
 import { IItemsService } from '@/modules/items/interfaces/items-service.interface';
@@ -7,6 +6,7 @@ import { IOrdersService } from '@/modules/orders/interfaces/orders-service.inter
 import { OrderProcessor } from '@/modules/orders/providers/processors/order.processor';
 import { ProcessOrderJobStrategy } from '@/modules/orders/providers/strategies/process-order-job.strategy';
 import { PAYMENTS_GATEWAY_ADAPTER } from '@/modules/payments/constants/payments.token';
+import { CreateCustomerJobStrategy } from '@/modules/payments/providers/strategies/create-customer-job.strategy';
 import { USERS_SERVICE } from '@/modules/users/constants/users.token';
 import { IUsersService } from '@/modules/users/interfaces/users-service.interface';
 import { REDIS_CLIENT } from '@/shared/modules/cache/constants/redis-client.token';
@@ -55,6 +55,14 @@ describe('Orders (Integration)', () => {
     })
       .overrideProvider(PAYMENTS_GATEWAY_ADAPTER)
       .useValue(paymentsGatewayServiceMock)
+      // Prevent PAYMENT_CREATE_CUSTOMER jobs from firing against a DB that may
+      // have already been cleaned between tests. Order tests don't assert on
+      // customer creation; mocking the strategy removes the race condition.
+      .overrideProvider(CreateCustomerJobStrategy)
+      .useValue({
+        execute: jest.fn().mockResolvedValue(undefined),
+        executeAfterFail: jest.fn().mockResolvedValue(undefined),
+      })
       .compile();
 
     app = module.createNestApplication();

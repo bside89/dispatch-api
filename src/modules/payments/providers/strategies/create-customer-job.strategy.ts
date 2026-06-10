@@ -7,7 +7,7 @@ import { DbGuardService } from '@/shared/modules/db-guard/db-guard.service';
 import { OUTBOX_SERVICE } from '@/shared/modules/outbox/constants/outbox.token';
 import type { IOutboxService } from '@/shared/modules/outbox/interfaces/outbox-service.interface';
 import { CreateCustomerJobPayload } from '@/shared/payloads/payments-job.payload';
-import { UpdateUserCustomerIdJobPayload } from '@/shared/payloads/user-job.payload';
+import { UpdateUserJobPayload } from '@/shared/payloads/user-job.payload';
 import { template } from '@/shared/utils/functions.utils';
 import { Inject, Injectable, InternalServerErrorException } from '@nestjs/common';
 import { Job } from 'bullmq';
@@ -48,9 +48,7 @@ export class CreateCustomerJobStrategy extends BasePaymentJobStrategy<CreateCust
       );
     }
 
-    await this.outboxService.add(
-      new UpdateUserCustomerIdJobPayload(userDto.id, customer.id),
-    );
+    await this.outboxService.add(new UpdateUserJobPayload(userDto.id, customer.id));
 
     this.logger.log(`Customer created successfully with ID: ${customer.id}`, {
       userId: userDto.id,

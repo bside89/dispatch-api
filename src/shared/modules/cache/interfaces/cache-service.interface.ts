@@ -1,4 +1,4 @@
-import { IBaseService } from '@/shared/services/base-service.interface';
+import { IBaseService } from '@/shared/providers/services/base-service.interface';
 
 export interface ICacheService extends IBaseService {
   get<T>(key: string): Promise<T | undefined>;

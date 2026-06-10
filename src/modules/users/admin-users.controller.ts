@@ -1,8 +1,10 @@
+import { resolveThrottleLimit } from '@/config/throttle.config';
 import { I18N_COMMON } from '@/shared/constants/i18n/i18n-common.constant';
 import { ROLE_GROUPS } from '@/shared/constants/role-groups.constant';
 import { GetUser } from '@/shared/decorators/get-user.decorator';
+import { ErrorResponseDto } from '@/shared/dto/error-response.dto';
 import { PagCursorResultDto } from '@/shared/dto/pag-cursor-result.dto';
-import { CursorParamsPipe } from '@/shared/pipes/cursor-params.pipe';
+import { CursorParamsPipe } from '@/shared/providers/pipes/cursor-params.pipe';
 import type { CursorParams } from '@/shared/types/cursor-params.type';
 import { template } from '@/shared/utils/functions.utils';
 import {
@@ -26,18 +28,19 @@ import {
   ApiBody,
   ApiConflictResponse,
   ApiCreatedResponse,
+  ApiForbiddenResponse,
   ApiHeader,
+  ApiNoContentResponse,
   ApiNotFoundResponse,
   ApiOkResponse,
   ApiOperation,
   ApiParam,
   ApiQuery,
-  ApiResponse,
   ApiSecurity,
   ApiTags,
+  ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
 import { SkipThrottle, Throttle } from '@nestjs/throttler';
-import { resolveThrottleLimit } from '../../config/throttle.config';
 import { Roles } from '../auth/decorators/roles.decorator';
 import type { RequestUser } from '../auth/interfaces/request-user.interface';
 import { USERS_SERVICE } from './constants/users.token';
@@ -46,9 +49,18 @@ import { UpdateUserDto } from './dto/update-user.dto';
 import { UserQueryDto } from './dto/user-query.dto';
 import { UserResponseDto } from './dto/user-response.dto';
 import type { IUsersService } from './interfaces/users-service.interface';
+
 @Controller({ path: 'v1/admin/users', version: '1' })
 @ApiTags('users-admin')
 @ApiSecurity('bearer')
+@ApiUnauthorizedResponse({
+  description: 'Missing or invalid authentication token',
+  type: ErrorResponseDto,
+})
+@ApiForbiddenResponse({
+  description: 'Insufficient permissions for this operation',
+  type: ErrorResponseDto,
+})
 export class AdminUsersController {
   constructor(@Inject(USERS_SERVICE) private readonly usersService: IUsersService) {}
 
@@ -75,9 +87,11 @@ export class AdminUsersController {
   })
   @ApiConflictResponse({
     description: 'Email already exists',
+    type: ErrorResponseDto,
   })
   @ApiBadRequestResponse({
     description: 'Invalid user data or missing idempotency-key header',
+    type: ErrorResponseDto,
   })
   @ApiBody({
     type: CreateUserDto,
@@ -109,7 +123,13 @@ export class AdminUsersController {
     description: 'List of users retrieved successfully',
     type: PagCursorResultDto,
   })
-  @ApiQuery({ name: 'cursor', required: false, type: String })
+  @ApiQuery({ type: () => UserQueryDto })
+  @ApiQuery({
+    name: 'cursor',
+    required: false,
+    type: String,
+    description: 'Pagination cursor from the previous page',
+  })
   findAll(
     @Query() queryDto: UserQueryDto,
     @Query('cursor', CursorParamsPipe) cursor: CursorParams,
@@ -136,9 +156,11 @@ export class AdminUsersController {
   })
   @ApiNotFoundResponse({
     description: 'User not found',
+    type: ErrorResponseDto,
   })
   @ApiBadRequestResponse({
     description: 'Invalid UUID format',
+    type: ErrorResponseDto,
   })
   findOne(@Param('id', ParseUUIDPipe) id: string) {
     return this.usersService.adminFindOne(id);
@@ -164,12 +186,15 @@ export class AdminUsersController {
   })
   @ApiNotFoundResponse({
     description: 'User not found',
+    type: ErrorResponseDto,
   })
   @ApiConflictResponse({
     description: 'Email already exists',
+    type: ErrorResponseDto,
   })
   @ApiBadRequestResponse({
     description: 'Invalid user data or UUID format',
+    type: ErrorResponseDto,
   })
   @ApiBody({
     type: UpdateUserDto,
@@ -188,7 +213,7 @@ export class AdminUsersController {
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({
     summary: 'Delete user',
-    description: 'Deletes a user by their unique identifier.',
+    description: 'Permanently deletes a user by their unique identifier.',
   })
   @ApiParam({
     name: 'id',
@@ -196,15 +221,17 @@ export class AdminUsersController {
     type: String,
     example: '550e8400-e29b-41d4-a716-446655440000',
   })
-  @ApiResponse({
-    status: 204,
+  @ApiNoContentResponse({
     description: 'User deleted successfully',
+    type: ErrorResponseDto,
   })
   @ApiNotFoundResponse({
     description: 'User not found',
+    type: ErrorResponseDto,
   })
   @ApiBadRequestResponse({
     description: 'Invalid UUID format',
+    type: ErrorResponseDto,
   })
   async remove(
     @Param('id', ParseUUIDPipe) id: string,

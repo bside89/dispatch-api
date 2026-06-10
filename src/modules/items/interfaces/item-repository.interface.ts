@@ -1,5 +1,5 @@
 import { PagCursorResultDto } from '@/shared/dto/pag-cursor-result.dto';
-import { IBaseRepository } from '@/shared/repositories/base-repository.interface';
+import { IBaseRepository } from '@/shared/providers/repositories/base-repository.interface';
 import { ItemCursorQueryDto } from '../dto/item-cursor-query.dto';
 import { Item } from '../entities/item.entity';
 

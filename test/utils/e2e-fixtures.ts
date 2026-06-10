@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { JwtService } from '@nestjs/jwt';
 import { DataSource } from 'typeorm';
 import { ADMIN_USER } from '../constants/admin-user.constant';

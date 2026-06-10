@@ -1,18 +1,18 @@
-import { OutboxService } from './outbox.service';
-import { Global, Module } from '@nestjs/common';
-import { OutboxRepository } from './repositories/outbox.repository';
 import { bullmqDefaultJobOptions } from '@/config/bullmq.config';
-import { BullModule } from '@nestjs/bullmq';
-import { TypeOrmModule } from '@nestjs/typeorm';
-import { Outbox } from './entities/outbox.entity';
 import {
+  EFFECTS_QUEUE,
   ORDER_QUEUE,
   PAYMENT_QUEUE,
-  EFFECTS_QUEUE,
   USER_QUEUE,
 } from '@/shared/constants/queues.token';
-import { OUTBOX_SERVICE, OUTBOX_REPOSITORY } from './constants/outbox.token';
-import { EffectsModule } from '@/modules/effects/effects.module';
+import { BullModule } from '@nestjs/bullmq';
+import { Global, Module } from '@nestjs/common';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { OUTBOX_REPOSITORY, OUTBOX_SERVICE } from './constants/outbox.token';
+import { Outbox } from './entities/outbox.entity';
+import { OutboxService } from './outbox.service';
+import { OutboxScheduler } from './providers/outbox.scheduler';
+import { OutboxRepository } from './providers/repositories/outbox.repository';
 
 @Global()
 @Module({
@@ -38,9 +38,9 @@ import { EffectsModule } from '@/modules/effects/effects.module';
       defaultJobOptions: bullmqDefaultJobOptions,
       forceDisconnectOnShutdown: true,
     }),
-    EffectsModule,
   ],
   providers: [
+    OutboxScheduler,
     { provide: OUTBOX_SERVICE, useClass: OutboxService },
     { provide: OUTBOX_REPOSITORY, useClass: OutboxRepository },
   ],

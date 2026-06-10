@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { Entity, Column } from 'typeorm';
 import { OutboxType } from '../enums/outbox-type.enum';
 import { BaseEntity } from '@/shared/entities/base.entity';

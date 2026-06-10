@@ -1,5 +1,5 @@
 import { PagCursorResultDto } from '@/shared/dto/pag-cursor-result.dto';
-import { BaseRepository } from '@/shared/repositories/base.repository';
+import { BaseRepository } from '@/shared/providers/repositories/base.repository';
 import { col } from '@/shared/utils/functions.utils';
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';

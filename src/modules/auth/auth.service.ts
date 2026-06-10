@@ -1,28 +1,28 @@
-import { Injectable, Inject, UnauthorizedException } from '@nestjs/common';
-import { JwtService } from '@nestjs/jwt';
-import { User } from '../users/entities/user.entity';
-import { LoginResponseDto } from './dto/login-response.dto';
-import { ConfigService } from '@nestjs/config';
-import type { JwtPayload } from './interfaces/jwt-payload.interface';
-import type { ICacheService } from '../../shared/modules/cache/interfaces/cache-service.interface';
-import { CACHE_SERVICE } from '../../shared/modules/cache/constants/cache.token';
-import type { IUserRepository } from '../users/interfaces/user-repository.interface';
-import { USER_REPOSITORY } from '../users/constants/users.token';
-import { HashAdapter } from '@/shared/utils/hash-adapter.utils';
 import { CACHE_TTL } from '@/shared/constants/cache-ttl.constant';
-import type { IOutboxService } from '@/shared/modules/outbox/interfaces/outbox-service.interface';
-import { OUTBOX_SERVICE } from '@/shared/modules/outbox/constants/outbox.token';
-import { NotifyUserJobPayload } from '@/shared/payloads/effects-job.payload';
-import type { RequestUser } from './interfaces/request-user.interface';
-import { AUTH_KEY } from '../../shared/modules/cache/constants/auth.key';
-import type ms from 'ms';
-import { AuthMessageFactory } from './factories/auth-message.factory';
-import { template } from '@/shared/utils/functions.utils';
 import { I18N_AUTH, I18N_COMMON } from '@/shared/constants/i18n';
-import { IAuthService } from './interfaces/auth-service.interface';
-import { BaseService } from '@/shared/services/base.service';
-import { DbGuardService } from '@/shared/modules/db-guard/db-guard.service';
 import { LOCK_KEY } from '@/shared/constants/lock.key';
+import { DbGuardService } from '@/shared/modules/db-guard/db-guard.service';
+import { OUTBOX_SERVICE } from '@/shared/modules/outbox/constants/outbox.token';
+import type { IOutboxService } from '@/shared/modules/outbox/interfaces/outbox-service.interface';
+import { NotifyUserJobPayload } from '@/shared/payloads/effects-job.payload';
+import { BaseService } from '@/shared/providers/services/base.service';
+import { template } from '@/shared/utils/functions.utils';
+import { HashAdapter } from '@/shared/utils/hash-adapter.utils';
+import { Inject, Injectable, UnauthorizedException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { JwtService } from '@nestjs/jwt';
+import type ms from 'ms';
+import { AUTH_KEY } from '../../shared/modules/cache/constants/auth.key';
+import { CACHE_SERVICE } from '../../shared/modules/cache/constants/cache.token';
+import type { ICacheService } from '../../shared/modules/cache/interfaces/cache-service.interface';
+import { USER_REPOSITORY } from '../users/constants/users.token';
+import { User } from '../users/entities/user.entity';
+import type { IUserRepository } from '../users/interfaces/user-repository.interface';
+import { LoginResponseDto } from './dto/login-response.dto';
+import { AuthMessageFactory } from '@/modules/auth/providers/factories/auth-message.factory';
+import { IAuthService } from './interfaces/auth-service.interface';
+import type { JwtPayload } from './interfaces/jwt-payload.interface';
+import type { RequestUser } from './interfaces/request-user.interface';
 
 @Injectable()
 export class AuthService extends BaseService implements IAuthService {
@@ -145,14 +145,12 @@ export class AuthService extends BaseService implements IAuthService {
       expiresIn: refreshTokenExpiry,
     });
 
-    const result: LoginResponseDto = {
+    return {
       accessToken,
       refreshToken,
       userId: user.id,
       language: user.language ?? 'en',
     };
-
-    return result;
   }
 
   updateRefreshToken(userId: string, refreshToken?: string): Promise<void> {

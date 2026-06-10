@@ -1,10 +1,9 @@
-/*eslint-disable @typescript-eslint/no-explicit-any */
 import { Global, Module } from '@nestjs/common';
 import { CacheModule as NestCacheModule } from '@nestjs/cache-manager';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import Redis from 'ioredis';
 import Redlock from 'redlock';
-import { cacheConfig, redisClient } from '../../../config/redis.config';
+import { cacheConfig, redisClient } from '@/config/redis.config';
 import { CacheService } from './cache.service';
 import { IdempotencyService } from './idempotency.service';
 import { REDIS_CLIENT } from '@/shared/modules/cache/constants/redis-client.token';

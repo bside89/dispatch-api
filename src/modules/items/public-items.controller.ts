@@ -1,5 +1,6 @@
+import { ErrorResponseDto } from '@/shared/dto/error-response.dto';
 import { PagCursorResultDto } from '@/shared/dto/pag-cursor-result.dto';
-import { CursorParamsPipe } from '@/shared/pipes/cursor-params.pipe';
+import { CursorParamsPipe } from '@/shared/providers/pipes/cursor-params.pipe';
 import type { CursorParams } from '@/shared/types/cursor-params.type';
 import {
   Controller,
@@ -10,6 +11,7 @@ import {
   Query,
 } from '@nestjs/common';
 import {
+  ApiBadRequestResponse,
   ApiNotFoundResponse,
   ApiOkResponse,
   ApiOperation,
@@ -17,6 +19,7 @@ import {
   ApiQuery,
   ApiSecurity,
   ApiTags,
+  ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
 import { ITEMS_SERVICE } from './constants/items.token';
 import { PublicItemQueryDto } from './dto/item-query.dto';
@@ -26,6 +29,10 @@ import type { IItemsService } from './interfaces/items-service.interface';
 @Controller({ path: 'v1/items', version: '1' })
 @ApiTags('items')
 @ApiSecurity('bearer')
+@ApiUnauthorizedResponse({
+  description: 'Missing or invalid authentication token',
+  type: ErrorResponseDto,
+})
 export class PublicItemsController {
   constructor(@Inject(ITEMS_SERVICE) private readonly itemsService: IItemsService) {}
 
@@ -48,7 +55,11 @@ export class PublicItemsController {
   }
 
   @Get(':id')
-  @ApiOperation({ summary: 'Get item by ID' })
+  @ApiOperation({
+    summary: 'Get item by ID',
+    description:
+      'Retrieve the full details of a specific catalog item by its unique identifier.',
+  })
   @ApiParam({
     name: 'id',
     description: 'Item unique identifier (UUID)',
@@ -59,6 +70,7 @@ export class PublicItemsController {
     type: PublicItemResponseDto,
   })
   @ApiNotFoundResponse({ description: 'Item not found' })
+  @ApiBadRequestResponse({ description: 'Invalid UUID format' })
   findOne(@Param('id', ParseUUIDPipe) id: string) {
     return this.itemsService.publicFindOne(id);
   }

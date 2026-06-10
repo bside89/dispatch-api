@@ -6,7 +6,7 @@ import { DbGuardService } from '@/shared/modules/db-guard/db-guard.service';
 import { OUTBOX_SERVICE } from '@/shared/modules/outbox/constants/outbox.token';
 import type { IOutboxService } from '@/shared/modules/outbox/interfaces/outbox-service.interface';
 import { DeleteCustomerJobPayload } from '@/shared/payloads/payments-job.payload';
-import { UpdateUserCustomerIdJobPayload } from '@/shared/payloads/user-job.payload';
+import { UpdateUserJobPayload } from '@/shared/payloads/user-job.payload';
 import { Inject, Injectable } from '@nestjs/common';
 import { Job } from 'bullmq';
 import type { IPaymentsService } from '../../interfaces/payments-service.interface';
@@ -39,9 +39,7 @@ export class DeleteCustomerJobStrategy extends BasePaymentJobStrategy<DeleteCust
     );
 
     await this.deleteCustomer(job.data);
-    await this.outboxService.add(
-      new UpdateUserCustomerIdJobPayload(userDto.id, null),
-    );
+    await this.outboxService.add(new UpdateUserJobPayload(userDto.id, null));
 
     this.logger.log(`Customer deleted successfully for user ID: ${userDto.id}`, {
       userId: userDto.id,

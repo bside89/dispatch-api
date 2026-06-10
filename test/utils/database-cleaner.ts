@@ -9,7 +9,7 @@ export async function cleanDatabase(dataSource: DataSource) {
 
   await dataSource.query(`TRUNCATE ${tableNames} RESTART IDENTITY CASCADE;`);
 
-  // Add a Admin test user for some endpoints
+  // Add an Admin test user for some endpoints
   const hashedPassword =
     '$argon2id$v=19$m=65536,t=3,p=1$IDLXlbsUuUn15tmwMQPaUQ$xwXQGL/RHE9PlJ7xyXZD0yFSGFrPFEqNPUcr1JJue10';
   await dataSource.query(

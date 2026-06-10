@@ -1,31 +1,31 @@
-import {
-  Injectable,
-  Inject,
-  NotFoundException,
-  ForbiddenException,
-} from '@nestjs/common';
-import type { IItemRepository } from './interfaces/item-repository.interface';
-import { ITEM_REPOSITORY } from './constants/items.token';
-import { CreateItemDto } from './dto/create-item.dto';
-import { UpdateItemDto } from './dto/update-item.dto';
-import { ItemQueryDto, PublicItemQueryDto } from './dto/item-query.dto';
-import { ItemResponseDto, PublicItemResponseDto } from './dto/item-response.dto';
+import { CACHE_TTL } from '@/shared/constants/cache-ttl.constant';
+import { I18N_ITEMS } from '@/shared/constants/i18n';
+import { LOCK_KEY } from '@/shared/constants/lock.key';
 import { PagCursorResultDto } from '@/shared/dto/pag-cursor-result.dto';
-import type { CursorParams } from '@/shared/types/cursor-params.type';
-import { EntityMapper } from '@/shared/utils/entity-mapper.utils';
-import { Item } from './entities/item.entity';
-import type { ICacheService } from '@/shared/modules/cache/interfaces/cache-service.interface';
 import { CACHE_SERVICE } from '@/shared/modules/cache/constants/cache.token';
 import { IDEMPOTENCY_SERVICE } from '@/shared/modules/cache/constants/idempotency.token';
-import type { IIdempotencyService } from '@/shared/modules/cache/interfaces/idempotency-service.interface';
 import { ITEM_KEY } from '@/shared/modules/cache/constants/item.key';
-import { CACHE_TTL } from '@/shared/constants/cache-ttl.constant';
-import { runAndIgnoreError, template } from '@/shared/utils/functions.utils';
-import { LOCK_KEY } from '@/shared/constants/lock.key';
-import { I18N_ITEMS } from '@/shared/constants/i18n';
-import { IItemsService } from './interfaces/items-service.interface';
-import { BaseService } from '@/shared/services/base.service';
+import type { ICacheService } from '@/shared/modules/cache/interfaces/cache-service.interface';
+import type { IIdempotencyService } from '@/shared/modules/cache/interfaces/idempotency-service.interface';
 import { DbGuardService } from '@/shared/modules/db-guard/db-guard.service';
+import { BaseService } from '@/shared/providers/services/base.service';
+import type { CursorParams } from '@/shared/types/cursor-params.type';
+import { EntityMapper } from '@/shared/utils/entity-mapper.utils';
+import { runAndIgnoreError, template } from '@/shared/utils/functions.utils';
+import {
+  ForbiddenException,
+  Inject,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+import { ITEM_REPOSITORY } from './constants/items.token';
+import { CreateItemDto } from './dto/create-item.dto';
+import { ItemQueryDto, PublicItemQueryDto } from './dto/item-query.dto';
+import { ItemResponseDto, PublicItemResponseDto } from './dto/item-response.dto';
+import { UpdateItemDto } from './dto/update-item.dto';
+import { Item } from './entities/item.entity';
+import type { IItemRepository } from './interfaces/item-repository.interface';
+import { IItemsService } from './interfaces/items-service.interface';
 
 @Injectable()
 export class ItemsService extends BaseService implements IItemsService {

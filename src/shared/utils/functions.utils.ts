@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { AppLogger } from './app-logger.utils';
 
 /**
@@ -59,7 +58,7 @@ export async function runAndIgnoreError<T>(
 export function ensureError(value: unknown): Error {
   if (value instanceof Error) return value;
 
-  let stringified = '[Unable to extract error message]';
+  let stringified: string;
   try {
     stringified = JSON.stringify(value);
   } catch {

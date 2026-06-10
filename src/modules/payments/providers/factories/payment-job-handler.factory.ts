@@ -3,7 +3,7 @@ import { Injectable } from '@nestjs/common';
 import { BaseJobHandlerFactory } from '@/shared/factories/base-job-handler.factory';
 import { OutboxType as PaymentJob } from '@/shared/modules/outbox/enums/outbox-type.enum';
 import { BaseJobPayload } from '@/shared/payloads/base-job.payload';
-import { BaseJobStrategy } from '@/shared/strategies/base-job.strategy';
+import { BaseJobStrategy } from '@/shared/providers/strategies/base-job.strategy';
 import {
   CreateCustomerJobStrategy,
   DeleteCustomerJobStrategy,

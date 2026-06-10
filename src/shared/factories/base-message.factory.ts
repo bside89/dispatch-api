@@ -1,8 +1,7 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { I18nService } from 'nestjs-i18n';
 
 export abstract class BaseMessageFactory {
-  constructor(protected readonly i18n: I18nService) {}
+  protected constructor(protected readonly i18n: I18nService) {}
 
   protected async create(
     templateKey: string,

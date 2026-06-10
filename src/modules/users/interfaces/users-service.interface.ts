@@ -1,7 +1,7 @@
-import { PagCursorResultDto } from '@/shared/dto/pag-cursor-result.dto';
-import type { CursorParams } from '@/shared/types/cursor-params.type';
 import type { RequestUser } from '@/modules/auth/interfaces/request-user.interface';
-import { IBaseService } from '@/shared/services/base-service.interface';
+import { PagCursorResultDto } from '@/shared/dto/pag-cursor-result.dto';
+import { IBaseService } from '@/shared/providers/services/base-service.interface';
+import type { CursorParams } from '@/shared/types/cursor-params.type';
 import { CreateUserDto, PublicCreateUserDto } from '../dto/create-user.dto';
 import { PublicUpdateUserDto, UpdateUserDto } from '../dto/update-user.dto';
 import { PublicUserQueryDto, UserQueryDto } from '../dto/user-query.dto';

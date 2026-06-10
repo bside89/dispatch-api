@@ -1,134 +1,261 @@
 ### Variables
-@baseUrl = http://localhost:3000/api/v1
-@orderId = replace-with-actual-order-id
+@baseUrl = http://localhost:3000
+@apiUrl = {{baseUrl}}/api/v1
+@adminUrl = {{baseUrl}}/api/v1/admin
 @userId = replace-with-actual-user-id
+@orderId = replace-with-actual-order-id
+@itemId = replace-with-actual-item-id
+@notificationId = replace-with-actual-notification-id
+@accessToken = replace-with-actual-access-token
+@refreshToken = replace-with-actual-refresh-token
 
-### ========= USER ENDPOINTS =========
+### ========= HEALTH =========
 
-### Create User
-POST {{baseUrl}}/users
+### Health Check
+GET {{baseUrl}}/health
+
+### ========= AUTH =========
+
+### Login
+POST {{apiUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "joao.silva@email.com",
+  "password": "mySecurePassword123"
+}
+
+### Refresh Access Token
+POST {{apiUrl}}/auth/refresh
+Authorization: Bearer {{refreshToken}}
+
+### Logout
+POST {{apiUrl}}/auth/logout
+Authorization: Bearer {{accessToken}}
+
+### ========= USERS (PUBLIC) =========
+
+### Create User (public, no auth required)
+POST {{apiUrl}}/users
 Content-Type: application/json
 idempotency-key: user-create-123456
 
 {
   "name": "João Silva",
   "email": "joao.silva@email.com",
-  "password": "mySecurePassword123"
+  "password": "mySecurePassword123",
+  "language": "pt-BR",
+  "address": {
+    "line1": "Rua das Flores, 123",
+    "line2": "Apto 45",
+    "city": "São Paulo",
+    "state": "SP",
+    "postalCode": "01310-100",
+    "country": "BR"
+  }
 }
 
 ### Get All Users
-GET {{baseUrl}}/users
+GET {{apiUrl}}/users?cursor=
+Authorization: Bearer {{accessToken}}
+
+### Get Current Authenticated User
+GET {{apiUrl}}/users/me
+Authorization: Bearer {{accessToken}}
 
 ### Get User by ID
-GET {{baseUrl}}/users/{{userId}}
+GET {{apiUrl}}/users/{{userId}}
+Authorization: Bearer {{accessToken}}
 
-### Update User
-PATCH {{baseUrl}}/users/{{userId}}
+### Update Current User
+PATCH {{apiUrl}}/users/me
 Content-Type: application/json
+Authorization: Bearer {{accessToken}}
 
 {
   "name": "João Santos",
-  "email": "joao.santos@email.com"
+  "email": "joao.santos@email.com",
+  "password": "newSecurePassword456",
+  "currentPassword": "mySecurePassword123"
 }
 
-### Update User Login Credentials
-PATCH {{baseUrl}}/users/{{userId}}/login
+### Delete Current User
+DELETE {{apiUrl}}/users/me
+Authorization: Bearer {{accessToken}}
+
+### ========= USERS (ADMIN) =========
+
+### Create User (admin — can assign roles)
+POST {{adminUrl}}/users
 Content-Type: application/json
+Authorization: Bearer {{accessToken}}
+idempotency-key: admin-user-create-789
 
 {
-  "email": "joao.novo@email.com",
-  "currentPassword": "mySecurePassword123",
-  "newPassword": "newSecurePassword456"
+  "name": "Maria Operadora",
+  "email": "maria.op@email.com",
+  "password": "securePassword123",
+  "role": "shipper"
 }
 
-### Delete User
-DELETE {{baseUrl}}/users/{{userId}}
+### Get All Users (admin)
+GET {{adminUrl}}/users?cursor=
+Authorization: Bearer {{accessToken}}
 
-### ========= ORDER ENDPOINTS =========
+### Get User by ID (admin)
+GET {{adminUrl}}/users/{{userId}}
+Authorization: Bearer {{accessToken}}
+
+### Update User (admin)
+PATCH {{adminUrl}}/users/{{userId}}
+Content-Type: application/json
+Authorization: Bearer {{accessToken}}
+
+{
+  "name": "Maria Operadora Silva",
+  "role": "financial"
+}
+
+### Delete User (admin)
+DELETE {{adminUrl}}/users/{{userId}}
+Authorization: Bearer {{accessToken}}
+
+### ========= ITEMS (PUBLIC) =========
+
+### Get All Items
+GET {{apiUrl}}/items?cursor=
+Authorization: Bearer {{accessToken}}
+
+### Get Item by ID
+GET {{apiUrl}}/items/{{itemId}}
+Authorization: Bearer {{accessToken}}
+
+### ========= ITEMS (ADMIN) =========
+
+### Create Item
+POST {{adminUrl}}/items
+Content-Type: application/json
+Authorization: Bearer {{accessToken}}
+idempotency-key: item-create-abc123
+
+{
+  "name": "Produto Exemplo",
+  "description": "Descrição detalhada do produto exemplo.",
+  "price": 9999,
+  "stock": 100,
+  "pricePaymentId": "price_stripe_id_here"
+}
+
+### Get All Items (admin)
+GET {{adminUrl}}/items?cursor=
+Authorization: Bearer {{accessToken}}
+
+### Get Item by ID (admin)
+GET {{adminUrl}}/items/{{itemId}}
+Authorization: Bearer {{accessToken}}
+
+### Update Item
+PATCH {{adminUrl}}/items/{{itemId}}
+Content-Type: application/json
+Authorization: Bearer {{accessToken}}
+
+{
+  "price": 12999,
+  "stock": 80
+}
+
+### Delete Item (soft-delete)
+DELETE {{adminUrl}}/items/{{itemId}}
+Authorization: Bearer {{accessToken}}
+
+### ========= ORDERS (PUBLIC) =========
 
 ### Create Order
-POST {{baseUrl}}/orders
+POST {{apiUrl}}/orders
 Content-Type: application/json
+Authorization: Bearer {{accessToken}}
 idempotency-key: 550e8400-e29b-41d4-a716-446655440000
 
 {
-  "userId": "{{userId}}",
   "items": [
     {
-      "productId": "product-abc123",
-      "quantity": 2,
-      "price": 9999
+      "itemId": "replace-with-actual-item-id",
+      "quantity": 2
     },
     {
-      "productId": "product-def456",
-      "quantity": 1,
-      "price": 14999
+      "itemId": "replace-with-another-item-id",
+      "quantity": 1
     }
   ]
 }
 
-### Create Order - Test Idempotency (same key should return same order)
-POST {{baseUrl}}/orders
-Content-Type: application/json
-idempotency-key: 550e8400-e29b-41d4-a716-446655440000
-
-{
-  "userId": "{{userId}}",
-  "items": [
-    {
-      "productId": "product-abc123",
-      "quantity": 2,
-      "price": 9999
-    },
-    {
-      "productId": "product-def456",
-      "quantity": 1,
-      "price": 14999
-    }
-  ]
-}
-
-### Get All Orders (with pagination)
-GET {{baseUrl}}/orders?page=1&limit=10
-
-### Get All Orders (with filters)
-GET {{baseUrl}}/orders?userId={{userId}}&status=PENDING&page=1&limit=5
+### Get My Orders
+GET {{apiUrl}}/orders/me?cursor=
+Authorization: Bearer {{accessToken}}
 
 ### Get Order by ID
-GET {{baseUrl}}/orders/{{orderId}}
+GET {{apiUrl}}/orders/{{orderId}}
+Authorization: Bearer {{accessToken}}
 
-### Get Orders by User ID
-GET {{baseUrl}}/orders/user/{{userId}}
+### ========= ORDERS (ADMIN) =========
+
+### Get All Orders (admin)
+GET {{adminUrl}}/orders?cursor=
+Authorization: Bearer {{accessToken}}
+
+### Get Order by ID (admin)
+GET {{adminUrl}}/orders/{{orderId}}
+Authorization: Bearer {{accessToken}}
 
 ### Update Order Status
-PATCH {{baseUrl}}/orders/{{orderId}}/status
+PATCH {{adminUrl}}/orders/{{orderId}}
 Content-Type: application/json
+Authorization: Bearer {{accessToken}}
 
 {
-  "status": "REFUNDED"
+  "status": "PROCESSED"
 }
 
-### Update Complete Order
-PATCH {{baseUrl}}/orders/{{orderId}}
+### Ship Order
+PATCH {{adminUrl}}/orders/{{orderId}}/ship
 Content-Type: application/json
+Authorization: Bearer {{accessToken}}
 
 {
-  "userId": "{{userId}}",
-  "status": "PROCESSING",
-  "items": [
-    {
-      "productId": "product-abc123",
-      "quantity": 3,
-      "price": 9999
-    }
-  ]
+  "trackingNumber": "BR123456789BR",
+  "carrier": "Correios"
 }
 
-### Delete Order
-DELETE {{baseUrl}}/orders/{{orderId}}
+### Mark Order as Delivered
+PATCH {{adminUrl}}/orders/{{orderId}}/deliver
+Authorization: Bearer {{accessToken}}
 
-### Test Error - Invalid UUID
-GET {{baseUrl}}/orders/invalid-uuid
+### Cancel Order
+PATCH {{adminUrl}}/orders/{{orderId}}/cancel
+Authorization: Bearer {{accessToken}}
 
-### Test Error - Order Not Found
-GET {{baseUrl}}/orders/123e4567-e89b-12d3-a456-426614174000
+### Refund Order
+PATCH {{adminUrl}}/orders/{{orderId}}/refund
+Authorization: Bearer {{accessToken}}
+
+### Delete Order (soft-delete)
+DELETE {{adminUrl}}/orders/{{orderId}}
+Authorization: Bearer {{accessToken}}
+
+### ========= NOTIFICATIONS =========
+
+### Get All Notifications (cursor-paginated)
+GET {{apiUrl}}/notifications?cursor=
+Authorization: Bearer {{accessToken}}
+
+### Get Unread Notifications Count
+GET {{apiUrl}}/notifications/unread/count
+Authorization: Bearer {{accessToken}}
+
+### Check for New Notifications
+GET {{apiUrl}}/notifications/has-new
+Authorization: Bearer {{accessToken}}
+
+### Mark Notification as Read
+PATCH {{apiUrl}}/notifications/{{notificationId}}/read
+Authorization: Bearer {{accessToken}}

@@ -20,7 +20,7 @@ import {
   CancelOrderJobStrategy,
   ProcessOrderJobStrategy,
 } from './providers/strategies';
-import { RefundOrderJobStrategy } from './providers/strategies/refund-order-job.strategy';
+import { RefundOrderJobStrategy } from '@/modules/orders/providers/strategies';
 import { PublicOrdersController } from './public-orders.controller';
 
 @Module({

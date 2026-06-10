@@ -1,6 +1,6 @@
+import { QueueJob } from '@/shared/interfaces/queue-job.interface';
 import { Outbox } from '../entities/outbox.entity';
 import { OutboxType } from '../enums/outbox-type.enum';
-import { QueueJob } from '@/shared/interfaces/queue-job.interface';
 import { BaseOutboxJobPayload } from '../payloads/outbox.payload';
 
 type OutboxDispatchPlan = {
@@ -27,9 +27,7 @@ export class OutboxDispatcher {
     OutboxType.EFFECTS_NOTIFY_USER,
   ]);
 
-  private static readonly USER_TYPES = new Set<OutboxType>([
-    OutboxType.USER_UPDATE_CUSTOMER_ID,
-  ]);
+  private static readonly USER_TYPES = new Set<OutboxType>([OutboxType.USER_UPDATE]);
 
   static partition(messages: Outbox[]): OutboxDispatchPlan {
     return {

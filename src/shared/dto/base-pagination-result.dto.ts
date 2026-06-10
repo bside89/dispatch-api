@@ -7,7 +7,7 @@ export abstract class BasePaginationResultDto<T> {
   })
   items: T[];
 
-  constructor(items: T[] = []) {
+  protected constructor(items: T[] = []) {
     this.items = items;
   }
 }

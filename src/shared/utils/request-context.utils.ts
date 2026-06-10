@@ -1,4 +1,3 @@
-/*eslint-disable @typescript-eslint/no-explicit-any */
 import { AsyncLocalStorage } from 'async_hooks';
 
 interface RequestStore {

@@ -21,8 +21,8 @@ import { typeOrmConfig } from './config/typeorm.config';
 import { CorrelationIdMiddleware } from './middleware/correlation-id.middleware';
 import { LoggingMiddleware } from './middleware/logging.middleware';
 import { AuthModule } from './modules/auth/auth.module';
-import { JwtAuthGuard } from './modules/auth/guards/jwt.guard';
-import { RolesGuard } from './modules/auth/guards/roles.guard';
+import { JwtAuthGuard } from '@/modules/auth/providers/guards/jwt.guard';
+import { RolesGuard } from '@/modules/auth/providers/guards/roles.guard';
 import { EffectsModule } from './modules/effects/effects.module';
 import { ItemsModule } from './modules/items/items.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
@@ -38,7 +38,7 @@ import {
 import { CacheModule } from './shared/modules/cache/cache.module';
 import { DbGuardModule } from './shared/modules/db-guard/db-guard.module';
 import { OutboxModule } from './shared/modules/outbox/outbox.module';
-import { SeedDataService } from './shared/services/seed-data.service';
+import { SeedDataService } from './shared/providers/services/seed-data.service';
 
 const i18nPath = [
   path.join(__dirname, 'i18n'),

@@ -1,4 +1,4 @@
-import { IBaseService } from '@/shared/services/base-service.interface';
+import { IBaseService } from '@/shared/providers/services/base-service.interface';
 import { LoginResponseDto } from '../dto/login-response.dto';
 import type { RequestUser } from './request-user.interface';
 

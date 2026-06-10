@@ -15,7 +15,7 @@ import { UserMessageFactory } from './providers/factories/user-message.factory';
 import { UsersProcessor } from './providers/processors/users.processor';
 import { AddressRepository } from './providers/repositories/address.repository';
 import { UserRepository } from './providers/repositories/user.repository';
-import { UpdateUserCustomerIdJobStrategy } from './providers/strategies/update-user-customer-id-job.strategy';
+import { UpdateUserJobStrategy } from './providers/strategies/update-user-job.strategy';
 import { PublicUsersController } from './public-users.controller';
 import { UsersService } from './users.service';
 
@@ -31,7 +31,7 @@ import { UsersService } from './users.service';
     { provide: USER_REPOSITORY, useClass: UserRepository },
     { provide: ADDRESS_REPOSITORY, useClass: AddressRepository },
     UserMessageFactory,
-    UpdateUserCustomerIdJobStrategy,
+    UpdateUserJobStrategy,
     UserJobHandlerFactory,
     UsersProcessor,
   ],

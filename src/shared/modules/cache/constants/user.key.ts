@@ -1,5 +1,5 @@
 import { OffsetQueryDto } from '@/shared/dto/offset-query.dto';
-import { CacheKeyFactory } from '@/shared/modules/cache/factories/cache-key.factory';
+import { CacheKeyFactory } from '@/shared/modules/cache/utils/cache-key.factory';
 
 export const USER_KEY = {
   IDEMPOTENCY: (operation: string, uniqueId: string) =>

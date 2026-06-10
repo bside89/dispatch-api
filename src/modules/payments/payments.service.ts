@@ -1,6 +1,6 @@
 import { I18N_PAYMENTS } from '@/shared/constants/i18n/i18n-payments.constant';
 import { PagCursorResultDto } from '@/shared/dto/pag-cursor-result.dto';
-import { BaseService } from '@/shared/services/base.service';
+import { BaseService } from '@/shared/providers/services/base.service';
 import { EntityMapper } from '@/shared/utils/entity-mapper.utils';
 import { template } from '@/shared/utils/functions.utils';
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';

@@ -1,20 +1,23 @@
 import { GetUser } from '@/shared/decorators/get-user.decorator';
+import { ErrorResponseDto } from '@/shared/dto/error-response.dto';
 import { Body, Controller, Inject, Post, UseGuards } from '@nestjs/common';
 import {
   ApiBadRequestResponse,
   ApiBody,
   ApiCreatedResponse,
+  ApiNoContentResponse,
   ApiOperation,
   ApiSecurity,
   ApiTags,
+  ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
-import { resolveThrottleLimit } from '../../config/throttle.config';
+import { resolveThrottleLimit } from '@/config/throttle.config';
 import { AUTH_SERVICE } from './constants/auth.token';
 import { Public } from './decorators/public.decorator';
 import { LoginResponseDto } from './dto/login-response.dto';
 import { LoginDto } from './dto/login.dto';
-import { JwtRefreshAuthGuard } from './guards/jwt-refresh.guard';
+import { JwtRefreshAuthGuard } from '@/modules/auth/providers/guards/jwt-refresh.guard';
 import type { IAuthService } from './interfaces/auth-service.interface';
 import type { RequestUser } from './interfaces/request-user.interface';
 
@@ -53,15 +56,18 @@ export class AuthController {
   @UseGuards(JwtRefreshAuthGuard)
   @Throttle({ default: { limit: resolveThrottleLimit(20) } })
   @ApiOperation({
-    summary: 'Refresh token',
-    description: 'Refreshes the access token using a valid refresh token.',
+    summary: 'Refresh access token',
+    description:
+      'Issues a new pair of access and refresh tokens. ' +
+      'Send the refresh token (not the access token) in the Authorization header as a Bearer token.',
   })
   @ApiCreatedResponse({
-    description: 'Token refreshed successfully',
+    description: 'Tokens refreshed successfully',
     type: LoginResponseDto,
   })
-  @ApiBadRequestResponse({
-    description: 'Invalid refresh token',
+  @ApiUnauthorizedResponse({
+    description: 'Missing, expired, or invalid refresh token',
+    type: ErrorResponseDto,
   })
   refresh(@GetUser() user: RequestUser) {
     return this.authService.refresh(user);
@@ -71,10 +77,14 @@ export class AuthController {
   @Throttle({ default: { limit: resolveThrottleLimit(20) } })
   @ApiOperation({
     summary: 'User logout',
-    description: 'Logs out a user and invalidates their refresh token.',
+    description: 'Invalidates the current refresh token, ending the session.',
   })
-  @ApiCreatedResponse({
-    description: 'Logout successful',
+  @ApiNoContentResponse({
+    description: 'Logout successful — no response body',
+  })
+  @ApiUnauthorizedResponse({
+    description: 'Missing or invalid authentication token',
+    type: ErrorResponseDto,
   })
   async logout(@GetUser() user: RequestUser) {
     await this.authService.logout(user);

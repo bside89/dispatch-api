@@ -1,7 +1,9 @@
+import { resolveThrottleLimit } from '@/config/throttle.config';
 import { I18N_COMMON } from '@/shared/constants/i18n';
 import { GetUser } from '@/shared/decorators/get-user.decorator';
+import { ErrorResponseDto } from '@/shared/dto/error-response.dto';
 import { PagCursorResultDto } from '@/shared/dto/pag-cursor-result.dto';
-import { CursorParamsPipe } from '@/shared/pipes/cursor-params.pipe';
+import { CursorParamsPipe } from '@/shared/providers/pipes/cursor-params.pipe';
 import type { CursorParams } from '@/shared/types/cursor-params.type';
 import { template } from '@/shared/utils/functions.utils';
 import {
@@ -26,17 +28,17 @@ import {
   ApiConflictResponse,
   ApiCreatedResponse,
   ApiHeader,
+  ApiNoContentResponse,
   ApiNotFoundResponse,
   ApiOkResponse,
   ApiOperation,
   ApiParam,
   ApiQuery,
-  ApiResponse,
   ApiSecurity,
   ApiTags,
+  ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
 import { SkipThrottle, Throttle } from '@nestjs/throttler';
-import { resolveThrottleLimit } from '../../config/throttle.config';
 import { Public } from '../auth/decorators/public.decorator';
 import type { RequestUser } from '../auth/interfaces/request-user.interface';
 import { USERS_SERVICE } from './constants/users.token';
@@ -45,9 +47,14 @@ import { PublicUpdateUserDto } from './dto/update-user.dto';
 import { PublicUserQueryDto } from './dto/user-query.dto';
 import { PublicUserResponseDto, UserSelfResponseDto } from './dto/user-response.dto';
 import type { IUsersService } from './interfaces/users-service.interface';
+
 @Controller({ path: 'v1/users', version: '1' })
 @ApiTags('users')
 @ApiSecurity('bearer')
+@ApiUnauthorizedResponse({
+  description: 'Missing or invalid authentication token',
+  type: ErrorResponseDto,
+})
 export class PublicUsersController {
   constructor(@Inject(USERS_SERVICE) private readonly usersService: IUsersService) {}
 
@@ -74,13 +81,15 @@ export class PublicUsersController {
   })
   @ApiConflictResponse({
     description: 'Email already exists',
+    type: ErrorResponseDto,
   })
   @ApiBadRequestResponse({
     description: 'Invalid user data or missing idempotency-key header',
+    type: ErrorResponseDto,
   })
   @ApiBody({
-    type: PublicCreateUserDto,
     description: 'User data to create a new user',
+    type: PublicCreateUserDto,
   })
   create(
     @Body() dto: PublicCreateUserDto,
@@ -106,7 +115,13 @@ export class PublicUsersController {
     description: 'List of users retrieved successfully',
     type: PagCursorResultDto,
   })
-  @ApiQuery({ name: 'cursor', required: false, type: String })
+  @ApiQuery({ type: () => PublicUserQueryDto })
+  @ApiQuery({
+    name: 'cursor',
+    required: false,
+    type: String,
+    description: 'Pagination cursor from the previous page',
+  })
   findAll(
     @Query() queryDto: PublicUserQueryDto,
     @Query('cursor', CursorParamsPipe) cursor: CursorParams,
@@ -126,6 +141,7 @@ export class PublicUsersController {
   })
   @ApiNotFoundResponse({
     description: 'User not found',
+    type: ErrorResponseDto,
   })
   findMe(@GetUser() user: RequestUser) {
     return this.usersService.publicFindMe(user);
@@ -149,9 +165,11 @@ export class PublicUsersController {
   })
   @ApiNotFoundResponse({
     description: 'User not found',
+    type: ErrorResponseDto,
   })
   @ApiBadRequestResponse({
     description: 'Invalid UUID format',
+    type: ErrorResponseDto,
   })
   findOne(@Param('id', ParseUUIDPipe) id: string) {
     return this.usersService.publicFindOne(id);
@@ -168,9 +186,11 @@ export class PublicUsersController {
   })
   @ApiNotFoundResponse({
     description: 'User not found',
+    type: ErrorResponseDto,
   })
   @ApiConflictResponse({
     description: 'Email already exists',
+    type: ErrorResponseDto,
   })
   @ApiBody({
     type: PublicUpdateUserDto,
@@ -184,14 +204,15 @@ export class PublicUsersController {
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({
     summary: 'Delete current user',
-    description: 'Deletes the authenticated user.',
+    description: 'Permanently deletes the authenticated user account.',
   })
-  @ApiResponse({
-    status: 204,
+  @ApiNoContentResponse({
     description: 'User deleted successfully',
+    type: ErrorResponseDto,
   })
   @ApiNotFoundResponse({
     description: 'User not found',
+    type: ErrorResponseDto,
   })
   async remove(@GetUser() user: RequestUser) {
     await this.usersService.publicRemove(user);

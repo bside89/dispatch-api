@@ -19,7 +19,7 @@ export class CorrelationIdMiddleware implements NestMiddleware {
 
     res.setHeader('x-correlation-id', correlationId);
 
-    RequestContext.run(correlationId, async () => {
+    void RequestContext.run(correlationId, async () => {
       next();
     });
   }

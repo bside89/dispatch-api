@@ -1,14 +1,14 @@
 import { ORDER_QUEUE } from '@/shared/constants/queues.token';
 import { DbGuardService } from '@/shared/modules/db-guard/db-guard.service';
-import { BaseProcessor } from '@/shared/processors/base.processor';
+import { BaseProcessor } from '@/shared/providers/processors/base.processor';
 import { OnWorkerEvent, Processor } from '@nestjs/bullmq';
 import { Inject, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Job } from 'bullmq';
-import { CACHE_SERVICE } from '../../../../shared/modules/cache/constants/cache.token';
-import { ORDER_KEY } from '../../../../shared/modules/cache/constants/order.key';
-import type { ICacheService } from '../../../../shared/modules/cache/interfaces/cache-service.interface';
-import { OrderJobHandlerFactory } from '../factories/order-job-handler.factory';
+import { CACHE_SERVICE } from '@/shared/modules/cache/constants/cache.token';
+import { ORDER_KEY } from '@/shared/modules/cache/constants/order.key';
+import type { ICacheService } from '@/shared/modules/cache/interfaces/cache-service.interface';
+import { OrderJobHandlerFactory } from '@/modules/orders/providers/factories';
 
 @Injectable()
 @Processor(ORDER_QUEUE, { maxStalledCount: 1 })

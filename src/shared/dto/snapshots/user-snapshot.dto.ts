@@ -1,6 +1,7 @@
 import { Exclude, Expose } from 'class-transformer';
 import { BaseAddressDto } from '../base-address.dto';
 
+@Exclude()
 export class UserAddressSnapshotDto extends BaseAddressDto {}
 
 @Exclude()

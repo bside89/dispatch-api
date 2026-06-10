@@ -1,13 +1,13 @@
-import { NestFactory } from '@nestjs/core';
-import { AppModule } from './app.module';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
-import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { ConfigService } from '@nestjs/config';
-import { BasicAuthMiddleware } from './middleware/basic-auth.middleware';
+import { NestFactory } from '@nestjs/core';
+import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import helmet from 'helmet';
 import { Logger } from 'nestjs-pino';
+import { AppModule } from './app.module';
+import { BasicAuthMiddleware } from './middleware/basic-auth.middleware';
 import { AllExceptionsFilter } from './shared/filters/exception.filter';
-import { SeedDataService } from './shared/services/seed-data.service';
+import { SeedDataService } from './shared/providers/services/seed-data.service';
 
 function configureSecurity(
   app: INestApplication,

@@ -1,4 +1,4 @@
-import { BaseRepository } from '@/shared/repositories/base.repository';
+import { BaseRepository } from '@/shared/providers/repositories/base.repository';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Address } from '../../entities/address.entity';

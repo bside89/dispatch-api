@@ -1,21 +1,21 @@
+import { I18N_NOTIFICATIONS } from '@/shared/constants/i18n';
+import { LOCK_KEY } from '@/shared/constants/lock.key';
+import { DbGuardService } from '@/shared/modules/db-guard/db-guard.service';
+import { BaseService } from '@/shared/providers/services/base.service';
+import { CursorParams } from '@/shared/types/cursor-params.type';
+import { EntityMapper } from '@/shared/utils/entity-mapper.utils';
+import { template } from '@/shared/utils/functions.utils';
 import {
   BadRequestException,
   ForbiddenException,
   Inject,
   Injectable,
 } from '@nestjs/common';
-import { BaseService } from '@/shared/services/base.service';
 import { NOTIFICATION_REPOSITORY } from './constants/notifications.token';
 import { CreateNotificationDto } from './dto/create-notification.dto';
 import { NotificationResponseDto } from './dto/notification-response.dto';
-import { EntityMapper } from '@/shared/utils/entity-mapper.utils';
-import { DbGuardService } from '@/shared/modules/db-guard/db-guard.service';
-import { LOCK_KEY } from '@/shared/constants/lock.key';
-import { INotificationsService } from './interfaces/notifications-service.interface';
 import type { INotificationRepository } from './interfaces/notification-repository.interface';
-import { CursorParams } from '@/shared/types/cursor-params.type';
-import { I18N_NOTIFICATIONS } from '@/shared/constants/i18n';
-import { template } from '@/shared/utils/functions.utils';
+import { INotificationsService } from './interfaces/notifications-service.interface';
 
 @Injectable()
 export class NotificationsService

@@ -1,4 +1,4 @@
-import { CacheKeyFactory } from '../factories/cache-key.factory';
+import { CacheKeyFactory } from '@/shared/modules/cache/utils/cache-key.factory';
 
 export const ITEM_KEY = {
   IDEMPOTENCY: (operation: string, uniqueId: string) =>

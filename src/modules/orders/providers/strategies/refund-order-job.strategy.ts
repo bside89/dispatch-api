@@ -7,9 +7,9 @@ import type { IOutboxService } from '@/shared/modules/outbox/interfaces/outbox-s
 import { NotifyUserJobPayload } from '@/shared/payloads/effects-job.payload';
 import { Inject, Injectable } from '@nestjs/common';
 import { Job } from 'bullmq';
-import { CACHE_SERVICE } from '../../../../shared/modules/cache/constants/cache.token';
-import type { ICacheService } from '../../../../shared/modules/cache/interfaces/cache-service.interface';
-import { RefundOrderJobPayload } from '../../../../shared/payloads/orders-job.payload';
+import { CACHE_SERVICE } from '@/shared/modules/cache/constants/cache.token';
+import type { ICacheService } from '@/shared/modules/cache/interfaces/cache-service.interface';
+import { RefundOrderJobPayload } from '@/shared/payloads/orders-job.payload';
 import { ORDER_REPOSITORY } from '../../constants/orders.token';
 import { Order } from '../../entities/order.entity';
 import { OrderStatus } from '../../enums/order-status.enum';

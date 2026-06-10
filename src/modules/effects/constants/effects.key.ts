@@ -1,4 +1,4 @@
-import { CacheKeyFactory } from '@/shared/modules/cache/factories/cache-key.factory';
+import { CacheKeyFactory } from '@/shared/modules/cache/utils/cache-key.factory';
 
 /**
  * Centralized keys for effects module, especially for idempotency.

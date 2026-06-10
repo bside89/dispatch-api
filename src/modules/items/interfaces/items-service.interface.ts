@@ -1,6 +1,6 @@
 import { PagCursorResultDto } from '@/shared/dto/pag-cursor-result.dto';
+import { IBaseService } from '@/shared/providers/services/base-service.interface';
 import type { CursorParams } from '@/shared/types/cursor-params.type';
-import { IBaseService } from '@/shared/services/base-service.interface';
 import { CreateItemDto } from '../dto/create-item.dto';
 import { ItemQueryDto, PublicItemQueryDto } from '../dto/item-query.dto';
 import { ItemResponseDto, PublicItemResponseDto } from '../dto/item-response.dto';

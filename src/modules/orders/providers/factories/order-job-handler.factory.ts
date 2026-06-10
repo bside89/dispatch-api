@@ -1,14 +1,14 @@
 import { Injectable } from '@nestjs/common';
 
+import { BaseJobHandlerFactory } from '@/shared/factories/base-job-handler.factory';
 import { OutboxType as OrderJob } from '@/shared/modules/outbox/enums/outbox-type.enum';
-import { BaseJobStrategy } from '@/shared/strategies/base-job.strategy';
 import { BaseJobPayload } from '@/shared/payloads/base-job.payload';
+import { BaseJobStrategy } from '@/shared/providers/strategies/base-job.strategy';
 import {
   CancelOrderJobStrategy,
   ProcessOrderJobStrategy,
   RefundOrderJobStrategy,
 } from '../strategies';
-import { BaseJobHandlerFactory } from '@/shared/factories/base-job-handler.factory';
 
 @Injectable()
 export class OrderJobHandlerFactory extends BaseJobHandlerFactory {

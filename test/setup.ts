@@ -1,4 +1,3 @@
-/*eslint-disable @typescript-eslint/no-explicit-any */
 import 'tsconfig-paths/register';
 import { PostgreSqlContainer } from '@testcontainers/postgresql';
 import { RedisContainer } from '@testcontainers/redis';

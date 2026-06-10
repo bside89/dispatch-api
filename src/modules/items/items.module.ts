@@ -4,8 +4,8 @@ import { PublicItemsController } from './public-items.controller';
 import { AdminItemsController } from './admin-items.controller';
 import { ItemsService } from './items.service';
 import { Item } from './entities/item.entity';
-import { ItemRepository } from './repositories/item.repository';
-import { ItemMessageFactory } from './factories/item-message.factory';
+import { ItemRepository } from '@/modules/items/providers/repositories/item.repository';
+import { ItemMessageFactory } from '@/modules/items/providers/factories/item-message.factory';
 import { ITEMS_SERVICE, ITEM_REPOSITORY } from './constants/items.token';
 
 @Module({

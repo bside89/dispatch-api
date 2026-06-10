@@ -14,7 +14,7 @@ import {
   DeleteCustomerJobPayload,
   UpdateCustomerJobPayload,
 } from '@/shared/payloads/payments-job.payload';
-import { BaseService } from '@/shared/services/base.service';
+import { BaseService } from '@/shared/providers/services/base.service';
 import type { CursorParams } from '@/shared/types/cursor-params.type';
 import { EntityMapper } from '@/shared/utils/entity-mapper.utils';
 import { template } from '@/shared/utils/functions.utils';
@@ -26,10 +26,10 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { UserRole } from '../../shared/enums/user-role.enum';
-import { IDEMPOTENCY_SERVICE } from '../../shared/modules/cache/constants/idempotency.token';
-import { USER_KEY } from '../../shared/modules/cache/constants/user.key';
-import type { IIdempotencyService } from '../../shared/modules/cache/interfaces/idempotency-service.interface';
+import { UserRole } from '@/shared/enums/user-role.enum';
+import { IDEMPOTENCY_SERVICE } from '@/shared/modules/cache/constants/idempotency.token';
+import { USER_KEY } from '@/shared/modules/cache/constants/user.key';
+import type { IIdempotencyService } from '@/shared/modules/cache/interfaces/idempotency-service.interface';
 import type { RequestUser } from '../auth/interfaces/request-user.interface';
 import { ADDRESS_REPOSITORY, USER_REPOSITORY } from './constants/users.token';
 import { CreateUserDto, PublicCreateUserDto } from './dto/create-user.dto';
