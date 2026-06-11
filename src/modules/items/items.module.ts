@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { PublicItemsController } from './public-items.controller';
-import { AdminItemsController } from './admin-items.controller';
+import { ItemsPublicController } from './items-public.controller';
+import { ItemsAdminController } from './items-admin.controller';
 import { ItemsService } from './items.service';
 import { Item } from './entities/item.entity';
 import { ItemRepository } from '@/modules/items/providers/repositories/item.repository';
@@ -10,7 +10,7 @@ import { ITEMS_SERVICE, ITEM_REPOSITORY } from './constants/items.token';
 
 @Module({
   imports: [TypeOrmModule.forFeature([Item])],
-  controllers: [PublicItemsController, AdminItemsController],
+  controllers: [ItemsPublicController, ItemsAdminController],
   providers: [
     { provide: ITEMS_SERVICE, useClass: ItemsService },
     { provide: ITEM_REPOSITORY, useClass: ItemRepository },

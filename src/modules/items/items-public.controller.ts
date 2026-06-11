@@ -33,7 +33,7 @@ import type { IItemsService } from './interfaces/items-service.interface';
   description: 'Missing or invalid authentication token',
   type: ErrorResponseDto,
 })
-export class PublicItemsController {
+export class ItemsPublicController {
   constructor(@Inject(ITEMS_SERVICE) private readonly itemsService: IItemsService) {}
 
   @Get()

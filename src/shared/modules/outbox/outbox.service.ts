@@ -6,13 +6,13 @@ import { OUTBOX_REPOSITORY } from './constants/outbox.token';
 import type { IOutboxRepository } from './interfaces/outbox-repository.interface';
 import { IOutboxService } from './interfaces/outbox-service.interface';
 import { BaseOutboxJobPayload } from './payloads/outbox.payload';
-import { OutboxScheduler } from './providers/outbox.scheduler';
+import { OutboxCronProcessor } from './providers/outbox-cron.processor';
 
 @Injectable()
 export class OutboxService extends BaseService implements IOutboxService {
   constructor(
     @Inject(OUTBOX_REPOSITORY) private readonly outboxRepository: IOutboxRepository,
-    private readonly outboxScheduler: OutboxScheduler,
+    private readonly outboxCronProcessor: OutboxCronProcessor,
   ) {
     super(OutboxService.name);
   }
@@ -27,6 +27,6 @@ export class OutboxService extends BaseService implements IOutboxService {
     await this.outboxRepository.save(outboxEntry);
 
     // Trigger immediate processing after adding a new message to the outbox
-    setImmediate(() => this.outboxScheduler.process());
+    setImmediate(() => this.outboxCronProcessor.process());
   }
 }

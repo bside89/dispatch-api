@@ -58,7 +58,7 @@ import type { IItemsService } from './interfaces/items-service.interface';
   description: 'Insufficient permissions for this operation',
   type: ErrorResponseDto,
 })
-export class AdminItemsController {
+export class ItemsAdminController {
   constructor(@Inject(ITEMS_SERVICE) private readonly itemsService: IItemsService) {}
 
   @Post()

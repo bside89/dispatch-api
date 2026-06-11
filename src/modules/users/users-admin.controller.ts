@@ -61,7 +61,7 @@ import type { IUsersService } from './interfaces/users-service.interface';
   description: 'Insufficient permissions for this operation',
   type: ErrorResponseDto,
 })
-export class AdminUsersController {
+export class UsersAdminController {
   constructor(@Inject(USERS_SERVICE) private readonly usersService: IUsersService) {}
 
   @Post()

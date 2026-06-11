@@ -50,7 +50,7 @@ import type { IOrdersService } from './interfaces/orders-service.interface';
   description: 'Insufficient permissions for this operation',
   type: ErrorResponseDto,
 })
-export class AdminOrdersController {
+export class OrdersAdminController {
   constructor(
     @Inject(ORDERS_SERVICE) private readonly ordersService: IOrdersService,
   ) {}

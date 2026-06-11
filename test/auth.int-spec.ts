@@ -16,6 +16,7 @@ import { DataSource } from 'typeorm';
 import { cleanDatabase, cleanRedis } from './utils/database-cleaner';
 import { paymentsGatewayServiceMock } from './utils/mock-payments-gateway-service';
 import { waitFor } from './utils/wait-for';
+import { CreateCustomerJobStrategy } from '@/modules/payments/providers/strategies';
 
 // Mock the delay function to resolve almost instantly.
 jest.mock('@/shared/utils/functions.utils', () => ({
@@ -47,6 +48,14 @@ describe('Auth (Integration)', () => {
     })
       .overrideProvider(PAYMENTS_GATEWAY_ADAPTER)
       .useValue(paymentsGatewayServiceMock)
+      // Prevent PAYMENT_CREATE_CUSTOMER jobs from firing against a DB that may
+      // have already been cleaned between tests. Auth tests don't assert on
+      // customer creation; mocking the strategy removes the race condition.
+      .overrideProvider(CreateCustomerJobStrategy)
+      .useValue({
+        execute: jest.fn().mockResolvedValue(undefined),
+        executeAfterFail: jest.fn().mockResolvedValue(undefined),
+      })
       .compile();
 
     app = module.createNestApplication();

@@ -55,7 +55,7 @@ import type { IUsersService } from './interfaces/users-service.interface';
   description: 'Missing or invalid authentication token',
   type: ErrorResponseDto,
 })
-export class PublicUsersController {
+export class UsersPublicController {
   constructor(@Inject(USERS_SERVICE) private readonly usersService: IUsersService) {}
 
   @Post()

@@ -46,7 +46,7 @@ import type { IOrdersService } from './interfaces/orders-service.interface';
 @ApiTags('orders')
 @ApiSecurity('bearer')
 @ApiUnauthorizedResponse({ description: 'Missing or invalid authentication token' })
-export class PublicOrdersController {
+export class OrdersPublicController {
   constructor(
     @Inject(ORDERS_SERVICE) private readonly ordersService: IOrdersService,
   ) {}

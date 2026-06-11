@@ -4,7 +4,6 @@ import {
   PAYMENT_QUEUE,
   USER_QUEUE,
 } from '@/shared/constants/queues.token';
-import { BaseScheduler } from '@/shared/providers/schedulers/base.scheduler';
 import { ensureError } from '@/shared/utils/functions.utils';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Inject, Injectable, OnModuleDestroy } from '@nestjs/common';
@@ -15,9 +14,13 @@ import { OUTBOX_REPOSITORY } from '../constants/outbox.token';
 import { Outbox } from '../entities/outbox.entity';
 import { OutboxDispatcher } from '../helpers/outbox-dispatcher';
 import type { IOutboxRepository } from '../interfaces/outbox-repository.interface';
+import { BaseCronProcessor } from '@/shared/providers/processors/base-cron.processor';
 
 @Injectable()
-export class OutboxScheduler extends BaseScheduler implements OnModuleDestroy {
+export class OutboxCronProcessor
+  extends BaseCronProcessor
+  implements OnModuleDestroy
+{
   private isProcessing = false;
 
   private isShuttingDown = false;
@@ -30,7 +33,7 @@ export class OutboxScheduler extends BaseScheduler implements OnModuleDestroy {
     @Inject(OUTBOX_REPOSITORY) private readonly outboxRepository: IOutboxRepository,
     private readonly guard: DbGuardService,
   ) {
-    super(OutboxScheduler.name);
+    super(OutboxCronProcessor.name);
   }
 
   async onModuleDestroy(): Promise<void> {

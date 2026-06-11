@@ -2,7 +2,7 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ItemsModule } from '../items/items.module';
 import { PaymentsModule } from '../payments/payments.module';
-import { AdminOrdersController } from './admin-orders.controller';
+import { OrdersAdminController } from './orders-admin.controller';
 import {
   ORDERS_SERVICE,
   ORDER_ITEM_REPOSITORY,
@@ -21,7 +21,7 @@ import {
   ProcessOrderJobStrategy,
 } from './providers/strategies';
 import { RefundOrderJobStrategy } from '@/modules/orders/providers/strategies';
-import { PublicOrdersController } from './public-orders.controller';
+import { OrdersPublicController } from './orders-public.controller';
 
 @Module({
   imports: [
@@ -29,7 +29,7 @@ import { PublicOrdersController } from './public-orders.controller';
     PaymentsModule,
     ItemsModule,
   ],
-  controllers: [PublicOrdersController, AdminOrdersController],
+  controllers: [OrdersPublicController, OrdersAdminController],
   providers: [
     { provide: ORDERS_SERVICE, useClass: OrdersService },
     { provide: ORDER_REPOSITORY, useClass: OrderRepository },

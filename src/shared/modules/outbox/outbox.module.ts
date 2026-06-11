@@ -11,7 +11,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { OUTBOX_REPOSITORY, OUTBOX_SERVICE } from './constants/outbox.token';
 import { Outbox } from './entities/outbox.entity';
 import { OutboxService } from './outbox.service';
-import { OutboxScheduler } from './providers/outbox.scheduler';
+import { OutboxCronProcessor } from './providers/outbox-cron.processor';
 import { OutboxRepository } from './providers/repositories/outbox.repository';
 
 @Global()
@@ -40,7 +40,7 @@ import { OutboxRepository } from './providers/repositories/outbox.repository';
     }),
   ],
   providers: [
-    OutboxScheduler,
+    OutboxCronProcessor,
     { provide: OUTBOX_SERVICE, useClass: OutboxService },
     { provide: OUTBOX_REPOSITORY, useClass: OutboxRepository },
   ],
