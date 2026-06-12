@@ -2,7 +2,7 @@ import { UserRole } from '../enums/user-role.enum';
 
 /**
  * Named role groups used in @Roles() decorators across controllers.
- * Centralises role combinations so changes to permissions require a single edit.
+ * Centralizes role combinations so changes to permissions require a single edit.
  */
 export const ROLE_GROUPS = {
   ORDER: {

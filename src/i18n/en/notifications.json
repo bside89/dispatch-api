@@ -1,4 +1,30 @@
 {
+  "titles": {
+    "authLogin": "New Login Detected",
+    "orderCreated": "Order Created",
+    "orderFailedUponCreating": "Order Creation Failed",
+    "orderStatusChanged": "Order Status Changed",
+    "orderCanceled": "Order Canceled",
+    "orderRefunded": "Order Refunded",
+    "orderPaid": "Payment Confirmed",
+    "orderFailed": "Order Processing Failed",
+    "orderProcessed": "Order Processed",
+    "orderShipped": "Order Shipped",
+    "orderDelivered": "Order Delivered"
+  },
+  "messages": {
+    "authLogin": "A new login to your account was detected. If this wasn't you, please secure your account immediately.",
+    "orderCreated": "Your order {{orderId}} has been successfully created. Total: ${{orderTotal}}.",
+    "orderFailedUponCreating": "Your order could not be created due to an error.",
+    "orderStatusChanged": "Your order {{orderId}} status has been updated to {{newStatus}}.",
+    "orderCanceled": "Your order {{orderId}} has been canceled.",
+    "orderRefunded": "Your order {{orderId}} has been refunded. The amount will be returned to your original payment method.",
+    "orderPaid": "Payment for your order {{orderId}} has been confirmed.",
+    "orderFailed": "We were unable to process your order {{orderId}}. Please contact support if you need assistance.",
+    "orderProcessed": "Your order {{orderId}} has been processed and is being prepared.",
+    "orderShipped": "Your order {{orderId}} has been shipped and is on its way.",
+    "orderDelivered": "Your order {{orderId}} has been delivered. We hope you enjoy your purchase!"
+  },
   "errors": {
     "notificationNotFound": "Notification not found.",
     "accessDenied": "You are not allowed to access this notification."

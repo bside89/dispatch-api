@@ -1,4 +1,30 @@
 {
+  "titles": {
+    "authLogin": "Novo Acesso Detectado",
+    "orderCreated": "Pedido Criado",
+    "orderFailedUponCreating": "Falha na Criação do Pedido",
+    "orderStatusChanged": "Status do Pedido Alterado",
+    "orderCanceled": "Pedido Cancelado",
+    "orderRefunded": "Pedido Reembolsado",
+    "orderPaid": "Pagamento Confirmado",
+    "orderFailed": "Falha no Processamento do Pedido",
+    "orderProcessed": "Pedido Processado",
+    "orderShipped": "Pedido Enviado",
+    "orderDelivered": "Pedido Entregue"
+  },
+  "messages": {
+    "authLogin": "Um novo acesso à sua conta foi detectado. Se não foi você, proteja sua conta imediatamente.",
+    "orderCreated": "Seu pedido {{orderId}} foi criado com sucesso. Total: R${{orderTotal}}.",
+    "orderFailedUponCreating": "Seu pedido não pôde ser criado devido a um erro.",
+    "orderStatusChanged": "O status do seu pedido {{orderId}} foi atualizado para {{newStatus}}.",
+    "orderCanceled": "Seu pedido {{orderId}} foi cancelado.",
+    "orderRefunded": "Seu pedido {{orderId}} foi reembolsado. O valor será devolvido ao seu método de pagamento original.",
+    "orderPaid": "O pagamento do seu pedido {{orderId}} foi confirmado.",
+    "orderFailed": "Não foi possível processar o seu pedido {{orderId}}. Entre em contato com o suporte se precisar de ajuda.",
+    "orderProcessed": "Seu pedido {{orderId}} foi processado e está sendo preparado.",
+    "orderShipped": "Seu pedido {{orderId}} foi enviado e está a caminho.",
+    "orderDelivered": "Seu pedido {{orderId}} foi entregue. Esperamos que aproveite sua compra!"
+  },
   "errors": {
     "notificationNotFound": "Notificação não encontrada.",
     "accessDenied": "Você não tem permissão para acessar esta notificação."

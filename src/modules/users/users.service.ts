@@ -45,6 +45,8 @@ import { User } from './entities/user.entity';
 import type { IAddressRepository } from './interfaces/address-repository.interface';
 import type { IUserRepository } from './interfaces/user-repository.interface';
 import { IUsersService } from './interfaces/users-service.interface';
+import { BaseAddressDto } from '@/shared/dto/base-address.dto';
+import { Address } from '@/modules/users/entities/address.entity';
 
 @Injectable()
 export class UsersService extends BaseService implements IUsersService {
@@ -94,7 +96,7 @@ export class UsersService extends BaseService implements IUsersService {
     });
     user = await this.userRepository.save(user);
     const userMapped = EntityMapper.map(user, UserSelfResponseDto);
-    const snapshottedUser = EntityMapper.map(user, UserSnapshotDto);
+    const snapshot = EntityMapper.map(user, UserSnapshotDto);
 
     if (dto.address) {
       let address = this.addressRepository.createEntity({
@@ -108,13 +110,10 @@ export class UsersService extends BaseService implements IUsersService {
       });
       address = await this.addressRepository.save(address);
       userMapped.address = EntityMapper.map(address, UserAddressResponseDto);
-      snapshottedUser.address = EntityMapper.map(
-        dto.address,
-        UserAddressSnapshotDto,
-      );
+      snapshot.address = EntityMapper.map(dto.address, UserAddressSnapshotDto);
     }
 
-    await this.outboxService.add(new CreateCustomerJobPayload(snapshottedUser));
+    await this.outboxService.add(new CreateCustomerJobPayload(snapshot));
 
     this.logger.debug('User created', {
       idempotencyKey,
@@ -205,31 +204,14 @@ export class UsersService extends BaseService implements IUsersService {
     Object.assign(user, dto);
     user = await this.userRepository.save(user);
     const userMapped = EntityMapper.map(user, UserSelfResponseDto);
-    const snapshottedUser = EntityMapper.map(user, UserSnapshotDto);
+    const snapshot = EntityMapper.map(user, UserSnapshotDto);
 
     if (dto.address) {
-      let address = await this.addressRepository.findOne({
-        where: { userId: user.id },
-      });
-      if (address) {
-        Object.assign(address, dto.address);
-        address = await this.addressRepository.save(address);
-      } else {
-        address = this.addressRepository.createEntity({
-          city: dto.address?.city,
-          country: dto.address?.country,
-          line1: dto.address?.line1,
-          line2: dto.address?.line2,
-          postalCode: dto.address?.postalCode,
-          state: dto.address?.state,
-          userId: user.id,
-        });
-        address = await this.addressRepository.save(address);
-      }
-      snapshottedUser.address = EntityMapper.map(address, UserAddressSnapshotDto);
+      const address = await this.createOrUpdateAddress(dto.address, user.id);
+      snapshot.address = EntityMapper.map(address, UserAddressSnapshotDto);
     }
 
-    await this.outboxService.add(new UpdateCustomerJobPayload(snapshottedUser));
+    await this.outboxService.add(new UpdateCustomerJobPayload(snapshot));
 
     this.logger.debug(`User updated successfully: ${user.id}`);
 
@@ -249,8 +231,8 @@ export class UsersService extends BaseService implements IUsersService {
 
     await this.userRepository.softDelete(user);
 
-    const snapshottedUser = EntityMapper.map(user, UserSnapshotDto);
-    await this.outboxService.add(new DeleteCustomerJobPayload(snapshottedUser));
+    const snapshot = EntityMapper.map(user, UserSnapshotDto);
+    await this.outboxService.add(new DeleteCustomerJobPayload(snapshot));
   }
 
   //#endregion
@@ -296,7 +278,7 @@ export class UsersService extends BaseService implements IUsersService {
     });
     user = await this.userRepository.save(user);
     const userMapped = EntityMapper.map(user, UserResponseDto);
-    const snapshottedUser = EntityMapper.map(user, UserSnapshotDto);
+    const snapshot = EntityMapper.map(user, UserSnapshotDto);
 
     if (dto.address) {
       let address = this.addressRepository.createEntity({
@@ -309,10 +291,10 @@ export class UsersService extends BaseService implements IUsersService {
         userId: user.id,
       });
       address = await this.addressRepository.save(address);
-      snapshottedUser.address = EntityMapper.map(address, UserAddressSnapshotDto);
+      snapshot.address = EntityMapper.map(address, UserAddressSnapshotDto);
     }
 
-    await this.outboxService.add(new CreateCustomerJobPayload(snapshottedUser));
+    await this.outboxService.add(new CreateCustomerJobPayload(snapshot));
 
     this.logger.debug('User created', {
       idempotencyKey,
@@ -387,34 +369,14 @@ export class UsersService extends BaseService implements IUsersService {
 
     Object.assign(user, dto);
     user = await this.userRepository.save(user);
-    const snapshottedUser = EntityMapper.map(user, UserSnapshotDto);
+    const snapshot = EntityMapper.map(user, UserSnapshotDto);
 
     if (dto.address) {
-      let address = await this.addressRepository.findOne({
-        where: { userId: user.id },
-      });
-      if (address) {
-        Object.assign(address, dto.address);
-        address = await this.addressRepository.save(address);
-      } else {
-        address = this.addressRepository.createEntity({
-          city: dto.address?.city,
-          country: dto.address?.country,
-          line1: dto.address?.line1,
-          line2: dto.address?.line2,
-          postalCode: dto.address?.postalCode,
-          state: dto.address?.state,
-          userId: user.id,
-        });
-        address = await this.addressRepository.save(address);
-      }
-      snapshottedUser.address = EntityMapper.map(
-        dto.address,
-        UserAddressSnapshotDto,
-      );
+      const address = await this.createOrUpdateAddress(dto.address, user.id);
+      snapshot.address = EntityMapper.map(address, UserAddressSnapshotDto);
     }
 
-    await this.outboxService.add(new UpdateCustomerJobPayload(snapshottedUser));
+    await this.outboxService.add(new UpdateCustomerJobPayload(snapshot));
 
     this.logger.debug(`User updated successfully: ${user.id}`);
 
@@ -434,8 +396,8 @@ export class UsersService extends BaseService implements IUsersService {
 
     await this.userRepository.softDelete(user);
 
-    const snapshottedUser = EntityMapper.map(user, UserSnapshotDto);
-    await this.outboxService.add(new DeleteCustomerJobPayload(snapshottedUser));
+    const snapshot = EntityMapper.map(user, UserSnapshotDto);
+    await this.outboxService.add(new DeleteCustomerJobPayload(snapshot));
 
     this.logger.debug('User deleted successfully', { userId: id });
   }
@@ -450,6 +412,31 @@ export class UsersService extends BaseService implements IUsersService {
       throw new NotFoundException(template(I18N_USERS.ERRORS.USER_NOT_FOUND));
     }
     return user;
+  }
+
+  private async createOrUpdateAddress(
+    dto: BaseAddressDto,
+    userId: string,
+  ): Promise<Address> {
+    let address = await this.addressRepository.findOne({
+      where: { userId: userId },
+    });
+    if (address) {
+      Object.assign(address, dto);
+      address = await this.addressRepository.save(address);
+    } else {
+      address = this.addressRepository.createEntity({
+        city: dto?.city,
+        country: dto?.country,
+        line1: dto?.line1,
+        line2: dto?.line2,
+        postalCode: dto?.postalCode,
+        state: dto?.state,
+        userId: userId,
+      });
+      address = await this.addressRepository.save(address);
+    }
+    return address;
   }
 
   private async assertWriteAccess(targetUser: User, requestUser?: RequestUser) {

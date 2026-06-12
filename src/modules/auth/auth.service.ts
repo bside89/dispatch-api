@@ -12,17 +12,18 @@ import { Inject, Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import type ms from 'ms';
-import { AUTH_KEY } from '../../shared/modules/cache/constants/auth.key';
-import { CACHE_SERVICE } from '../../shared/modules/cache/constants/cache.token';
-import type { ICacheService } from '../../shared/modules/cache/interfaces/cache-service.interface';
+import { AUTH_KEY } from '@/shared/modules/cache/constants/auth.key';
+import { CACHE_SERVICE } from '@/shared/modules/cache/constants/cache.token';
+import type { ICacheService } from '@/shared/modules/cache/interfaces/cache-service.interface';
 import { USER_REPOSITORY } from '../users/constants/users.token';
 import { User } from '../users/entities/user.entity';
 import type { IUserRepository } from '../users/interfaces/user-repository.interface';
 import { LoginResponseDto } from './dto/login-response.dto';
-import { AuthMessageFactory } from '@/modules/auth/providers/factories/auth-message.factory';
 import { IAuthService } from './interfaces/auth-service.interface';
 import type { JwtPayload } from './interfaces/jwt-payload.interface';
 import type { RequestUser } from './interfaces/request-user.interface';
+import { NotificationType } from '@/modules/notifications/enums/notification-type.enum';
+import { NotificationEvent } from '@/modules/notifications/enums/notification-event.enum';
 
 @Injectable()
 export class AuthService extends BaseService implements IAuthService {
@@ -32,7 +33,6 @@ export class AuthService extends BaseService implements IAuthService {
     private readonly configService: ConfigService,
     @Inject(USER_REPOSITORY) private readonly userRepository: IUserRepository,
     @Inject(OUTBOX_SERVICE) private readonly outboxService: IOutboxService,
-    private readonly messages: AuthMessageFactory,
     private readonly guard: DbGuardService,
   ) {
     super(AuthService.name);
@@ -60,11 +60,13 @@ export class AuthService extends BaseService implements IAuthService {
     await this.updateRefreshToken(user.id, result.refreshToken);
 
     // Notify the user
-    const message = await this.messages.notifications.login(
-      user.language,
-      user.name,
+    await this.outboxService.add(
+      new NotifyUserJobPayload(
+        user.id,
+        NotificationType.PUSH,
+        NotificationEvent.AUTH_LOGIN,
+      ),
     );
-    await this.outboxService.add(new NotifyUserJobPayload(user.id, message));
 
     return result;
   }
@@ -156,7 +158,7 @@ export class AuthService extends BaseService implements IAuthService {
   updateRefreshToken(userId: string, refreshToken?: string): Promise<void> {
     return this.guard.lock(LOCK_KEY.USER.UPDATE(userId), async () => {
       const hash = refreshToken ? await HashAdapter.hash(refreshToken) : null;
-      this.userRepository.update(userId, { refreshToken: hash });
+      await this.userRepository.update(userId, { refreshToken: hash });
     });
   }
 }

@@ -8,9 +8,11 @@ import { cleanDatabase, cleanRedis } from '../test/utils/database-cleaner';
 async function reset() {
   console.log('Connecting to database...');
   await dataSource.initialize();
-  
+
   console.log('Connecting to Redis...');
-  const redisUrl = process.env.REDIS_URL || `redis://${process.env.REDIS_HOST || 'localhost'}:${process.env.REDIS_PORT || 6379}`;
+  const redisUrl =
+    process.env.REDIS_URL ||
+    `redis://${process.env.REDIS_HOST || 'localhost'}:${process.env.REDIS_PORT || 6379}`;
   const redisClient = new Redis(redisUrl);
 
   try {
@@ -31,4 +33,4 @@ async function reset() {
   }
 }
 
-reset();
+void reset();

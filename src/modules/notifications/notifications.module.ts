@@ -8,11 +8,13 @@ import {
 } from './constants/notifications.token';
 import { NotificationsController } from './notifications.controller';
 import { Notification } from './entities/notification.entity';
+import { NotificationOutputFactory } from '@/modules/notifications/providers/factories/notification-output.factory';
 
 @Module({
   imports: [TypeOrmModule.forFeature([Notification])],
   controllers: [NotificationsController],
   providers: [
+    NotificationOutputFactory,
     {
       provide: NOTIFICATIONS_SERVICE,
       useClass: NotificationsService,

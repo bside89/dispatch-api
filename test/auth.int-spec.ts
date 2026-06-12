@@ -17,6 +17,8 @@ import { cleanDatabase, cleanRedis } from './utils/database-cleaner';
 import { paymentsGatewayServiceMock } from './utils/mock-payments-gateway-service';
 import { waitFor } from './utils/wait-for';
 import { CreateCustomerJobStrategy } from '@/modules/payments/providers/strategies';
+import { NotificationType } from '@/modules/notifications/enums/notification-type.enum';
+import { NotificationEvent } from '@/modules/notifications/enums/notification-event.enum';
 
 // Mock the delay function to resolve almost instantly.
 jest.mock('@/shared/utils/functions.utils', () => ({
@@ -221,11 +223,12 @@ describe('Auth (Integration)', () => {
 
       // Assert: notification row was persisted for this user
       const notifications = await dataSource.query(
-        `SELECT id, type, message FROM notifications WHERE "userId" = $1`,
+        `SELECT id, type, event FROM notifications WHERE "userId" = $1`,
         [userId],
       );
       expect(notifications).toHaveLength(1);
-      expect(notifications[0].type).toBe('INFO');
+      expect(notifications[0].type).toBe(NotificationType.PUSH);
+      expect(notifications[0].event).toBe(NotificationEvent.AUTH_LOGIN);
     }, 30_000);
 
     it('should not duplicate the notification when login is called concurrently for the same user', async () => {

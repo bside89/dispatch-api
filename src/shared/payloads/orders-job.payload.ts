@@ -11,14 +11,6 @@ export class ProcessOrderJobPayload extends OrdersJobPayload {
   readonly type = OutboxType.ORDER_PROCESS;
 }
 
-export class ShipOrderJobPayload extends OrdersJobPayload {
-  readonly type = OutboxType.ORDER_SHIP;
-}
-
-export class DeliverOrderJobPayload extends OrdersJobPayload {
-  readonly type = OutboxType.ORDER_DELIVER;
-}
-
 export class CancelOrderJobPayload extends OrdersJobPayload {
   readonly type = OutboxType.ORDER_CANCEL;
 }

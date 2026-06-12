@@ -109,44 +109,28 @@ export class ItemsService extends BaseService implements IItemsService {
   adminCreate(dto: CreateItemDto, idempotencyKey: string): Promise<ItemResponseDto> {
     return this.guard.lockAndTransaction(
       LOCK_KEY.ITEM.CREATE(idempotencyKey),
-      async () => this._adminCreate(dto, idempotencyKey),
+      async () =>
+        this.idempotencyService.getOrExecute(
+          ITEM_KEY.IDEMPOTENCY('create', idempotencyKey),
+          () => this._adminCreate(dto),
+        ),
     );
   }
 
-  private async _adminCreate(
-    dto: CreateItemDto,
-    idempotencyKey: string,
-  ): Promise<ItemResponseDto> {
-    /** 1. VALIDATION AND IDEMPOTENCY CHECK */
+  private async _adminCreate(dto: CreateItemDto): Promise<ItemResponseDto> {
+    const item = this.itemRepository.createEntity(dto);
+    const saved = await this.itemRepository.save(item);
+    const itemMapped = EntityMapper.map(saved, ItemResponseDto);
 
-    const idempotencyKeyFormatted = ITEM_KEY.IDEMPOTENCY(
-      this.adminCreate.name,
-      idempotencyKey,
-    );
+    await this.cacheService.deleteBulk({
+      patterns: [ITEM_KEY.CACHE_FIND_ALL_PATTERN()],
+    });
 
-    return this.idempotencyService.getOrExecute(
-      idempotencyKeyFormatted,
-      async () => {
-        /** 2. CREATE ITEM */
+    this.logger.debug('Item created', {
+      itemId: saved.id,
+    });
 
-        const item = this.itemRepository.createEntity(dto);
-        const savedItem = await this.itemRepository.save(item);
-        const itemResponse = EntityMapper.map(savedItem, ItemResponseDto);
-
-        /** 3. CACHE ITEM */
-
-        await this.cacheService.deleteBulk({
-          patterns: [ITEM_KEY.CACHE_FIND_ALL_PATTERN()],
-        });
-
-        this.logger.debug('Item created', {
-          itemId: savedItem.id,
-          idempotencyKey: idempotencyKeyFormatted,
-        });
-
-        return itemResponse;
-      },
-    );
+    return itemMapped;
   }
 
   async adminFindAll(

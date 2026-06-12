@@ -16,6 +16,7 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { StripeAdapter } from './providers/stripe.adapter';
+import { StripeWebhookResult } from '@/modules/payments/gateways/stripe/types/stripe.type';
 
 @Controller('stripe')
 @ApiTags('payments')
@@ -49,14 +50,15 @@ export class StripeController {
   async processWebhook(
     @RawBody() rawBody: Buffer,
     @Headers('stripe-signature') signature: string,
-  ): Promise<void> {
+  ): Promise<StripeWebhookResult> {
     if (!signature) {
       throw new BadRequestException("The 'stripe-signature' header is required.");
     }
-    return this.stripeAdapter.processWebhook({
+    await this.stripeAdapter.processWebhook({
       eventType: 'stripe-webhook',
       payload: rawBody,
       signature,
     });
+    return { received: true };
   }
 }

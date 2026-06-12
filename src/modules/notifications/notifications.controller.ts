@@ -54,7 +54,11 @@ export class NotificationsController {
     @GetUser() user: RequestUser,
     @Query('cursor', CursorParamsPipe) cursor: CursorParams,
   ) {
-    return this.notificationsService.findByUser(user.id, cursor);
+    return this.notificationsService.findByUser({
+      userId: user.id,
+      language: user.language,
+      cursor,
+    });
   }
 
   @Patch(':id/read')

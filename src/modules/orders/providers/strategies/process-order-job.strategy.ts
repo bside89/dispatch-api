@@ -17,13 +17,13 @@ import { Order } from '../../entities/order.entity';
 import { OrderStatus } from '../../enums/order-status.enum';
 import { OrderTransitionPolicy } from '../../helpers/order-transition-policy';
 import type { IOrderRepository } from '../../interfaces/order-repository.interface';
-import { OrderMessageFactory } from '../factories/order-message.factory';
 import { BaseOrderJobStrategy } from './base-order-job.strategy';
+import { NotificationType } from '@/modules/notifications/enums/notification-type.enum';
+import { NotificationEvent } from '@/modules/notifications/enums/notification-event.enum';
 
 @Injectable()
 export class ProcessOrderJobStrategy extends BaseOrderJobStrategy<ProcessOrderJobPayload> {
   constructor(
-    private readonly messages: OrderMessageFactory,
     @Inject(OUTBOX_SERVICE) private readonly outboxService: IOutboxService,
     @Inject(CACHE_SERVICE) cacheService: ICacheService,
     @Inject(ORDER_REPOSITORY) orderRepository: IOrderRepository,
@@ -98,10 +98,13 @@ export class ProcessOrderJobStrategy extends BaseOrderJobStrategy<ProcessOrderJo
 
     // Notify the user about the failure
     const user = order.user;
-    const message = await this.messages.notifications.orderProcessFailed(
-      user.language,
+    await this.outboxService.add(
+      new NotifyUserJobPayload(
+        user.id,
+        NotificationType.PUSH,
+        NotificationEvent.ORDER_FAILED,
+      ),
     );
-    await this.outboxService.add(new NotifyUserJobPayload(user.id, message));
   }
 
   private async finish(order: Order) {
@@ -111,8 +114,13 @@ export class ProcessOrderJobStrategy extends BaseOrderJobStrategy<ProcessOrderJo
 
     // Notify the user
     const user = order.user;
-    const message = await this.messages.notifications.orderProcessed(user.language);
-    await this.outboxService.add(new NotifyUserJobPayload(user.id, message));
+    await this.outboxService.add(
+      new NotifyUserJobPayload(
+        user.id,
+        NotificationType.PUSH,
+        NotificationEvent.ORDER_PROCESSED,
+      ),
+    );
 
     this.logger.log(`Order moved to PROCESSED`, { orderId });
   }

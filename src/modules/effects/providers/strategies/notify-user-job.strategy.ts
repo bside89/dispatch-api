@@ -44,16 +44,20 @@ export class NotifyUserJobStrategy extends BaseEffectJobStrategy<NotifyUserJobPa
   }
 
   private async notifyUser(payload: NotifyUserJobPayload) {
-    const { userId, message } = payload;
+    const { userId, notifType, notifEvent, notifData } = payload;
 
-    await this.notificationsService.create({
+    const notification = await this.notificationsService.create({
       userId,
-      type: 'INFO',
-      title: 'New Notification',
-      message,
+      type: notifType,
+      event: notifEvent,
+      data: notifData,
     });
 
+    const translated = await this.notificationsService.findTranslatedById(
+      notification.id,
+    );
+
     this.logger.debug(`Notification sent to user ${userId}:`);
-    this.logger.debug(`Message: ${message}`);
+    this.logger.debug(`Message: ${translated.message}`);
   }
 }

@@ -14,13 +14,13 @@ import { ORDER_REPOSITORY } from '../../constants/orders.token';
 import { Order } from '../../entities/order.entity';
 import { OrderStatus } from '../../enums/order-status.enum';
 import type { IOrderRepository } from '../../interfaces/order-repository.interface';
-import { OrderMessageFactory } from '../factories/order-message.factory';
 import { BaseOrderJobStrategy } from './base-order-job.strategy';
+import { NotificationType } from '@/modules/notifications/enums/notification-type.enum';
+import { NotificationEvent } from '@/modules/notifications/enums/notification-event.enum';
 
 @Injectable()
 export class RefundOrderJobStrategy extends BaseOrderJobStrategy<RefundOrderJobPayload> {
   constructor(
-    private readonly messages: OrderMessageFactory,
     @Inject(PAYMENTS_SERVICE)
     private readonly paymentsService: IPaymentsService,
     @Inject(OUTBOX_SERVICE) private readonly outboxService: IOutboxService,
@@ -87,8 +87,13 @@ export class RefundOrderJobStrategy extends BaseOrderJobStrategy<RefundOrderJobP
 
     // Notify the user
     const user = order.user;
-    const message = await this.messages.notifications.orderRefunded(user.language);
-    await this.outboxService.add(new NotifyUserJobPayload(user.id, message));
+    await this.outboxService.add(
+      new NotifyUserJobPayload(
+        user.id,
+        NotificationType.PUSH,
+        NotificationEvent.ORDER_REFUNDED,
+      ),
+    );
 
     this.logger.log(`Order moved to REFUNDED`, { orderId: order.id });
   }

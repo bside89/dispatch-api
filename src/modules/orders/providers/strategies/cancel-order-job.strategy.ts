@@ -13,13 +13,13 @@ import { ORDER_REPOSITORY } from '../../constants/orders.token';
 import { Order } from '../../entities/order.entity';
 import { OrderStatus } from '../../enums/order-status.enum';
 import type { IOrderRepository } from '../../interfaces/order-repository.interface';
-import { OrderMessageFactory } from '../factories/order-message.factory';
 import { BaseOrderJobStrategy } from './base-order-job.strategy';
+import { NotificationType } from '@/modules/notifications/enums/notification-type.enum';
+import { NotificationEvent } from '@/modules/notifications/enums/notification-event.enum';
 
 @Injectable()
 export class CancelOrderJobStrategy extends BaseOrderJobStrategy<CancelOrderJobPayload> {
   constructor(
-    private readonly messages: OrderMessageFactory,
     @Inject(OUTBOX_SERVICE) private readonly outboxService: IOutboxService,
     @Inject(ITEMS_SERVICE) private readonly itemsService: IItemsService,
     @Inject(CACHE_SERVICE) cacheService: ICacheService,
@@ -84,8 +84,13 @@ export class CancelOrderJobStrategy extends BaseOrderJobStrategy<CancelOrderJobP
 
     // Notify the user
     const user = order.user;
-    const message = await this.messages.notifications.orderCanceled(user.language);
-    await this.outboxService.add(new NotifyUserJobPayload(user.id, message));
+    await this.outboxService.add(
+      new NotifyUserJobPayload(
+        user.id,
+        NotificationType.PUSH,
+        NotificationEvent.ORDER_CANCELED,
+      ),
+    );
 
     this.logger.log(`Order moved to CANCELED`, { orderId: order.id });
   }

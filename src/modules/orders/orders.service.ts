@@ -30,7 +30,6 @@ import type { IItemsService } from '../items/interfaces/items-service.interface'
 import { PAYMENTS_SERVICE } from '../payments/constants/payments.token';
 import { PaymentResponseDto } from '../payments/dto/payment-response.dto';
 import type { IPaymentsService } from '../payments/interfaces/payments-service.interface';
-import { User } from '../users/entities/user.entity';
 import { ORDER_ITEM_REPOSITORY, ORDER_REPOSITORY } from './constants/orders.token';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { OrderByUserQueryDto } from './dto/order-by-user-query.dto';
@@ -50,7 +49,8 @@ import { OrderTransitionPolicy } from './helpers/order-transition-policy';
 import type { IOrderItemRepository } from './interfaces/order-item-repository.interface';
 import type { IOrderRepository } from './interfaces/order-repository.interface';
 import { IOrdersService } from './interfaces/orders-service.interface';
-import { OrderMessageFactory } from './providers/factories/order-message.factory';
+import { NotificationType } from '@/modules/notifications/enums/notification-type.enum';
+import { NotificationEvent } from '@/modules/notifications/enums/notification-event.enum';
 
 @Injectable()
 export class OrdersService extends BaseService implements IOrdersService {
@@ -64,7 +64,6 @@ export class OrdersService extends BaseService implements IOrdersService {
     private readonly paymentsService: IPaymentsService,
     @Inject(IDEMPOTENCY_SERVICE)
     private readonly idempotencyService: IIdempotencyService,
-    private readonly messages: OrderMessageFactory,
     private readonly guard: DbGuardService,
   ) {
     super(OrdersService.name);
@@ -116,7 +115,7 @@ export class OrdersService extends BaseService implements IOrdersService {
     order.paymentId = payment.id;
     await this.orderRepository.save(order);
 
-    await this.dispatchOrderCreatedNotification(order.user, order.total);
+    await this.dispatchOrderCreatedNotification(order, order.total);
 
     const orderMapped = EntityMapper.map(order, PublicOrderResponseDto);
     orderMapped.payment = EntityMapper.map(payment, PaymentResponseDto);
@@ -216,11 +215,12 @@ export class OrdersService extends BaseService implements IOrdersService {
     Object.assign(order, dto);
     await this.orderRepository.save(order);
 
-    const message = await this.messages.notifications.orderUpdated(
-      order.user.language,
-      order.status,
+    await this.dispatchNotification(
+      order.user.id,
+      NotificationType.PUSH,
+      NotificationEvent.ORDER_STATUS_CHANGED,
+      { status: order.status },
     );
-    await this.dispatchNotification(order.user, message);
 
     this.logger.debug('Order updated', { orderId: id });
 
@@ -266,10 +266,11 @@ export class OrdersService extends BaseService implements IOrdersService {
 
     await this.orderRepository.save(order);
 
-    const message = await this.messages.notifications.orderShipped(
-      order.user.language,
+    await this.dispatchNotification(
+      order.user.id,
+      NotificationType.PUSH,
+      NotificationEvent.ORDER_SHIPPED,
     );
-    await this.dispatchNotification(order.user, message);
 
     this.logger.debug('Order shipped', { orderId: id });
 
@@ -299,10 +300,11 @@ export class OrdersService extends BaseService implements IOrdersService {
 
     await this.orderRepository.save(order);
 
-    const message = await this.messages.notifications.orderDelivered(
-      order.user.language,
+    await this.dispatchNotification(
+      order.user.id,
+      NotificationType.PUSH,
+      NotificationEvent.ORDER_DELIVERED,
     );
-    await this.dispatchNotification(order.user, message);
 
     this.logger.debug('Order delivered', { orderId: id });
     return EntityMapper.map(order, OrderResponseDto);
@@ -424,18 +426,19 @@ export class OrdersService extends BaseService implements IOrdersService {
       return sum + ci.price * dtoItem.quantity;
     }, 0);
 
-    const order = this.orderRepository.createEntity({ userId, total });
-    const savedOrder = await this.orderRepository.save(order);
+    let order = this.orderRepository.createEntity({ userId, total });
+    order = await this.orderRepository.save(order);
 
     const orderItems = dto.items.map((dtoItem) =>
       this.orderItemRepository.createEntity({
         itemId: dtoItem.itemId,
         quantity: dtoItem.quantity,
-        orderId: savedOrder.id,
+        orderId: order.id,
       }),
     );
     await this.orderItemRepository.saveBulk(orderItems);
-    return savedOrder;
+
+    return order;
   }
 
   private async decrementItemsStock(
@@ -453,23 +456,31 @@ export class OrdersService extends BaseService implements IOrdersService {
   }
 
   private async dispatchOrderCreatedNotification(
-    user: User,
+    order: Order,
     total: number,
   ): Promise<void> {
     const totalPrice = toCurrencyFormatted(
       total,
-      languageToLocale(user.language),
-      languageToCurrency(user.language),
+      languageToLocale(order.user.language),
+      languageToCurrency(order.user.language),
     );
-    const message = await this.messages.notifications.orderCreated(
-      user.language,
-      totalPrice,
+    await this.dispatchNotification(
+      order.user.id,
+      NotificationType.PUSH,
+      NotificationEvent.ORDER_CREATED,
+      { orderTotal: totalPrice },
     );
-    await this.dispatchNotification(user, message);
   }
 
-  private async dispatchNotification(user: User, message: string): Promise<void> {
-    await this.outboxService.add(new NotifyUserJobPayload(user.id, message));
+  private async dispatchNotification(
+    userId: string,
+    type: NotificationType,
+    event: NotificationEvent,
+    data?: Record<string, any>,
+  ): Promise<void> {
+    await this.outboxService.add(
+      new NotifyUserJobPayload(userId, type, event, data),
+    );
   }
 
   //#endregion

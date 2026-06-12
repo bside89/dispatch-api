@@ -1,6 +1,8 @@
 import { User } from '@/modules/users/entities/user.entity';
 import { BaseEntity } from '@/shared/entities/base.entity';
 import { Column, Entity, Index, JoinColumn, ManyToOne } from 'typeorm';
+import { NotificationType } from '@/modules/notifications/enums/notification-type.enum';
+import { NotificationEvent } from '@/modules/notifications/enums/notification-event.enum';
 
 @Entity('notifications')
 @Index('IDX_notifications_user_read', ['userId'], {
@@ -17,17 +19,16 @@ export class Notification extends BaseEntity {
   @Column('uuid')
   userId: string;
 
-  @Column({ type: 'varchar', length: 50 })
-  type: string;
+  // Indexed to allow filtering notifications by type (e.g. ORDER, PAYMENT).
+  @Index()
+  @Column({ type: 'enum', enum: NotificationType, default: NotificationType.PUSH })
+  type: NotificationType;
 
-  @Column({ type: 'varchar', length: 120 })
-  title: string;
-
-  @Column({ type: 'text' })
-  message: string;
+  @Column({ type: 'enum', enum: NotificationEvent })
+  event: NotificationEvent;
 
   @Column({ type: 'jsonb', nullable: true })
-  data?: Record<string, any>;
+  data?: any;
 
   @Column({ default: false })
   read: boolean;
