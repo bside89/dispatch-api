@@ -28,6 +28,7 @@ export default async () => {
 
   process.env.NODE_ENV = 'local';
   process.env.TEST_ENV = 'true';
+  process.env.LOG_LEVEL = 'warn';
   process.env.JWT_ACCESS_SECRET = 'test-jwt-access-secret';
   process.env.JWT_REFRESH_SECRET = 'test-jwt-refresh-secret';
   process.env.STRIPE_EXEC_MODE = 'local';

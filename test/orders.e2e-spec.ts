@@ -1,5 +1,5 @@
 import { OrderStatus } from '@/modules/orders/enums/order-status.enum';
-import { HttpStatus, INestApplication } from '@nestjs/common';
+import { HttpStatus, INestApplication, Logger } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import Redis from 'ioredis';
 import request from 'supertest';
@@ -144,22 +144,32 @@ describe('Orders (E2E)', () => {
         new Error('Simulated Stripe error'),
       );
 
-      const payload = {
-        items: [{ itemId: testItemId, quantity: 1 }],
-      };
+      // Suppress the error log intentionally produced by ExceptionsHandler
+      // when the simulated Stripe error propagates up to NestJS.
+      const loggerSpy = jest
+        .spyOn(Logger.prototype, 'error')
+        .mockImplementation(() => {});
 
-      await request(app.getHttpServer())
-        .post('/v1/orders')
-        .set('idempotency-key', 'e2e-order-rollback-key')
-        .set('Authorization', `Bearer ${adminToken}`)
-        .send(payload)
-        .expect(HttpStatus.INTERNAL_SERVER_ERROR);
+      try {
+        const payload = {
+          items: [{ itemId: testItemId, quantity: 1 }],
+        };
 
-      const orders = await dataSource.query(
-        `SELECT id FROM orders WHERE "userId" = $1`,
-        [ADMIN_USER.id],
-      );
-      expect(orders).toHaveLength(0);
+        await request(app.getHttpServer())
+          .post('/v1/orders')
+          .set('idempotency-key', 'e2e-order-rollback-key')
+          .set('Authorization', `Bearer ${adminToken}`)
+          .send(payload)
+          .expect(HttpStatus.INTERNAL_SERVER_ERROR);
+
+        const orders = await dataSource.query(
+          `SELECT id FROM orders WHERE "userId" = $1`,
+          [ADMIN_USER.id],
+        );
+        expect(orders).toHaveLength(0);
+      } finally {
+        loggerSpy.mockRestore();
+      }
     });
 
     it('GET /v1/admin/orders - should be restricted to privileged users', async () => {
