@@ -1,4 +1,4 @@
-import { OffsetQueryDto } from '@/shared/dto/offset-query.dto';
+import { BaseOffsetQueryDto } from '@/shared/dto/base-offset-query.dto';
 import { CacheKeyFactory } from '@/shared/modules/cache/utils/cache-key.factory';
 
 /**
@@ -10,7 +10,7 @@ export const ORDER_KEY = {
 
   CACHE_FIND_ONE: (id: string) => CacheKeyFactory.cache('order', 'findOne', id),
 
-  CACHE_FIND_ALL: <T extends OffsetQueryDto>(query: T) =>
+  CACHE_FIND_ALL: <T extends BaseOffsetQueryDto>(query: T) =>
     CacheKeyFactory.cache('order', 'findAll', JSON.stringify(query)),
 
   CACHE_FIND_ALL_PATTERN: () => CacheKeyFactory.cachePattern('order', 'findAll'),

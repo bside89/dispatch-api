@@ -1,9 +1,7 @@
-import { CursorQueryDto } from '@/shared/dto/cursor-query.dto';
+import { BaseCursorQueryDto } from '@/shared/dto/base-cursor-query.dto';
 
-export class NotificationCursorQueryDto {
+export class NotificationCursorQueryDto extends BaseCursorQueryDto {
   userId: string;
 
   language: string;
-
-  cursor?: CursorQueryDto;
 }

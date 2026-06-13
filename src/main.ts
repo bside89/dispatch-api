@@ -8,6 +8,9 @@ import { AppModule } from './app.module';
 import { BasicAuthMiddleware } from './middleware/basic-auth.middleware';
 import { AllExceptionsFilter } from './shared/filters/exception.filter';
 import { SeedDataService } from './shared/providers/services/seed-data.service';
+import { Request, Response, NextFunction } from 'express';
+import { ParamsDictionary } from 'express-serve-static-core';
+import { ParsedQs } from 'qs';
 
 function configureSecurity(
   app: INestApplication,
@@ -90,7 +93,14 @@ async function bootstrap() {
   configureSwagger(app, configService);
 
   const authMiddleware = new BasicAuthMiddleware(configService);
-  app.use('/bull-board', (req, res, next) => authMiddleware.use(req, res, next));
+  app.use(
+    '/bull-board',
+    (
+      req: Request<ParamsDictionary, any, any, ParsedQs>,
+      res: Response,
+      next: NextFunction,
+    ) => authMiddleware.use(req, res, next),
+  );
 
   await seedDataService.run();
 

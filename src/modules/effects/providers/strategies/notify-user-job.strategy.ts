@@ -53,11 +53,15 @@ export class NotifyUserJobStrategy extends BaseEffectJobStrategy<NotifyUserJobPa
       data: notifData,
     });
 
-    const translated = await this.notificationsService.findTranslatedById(
-      notification.id,
-    );
-
-    this.logger.debug(`Notification sent to user ${userId}:`);
-    this.logger.debug(`Message: ${translated.message}`);
+    try {
+      const translated = await this.notificationsService.findTranslatedById(
+        notification.id,
+      );
+      this.logger.debug(`Notification sent to user ${userId}:`);
+      this.logger.debug(`Message: ${translated.message}`);
+    } catch {
+      // The notification was delivered (create succeeded). Translation is
+      // best-effort debug logging — skip silently if the row is gone.
+    }
   }
 }

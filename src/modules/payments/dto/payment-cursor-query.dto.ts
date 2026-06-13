@@ -1,9 +1,7 @@
-import { CursorQueryDto } from '@/shared/dto/cursor-query.dto';
+import { BaseCursorQueryDto } from '@/shared/dto/base-cursor-query.dto';
 
-export class PaymentCursorQueryDto {
+export class PaymentCursorQueryDto extends BaseCursorQueryDto {
   userId?: string;
 
   orderId?: string;
-
-  cursor?: CursorQueryDto;
 }

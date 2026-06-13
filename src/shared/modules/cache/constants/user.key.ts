@@ -1,11 +1,11 @@
-import { OffsetQueryDto } from '@/shared/dto/offset-query.dto';
+import { BaseOffsetQueryDto } from '@/shared/dto/base-offset-query.dto';
 import { CacheKeyFactory } from '@/shared/modules/cache/utils/cache-key.factory';
 
 export const USER_KEY = {
   IDEMPOTENCY: (operation: string, uniqueId: string) =>
     CacheKeyFactory.idempotency('user', operation, uniqueId),
 
-  CACHE_FIND_ALL: <T extends OffsetQueryDto>(query: T) =>
+  CACHE_FIND_ALL: <T extends BaseOffsetQueryDto>(query: T) =>
     CacheKeyFactory.cache('user', 'findAll', JSON.stringify(query)),
 
   CACHE_FIND_ONE: (id: string) => CacheKeyFactory.cache('user', 'findOne', id),

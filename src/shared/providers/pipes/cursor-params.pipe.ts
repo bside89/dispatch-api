@@ -1,20 +1,20 @@
 import { I18N_COMMON } from '@/shared/constants/i18n';
+import { CursorParams } from '@/shared/types/cursor-params.type';
 import { template } from '@/shared/utils/functions.utils';
 import { BadRequestException, Injectable, PipeTransform } from '@nestjs/common';
-import { CursorQueryDto } from '../../dto/cursor-query.dto';
 
 @Injectable()
 export class CursorParamsPipe implements PipeTransform<
   string | undefined,
-  CursorQueryDto | undefined
+  CursorParams | undefined
 > {
-  transform(value: string | undefined): CursorQueryDto | undefined {
+  transform(value: string | undefined): CursorParams | undefined {
     if (!value) {
       return undefined;
     }
 
     const decoded = Buffer.from(value, 'base64').toString('utf8');
-    const parsedCursor = JSON.parse(decoded) as Partial<CursorQueryDto>;
+    const parsedCursor = JSON.parse(decoded) as Partial<CursorParams>;
 
     if (!parsedCursor.startingAfter) {
       throw new BadRequestException(template(I18N_COMMON.ERRORS.INVALID_CURSOR));

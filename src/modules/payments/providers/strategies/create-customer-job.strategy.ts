@@ -41,18 +41,35 @@ export class CreateCustomerJobStrategy extends BasePaymentJobStrategy<CreateCust
       { userId: userDto.id },
     );
 
-    const customer = await this.createCustomer(job.data);
-    if (!customer || !customer.id) {
-      throw new InternalServerErrorException(
-        template(I18N_PAYMENTS.ERRORS.CREATE_CUSTOMER_FAILED),
+    try {
+      const customer = await this.createCustomer(job.data);
+      if (!customer || !customer.id) {
+        throw new InternalServerErrorException(
+          template(I18N_PAYMENTS.ERRORS.CREATE_CUSTOMER_FAILED),
+        );
+      }
+
+      await this.outboxService.add(
+        new UpdateUserJobPayload(userDto.id, customer.id),
       );
+
+      this.logger.log(`Customer created successfully with ID: ${customer.id}`, {
+        userId: userDto.id,
+      });
+    } catch (e: unknown) {
+      // User was deleted before the customer could be created — skip gracefully.
+      if (
+        typeof e === 'object' &&
+        e !== null &&
+        (e as Record<string, unknown>)['code'] === '23503'
+      ) {
+        this.logger.warn(
+          `Skipping customer creation: user ${userDto.id} no longer exists.`,
+        );
+        return;
+      }
+      throw e;
     }
-
-    await this.outboxService.add(new UpdateUserJobPayload(userDto.id, customer.id));
-
-    this.logger.log(`Customer created successfully with ID: ${customer.id}`, {
-      userId: userDto.id,
-    });
   }
 
   async executeAfterFail(

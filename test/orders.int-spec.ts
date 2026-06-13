@@ -397,6 +397,17 @@ describe('Orders (Integration)', () => {
       const processOrderJobStrategy = app.get<ProcessOrderJobStrategy>(
         ProcessOrderJobStrategy,
       );
+      const orderProcessor = app.get<OrderProcessor>(OrderProcessor);
+
+      // Suppress error logs that are intentionally produced by this test:
+      // BaseProcessor logs each of the 3 failed attempts, and the strategy
+      // logs the final "after all retries" message. Both are expected here.
+      const processorLogSpy = jest
+        .spyOn((orderProcessor as any).logger, 'error')
+        .mockImplementation(() => {});
+      const strategyLogSpy = jest
+        .spyOn((processOrderJobStrategy as any).logger, 'error')
+        .mockImplementation(() => {});
 
       const processSpy = jest
         .spyOn(processOrderJobStrategy, 'execute')
@@ -484,6 +495,8 @@ describe('Orders (Integration)', () => {
         );
       } finally {
         processSpy.mockRestore();
+        processorLogSpy.mockRestore();
+        strategyLogSpy.mockRestore();
       }
     }, 45_000);
 
@@ -599,7 +612,7 @@ describe('Orders (Integration)', () => {
         },
         opts: { attempts: 3 },
         attemptsMade: 0,
-      } as Job<any>;
+      } as Job<unknown>;
 
       try {
         // Execute the same job multiple times simultaneously

@@ -1,4 +1,5 @@
 import 'tsconfig-paths/register';
+import './suppress-pg-query-warnings';
 import { PostgreSqlContainer } from '@testcontainers/postgresql';
 import { RedisContainer } from '@testcontainers/redis';
 
